@@ -366,3 +366,8 @@ extern uint8_t __config_end;
 #if defined(USE_EXST)
 #define USE_FLASH_BOOT_LOADER
 #endif
+
+#ifndef USE_MAX7456
+#undef USE_MAX7456_EXTENDED
+#endif
+

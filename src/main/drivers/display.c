@@ -90,6 +90,25 @@ int displayWriteChar(displayPort_t *instance, uint8_t x, uint8_t y, uint8_t c)
     return instance->vTable->writeChar(instance, x, y, c);
 }
 
+#ifdef USE_MAX7456_EXTENDED
+int displayWriteExtended(displayPort_t *instance, uint8_t x, uint8_t y, const char *s)
+{
+    instance->posX = x + strlen(s);
+    instance->posY = y;
+    return instance->vTable->writeExtended(instance, x, y, s);
+}
+int displayWriteCharExtended(displayPort_t *instance, uint8_t x, uint8_t y, uint8_t c)
+{
+    instance->posX = x + 1;
+    instance->posY = y;
+    return instance->vTable->writeCharExtended(instance, x, y, c);
+}
+bool displayIsExtended(const displayPort_t *instance)
+{
+    return instance->vTable->isExtended();
+}
+#endif
+
 bool displayIsTransferInProgress(const displayPort_t *instance)
 {
     return instance->vTable->isTransferInProgress(instance);

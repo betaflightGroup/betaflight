@@ -751,6 +751,8 @@ static bool mspCommonProcessOutCommand(uint8_t cmdMSP, sbuf_t *dst, mspPostProce
 #define OSD_FLAGS_RESERVED_1            (1 << 2)
 #define OSD_FLAGS_RESERVED_2            (1 << 3)
 #define OSD_FLAGS_OSD_HARDWARE_MAX_7456 (1 << 4)
+#define OSD_FLAGS_EXTENDED              (1 << 5)
+#define OSD_FLAGS_CHIP_DEAD             (1 << 6)
 
         uint8_t osdFlags = 0;
 #if defined(USE_OSD)
@@ -758,6 +760,16 @@ static bool mspCommonProcessOutCommand(uint8_t cmdMSP, sbuf_t *dst, mspPostProce
 #endif
 #ifdef USE_MAX7456
         osdFlags |= OSD_FLAGS_OSD_HARDWARE_MAX_7456;
+#endif
+#ifdef USE_MAX7456_EXTENDED
+        if (max7456IsExtended()) {
+            osdFlags |= OSD_FLAGS_EXTENDED;
+        }
+#endif
+#ifdef USE_MAX7456
+        if (max7456WasDeadAtInit()) {
+            osdFlags |= OSD_FLAGS_CHIP_DEAD;
+        }
 #endif
 
         sbufWriteU8(dst, osdFlags);
@@ -2849,8 +2861,15 @@ static mspResult_e mspCommonProcessInCommand(uint8_t cmdMSP, sbuf_t *src, mspPos
 #ifdef USE_MAX7456
         {
             uint8_t font_data[64];
-            const uint8_t addr = sbufReadU8(src);
-            for (int i = 0; i < 54; i++) {
+            memset(font_data, 0, sizeof(font_data));
+            uint16_t addr = sbufReadU8(src);
+            int len = 54;
+            // For MSP >= 1.42 we're going to accept between 54 and 64 bytes.
+            if (addr == 0 && sbufBytesRemaining(src) >= 54 + 2) {
+                addr = sbufReadU16(src);
+                len = MIN(sbufBytesRemaining(src), 64);
+            }
+            for (int i=0; i < len; i++) {
                 font_data[i] = sbufReadU8(src);
             }
             // !!TODO - replace this with a device independent implementation

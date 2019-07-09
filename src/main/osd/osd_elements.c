@@ -113,6 +113,7 @@
 #define OSD_STICK_OVERLAY_WIDTH 7
 #define OSD_STICK_OVERLAY_HEIGHT 5
 #define OSD_STICK_OVERLAY_SPRITE_HEIGHT 3
+#define OSD_STICK_OVERLAY_SPRITE_EXTENDED_WIDTH 3
 #define OSD_STICK_OVERLAY_VERTICAL_POSITIONS (OSD_STICK_OVERLAY_HEIGHT * OSD_STICK_OVERLAY_SPRITE_HEIGHT)
 
 #define FULL_CIRCLE 360
@@ -592,6 +593,22 @@ static void osdElementCraftName(osdElementParms_t *element)
         element->buff[i] = '\0';
     }
 }
+#ifdef USE_MAX7456_EXTENDED
+static void osdElementCraftNameExtended(osdElementParms_t *element)
+{
+    if (displayIsExtended(element->osdDisplayPort)) {
+        if (strlen(pilotConfig()->name) == 0) {
+            displayWriteExtended(element->osdDisplayPort, element->elemPosX, element->elemPosY, "craft_name");
+        } else {
+            displayWriteExtended(element->osdDisplayPort, element->elemPosX, element->elemPosY, pilotConfig()->name);
+        }
+        element->drawElement = false;
+    } else {
+        // Call the other method
+        osdElementCraftName(element);
+    }
+}
+#endif
 
 #ifdef USE_ACC
 static void osdElementCrashFlipArrow(osdElementParms_t *element)
@@ -1085,12 +1102,35 @@ static void osdElementStickOverlay(osdElementParms_t *element)
     const uint8_t cursorX = scaleRange(constrain(rcData[horizontal_channel], PWM_RANGE_MIN, PWM_RANGE_MAX - 1), PWM_RANGE_MIN, PWM_RANGE_MAX, 0, OSD_STICK_OVERLAY_WIDTH);
     const uint8_t cursorY = OSD_STICK_OVERLAY_VERTICAL_POSITIONS - 1 - scaleRange(constrain(rcData[vertical_channel], PWM_RANGE_MIN, PWM_RANGE_MAX - 1), PWM_RANGE_MIN, PWM_RANGE_MAX, 0, OSD_STICK_OVERLAY_VERTICAL_POSITIONS);
     const char cursor = SYM_STICK_OVERLAY_SPRITE_HIGH + (cursorY % OSD_STICK_OVERLAY_SPRITE_HEIGHT);
-
+#ifdef USE_MAX7456_EXTENDED
+    const uint8_t charX = scaleRange(constrain(rcData[horizontal_channel], PWM_RANGE_MIN, PWM_RANGE_MAX - 1), PWM_RANGE_MIN, PWM_RANGE_MAX, 0, OSD_STICK_OVERLAY_WIDTH * OSD_STICK_OVERLAY_SPRITE_EXTENDED_WIDTH) % OSD_STICK_OVERLAY_SPRITE_EXTENDED_WIDTH;
+    const uint8_t extended = SYM_EXT_STICK_SPRITE_START + charX + (cursorY % OSD_STICK_OVERLAY_SPRITE_HEIGHT) * OSD_STICK_OVERLAY_SPRITE_EXTENDED_WIDTH;
+    if (displayIsExtended(element->osdDisplayPort)) {
+        displayWriteCharExtended(element->osdDisplayPort, xpos + cursorX, ypos + cursorY / OSD_STICK_OVERLAY_SPRITE_HEIGHT, extended);
+    } else {
+        displayWriteChar(element->osdDisplayPort, xpos + cursorX, ypos + cursorY / OSD_STICK_OVERLAY_SPRITE_HEIGHT, cursor);
+    }
+#else
     displayWriteChar(element->osdDisplayPort, xpos + cursorX, ypos + cursorY / OSD_STICK_OVERLAY_SPRITE_HEIGHT, cursor);
+#endif
 
     element->drawElement = false;  // element already drawn
 }
 #endif // USE_OSD_STICK_OVERLAY
+
+#ifdef USE_MAX7456_EXTENDED
+static void osdElementPilotLogo(osdElementParms_t *element)
+{
+    if (displayIsExtended(element->osdDisplayPort)) {
+        int fontOffset = SYM_EXT_PILOT_LOGO_START;
+        for (int row = 0; row < 3; row++) {
+            for (int column = 0; column < 4; column++) {
+                displayWriteCharExtended(element->osdDisplayPort, element->elemPosX + column, element->elemPosY + row, fontOffset++);
+            }
+        }
+    }
+}
+#endif
 
 static void osdElementThrottlePosition(osdElementParms_t *element)
 {
@@ -1367,6 +1407,7 @@ static void osdElementWarnings(osdElementParms_t *element)
 // to osdAnalyzeActiveElements()
 
 static const uint8_t osdElementDisplayOrder[] = {
+    OSD_PILOT_LOGO,
     OSD_MAIN_BATT_VOLTAGE,
     OSD_RSSI_VALUE,
     OSD_CROSSHAIRS,
@@ -1449,7 +1490,11 @@ const osdElementDrawFn osdElementDrawFunction[OSD_ITEM_COUNT] = {
     [OSD_ITEM_TIMER_1]            = osdElementTimer,
     [OSD_ITEM_TIMER_2]            = osdElementTimer,
     [OSD_FLYMODE]                 = osdElementFlymode,
+#ifdef USE_MAX7456_EXTENDED
+    [OSD_CRAFT_NAME]              = osdElementCraftNameExtended,
+#else
     [OSD_CRAFT_NAME]              = osdElementCraftName,
+#endif
     [OSD_THROTTLE_POS]            = osdElementThrottlePosition,
 #ifdef USE_VTX_COMMON
     [OSD_VTX_CHANNEL]             = osdElementVtxChannel,
@@ -1538,6 +1583,9 @@ const osdElementDrawFn osdElementDrawFunction[OSD_ITEM_COUNT] = {
 #endif
 #ifdef USE_RX_RSSI_DBM
     [OSD_RSSI_DBM_VALUE]          = osdElementRssiDbm,
+#endif
+#ifdef USE_MAX7456_EXTENDED
+    [OSD_PILOT_LOGO]              = osdElementPilotLogo,
 #endif
 };
 

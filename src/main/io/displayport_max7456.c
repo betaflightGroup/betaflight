@@ -104,7 +104,6 @@ static int writeString(displayPort_t *displayPort, uint8_t x, uint8_t y, const c
 {
     UNUSED(displayPort);
     max7456Write(x, y, s);
-
     return 0;
 }
 
@@ -112,9 +111,23 @@ static int writeChar(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t c
 {
     UNUSED(displayPort);
     max7456WriteChar(x, y, c);
-
     return 0;
 }
+
+#ifdef USE_MAX7456_EXTENDED
+static int writeExtended(displayPort_t *displayPort, uint8_t x, uint8_t y, const char *s)
+{
+    UNUSED(displayPort);
+    max7456WriteExtended(x, y, s);
+    return 0;
+}
+static int writeCharExtended(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t c)
+{
+    UNUSED(displayPort);
+    max7456WriteCharExtended(x, y, c);
+    return 0;
+}
+#endif
 
 static bool isTransferInProgress(const displayPort_t *displayPort)
 {
@@ -156,6 +169,11 @@ static const displayPortVTable_t max7456VTable = {
     .screenSize = screenSize,
     .writeString = writeString,
     .writeChar = writeChar,
+#ifdef USE_MAX7456_EXTENDED
+    .writeExtended = writeExtended,
+    .writeCharExtended = writeCharExtended,
+    .isExtended = max7456UseExtended,
+#endif
     .isTransferInProgress = isTransferInProgress,
     .heartbeat = heartbeat,
     .resync = resync,

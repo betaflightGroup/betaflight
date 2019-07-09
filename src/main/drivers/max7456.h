@@ -36,12 +36,21 @@ bool    max7456Init(const struct max7456Config_s *max7456Config, const struct vc
 void    max7456Invert(bool invert);
 void    max7456Brightness(uint8_t black, uint8_t white);
 void    max7456DrawScreen(void);
-void    max7456WriteNvm(uint8_t char_address, const uint8_t *font_data);
+void    max7456WriteNvm(uint16_t char_address, const uint8_t *font_data);
+void    max7456ReadNvm(uint16_t char_address, uint8_t *font_data);
 uint8_t max7456GetRowsCount(void);
 void    max7456Write(uint8_t x, uint8_t y, const char *buff);
 void    max7456WriteChar(uint8_t x, uint8_t y, uint8_t c);
+#ifdef USE_MAX7456_EXTENDED
+void    max7456ReadShadow(uint8_t *font_data);
+void    max7456WriteExtended(uint8_t x, uint8_t y, const char *buff);
+void    max7456WriteCharExtended(uint8_t x, uint8_t y,uint8_t extendedChar);
+#endif
 void    max7456ClearScreen(void);
 void    max7456RefreshAll(void);
-uint8_t* max7456GetScreenBuffer(void);
 bool    max7456DmaInProgress(void);
 bool    max7456BuffersSynced(void);
+bool    max7456UseExtended(void);
+bool    max7456IsExtended(void);
+bool    max7456CheckIsChipAlive(void);
+bool    max7456WasDeadAtInit(void);

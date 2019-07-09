@@ -900,7 +900,12 @@ void osdUpdate(timeUs_t currentTimeUs)
 
     // redraw values in buffer
 #ifdef USE_MAX7456
+#ifdef USE_MAX7456_EXTENDED
+//the task in src/main/fc/tasks.c has been set to 120hz
+#define DRAW_FREQ_DENOM 10
+#else
 #define DRAW_FREQ_DENOM 5
+#endif
 #else
 #define DRAW_FREQ_DENOM 10 // MWOSD @ 115200 baud (
 #endif

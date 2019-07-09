@@ -369,6 +369,12 @@ static const char * const lookupTableVideoSystem[] = {
 };
 #endif // USE_MAX7456
 
+#ifdef USE_MAX7456_EXTENDED
+static const char * const lookupTableVideoSystemExtended[] = {
+    "AUTO", "ON", "OFF"
+};
+#endif
+
 #if defined(USE_ITERM_RELAX)
 static const char * const lookupTableItermRelax[] = {
     "OFF", "RP", "RPY", "RP_INC", "RPY_INC"
@@ -543,6 +549,9 @@ const lookupTableEntry_t lookupTables[] = {
 #ifdef USE_MAX7456
     LOOKUP_TABLE_ENTRY(lookupTableVideoSystem),
 #endif // USE_MAX7456
+#ifdef USE_MAX7456_EXTENDED
+    LOOKUP_TABLE_ENTRY(lookupTableVideoSystemExtended),
+#endif
 #if defined(USE_ITERM_RELAX)
     LOOKUP_TABLE_ENTRY(lookupTableItermRelax),
     LOOKUP_TABLE_ENTRY(lookupTableItermRelaxType),
@@ -1262,6 +1271,10 @@ const clivalue_t valueTable[] = {
     { "osd_profile_name_pos",   VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 0, OSD_POSCFG_MAX }, PG_OSD_CONFIG, offsetof(osdConfig_t, item_pos[OSD_PROFILE_NAME]) },
 #endif
 
+
+#ifdef USE_MAX7456_EXTENDED
+    { "osd_pilot_logo_pos",   VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 0, OSD_POSCFG_MAX }, PG_OSD_CONFIG, offsetof(osdConfig_t, item_pos[OSD_PILOT_LOGO]) },
+#endif
     // OSD stats enabled flags are stored as bitmapped values inside a 32bit parameter
     // It is recommended to keep the settings order the same as the enumeration. This way the settings are displayed in the cli in the same order making it easier on the users
     { "osd_stat_rtc_date_time",     VAR_UINT32  | MASTER_VALUE | MODE_BITSET, .config.bitpos = OSD_STAT_RTC_DATE_TIME,   PG_OSD_CONFIG, offsetof(osdConfig_t, enabled_stats)},
@@ -1345,6 +1358,9 @@ const clivalue_t valueTable[] = {
     { "vcd_video_system",           VAR_UINT8   | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_VIDEO_SYSTEM }, PG_VCD_CONFIG, offsetof(vcdProfile_t, video_system) },
     { "vcd_h_offset",               VAR_INT8    | MASTER_VALUE, .config.minmax = { -32, 31 }, PG_VCD_CONFIG, offsetof(vcdProfile_t, h_offset) },
     { "vcd_v_offset",               VAR_INT8    | MASTER_VALUE, .config.minmax = { -15, 16 }, PG_VCD_CONFIG, offsetof(vcdProfile_t, v_offset) },
+#endif
+#ifdef USE_MAX7456_EXTENDED
+    { "vcd_video_system_extended",           VAR_UINT8   | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_VIDEO_SYSTEM_EXTENDED }, PG_VCD_CONFIG, offsetof(vcdProfile_t, video_system_extended) },
 #endif
 
 // PG_MAX7456_CONFIG

@@ -30,10 +30,19 @@ enum VIDEO_SYSTEMS {
     VIDEO_SYSTEM_NTSC
 };
 
+enum VIDEO_SYSTEM_EXTENDEDS {
+    VIDEO_SYSTEM_EXTENDED_AUTO = 0,
+    VIDEO_SYSTEM_EXTENDED_ON,
+    VIDEO_SYSTEM_EXTENDED_OFF
+};
+
 typedef struct vcdProfile_s {
     uint8_t video_system;
     int8_t h_offset;
     int8_t v_offset;
+#ifdef USE_MAX7456_EXTENDED
+    uint8_t video_system_extended;
+#endif
 } vcdProfile_t;
 
 PG_DECLARE(vcdProfile_t, vcdProfile);

@@ -47,6 +47,11 @@ typedef struct displayPortVTable_s {
     int (*screenSize)(const displayPort_t *displayPort);
     int (*writeString)(displayPort_t *displayPort, uint8_t x, uint8_t y, const char *text);
     int (*writeChar)(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t c);
+#ifdef USE_MAX7456_EXTENDED
+    int (*writeExtended)(displayPort_t *displayPort, uint8_t x, uint8_t y, const char *text);
+    int (*writeCharExtended)(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t c);
+    bool (*isExtended)(void);
+#endif
     bool (*isTransferInProgress)(const displayPort_t *displayPort);
     int (*heartbeat)(displayPort_t *displayPort);
     void (*resync)(displayPort_t *displayPort);
@@ -74,6 +79,11 @@ int displayScreenSize(const displayPort_t *instance);
 void displaySetXY(displayPort_t *instance, uint8_t x, uint8_t y);
 int displayWrite(displayPort_t *instance, uint8_t x, uint8_t y, const char *s);
 int displayWriteChar(displayPort_t *instance, uint8_t x, uint8_t y, uint8_t c);
+#ifdef USE_MAX7456_EXTENDED
+int displayWriteCharExtended(displayPort_t *instance, uint8_t x, uint8_t y, uint8_t c);
+int displayWriteExtended(displayPort_t *instance, uint8_t x, uint8_t y, const char *s);
+bool displayIsExtended(const displayPort_t *instance);
+#endif
 bool displayIsTransferInProgress(const displayPort_t *instance);
 void displayHeartbeat(displayPort_t *instance);
 void displayResync(displayPort_t *instance);
