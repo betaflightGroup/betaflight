@@ -1,0 +1,54 @@
+/*
+ * This file is part of Cleanflight and Betaflight.
+ *
+ * Cleanflight and Betaflight are free software. You can redistribute
+ * this software and/or modify this software under the terms of the
+ * GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * Cleanflight and Betaflight are distributed in the hope that they
+ * will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software.
+ *
+ * If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "platform.h"
+
+#ifdef USE_TARGET_CONFIG
+
+#include "config_helper.h"
+
+#include "io/serial.h"
+#include "osd/osd.h"
+#include "pg/pg.h"
+#include "pg/pinio.h"
+#include "pg/piniobox.h"
+#include "msp/msp_box.h"
+
+static targetSerialPortFunction_t targetSerialPortFunction[] = {
+    { SERIAL_PORT_USART1, FUNCTION_RX_SERIAL },
+    { SERIAL_PORT_USART2, FUNCTION_VTX_SMARTAUDIO },
+    { SERIAL_PORT_USART3, FUNCTION_RCDEVICE },
+    { SERIAL_PORT_UART4, FUNCTION_ESC_SENSOR },
+    { SERIAL_PORT_UART5, FUNCTION_TELEMETRY_SMARTPORT },
+    { SERIAL_PORT_USART8, FUNCTION_GPS },
+};
+
+void targetConfiguration(void)
+{
+    targetSerialPortFunctionConfig(targetSerialPortFunction, ARRAYLEN(targetSerialPortFunction));
+
+    pinioConfigMutable()->config[0] = PINIO_CONFIG_MODE_OUT_PP | PINIO_CONFIG_OUT_INVERTED;
+    pinioBoxConfigMutable()->permanentId[0] = findBoxByBoxId(BOXUSER1)->permanentId;
+}
+
+#endif
