@@ -205,6 +205,7 @@ bool displaySupportsOsdSymbols(displayPort_t *instance)
     // Assume device types that support OSD display will support the OSD symbols (since the OSD logic will use them)
     if ((instance->deviceType == DISPLAYPORT_DEVICE_TYPE_MAX7456)
         || (instance->deviceType == DISPLAYPORT_DEVICE_TYPE_MSP)
+        || (instance->deviceType == DISPLAYPORT_DEVICE_TYPE_SPRACINGPIXELOSD)
         || (instance->deviceType == DISPLAYPORT_DEVICE_TYPE_FRSKYOSD)) {
         return true;
     } else {

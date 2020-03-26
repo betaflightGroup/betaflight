@@ -333,7 +333,11 @@ static void SystemClockHSE_Config(void)
     pllConfig_t *pll1Config;
 
 #if defined(STM32H743xx) || defined(STM32H750xx)
+#ifdef USE_H7_LEGACY_CPU_REVISION_SPEED
+    pllConfig_t *pll1Config = &pll1ConfigRevY;
+#else
     pll1Config = (HAL_GetREVID() == REV_ID_V) ? &pll1ConfigRevV : &pll1ConfigRevY;
+#endif
 #elif defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
     pll1Config = &pll1Config7A3;
 #elif defined(STM32H723xx) || defined(STM32H725xx)

@@ -21,6 +21,7 @@
 #pragma once
 
 #include "drivers/display.h"
+#include "drivers/display_canvas.h"
 
 #include "osd/osd.h"
 
@@ -58,6 +59,7 @@ void osdAddActiveElements(void);
 void osdDrawActiveElements(displayPort_t *osdDisplayPort);
 void osdDrawActiveElementsBackground(displayPort_t *osdDisplayPort);
 void osdElementsInit(bool backgroundLayerFlag);
+void osdCanvasInit(displayCanvas_t *canvasInstance);
 void osdResetAlarms(void);
 void osdUpdateAlarms(void);
 bool osdElementsNeedAccelerometer(void);

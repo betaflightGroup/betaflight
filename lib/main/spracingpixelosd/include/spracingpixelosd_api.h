@@ -107,6 +107,7 @@ typedef struct spracingPixelOSDLibraryVTable_s {
     void (*comparatorIRQHandler)(void);
     void (*syncDMAHandler)(void);
     void (*pixelDMAHandler)(void);
+    void (*adcDMAHandler)(void);
 
 } spracingPixelOSDLibraryVTable_t;
 

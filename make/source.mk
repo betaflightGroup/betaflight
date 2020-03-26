@@ -178,6 +178,8 @@ COMMON_SRC = \
             osd/osd.c \
             osd/osd_elements.c \
             osd/osd_warnings.c \
+            osd/osd_elements_canvas.c \
+            osd/pixel_osd_video.c \
             sensors/barometer.c \
             sensors/rangefinder.c \
             telemetry/telemetry.c \
@@ -411,6 +413,25 @@ SRC += \
             drivers/flash_w25m.c \
             io/flashfs.c \
             $(MSC_SRC)
+endif
+
+ifneq ($(filter SPRACING_PIXEL_OSD,$(FEATURES)),)
+
+SRC += \
+            drivers/spracingpixelosd/spracing_pixel_osd_library.c \
+            drivers/spracingpixelosd/spracing_pixel_osd.c \
+            drivers/spracingpixelosd/framebuffer.c \
+            drivers/spracingpixelosd/framebuffer_canvas.c \
+            io/displayport_spracing_pixel_osd.c \
+            drivers/osd/fonts.c \
+            drivers/osd/font_max7456_12x18_betaflight.c \
+
+SPRACINGPIXELOSDLIB_DIR := $(ROOT)/lib/main/spracingpixelosd
+
+TARGET_FLAGS := -DUSE_SPRACING_PIXEL_OSD $(TARGET_FLAGS)
+
+INCLUDE_DIRS    += $(SPRACINGPIXELOSDLIB_DIR)/include
+VPATH           := $(VPATH):$(SPRACINGPIXELOSDLIB_DIR)/include
 endif
 
 SRC += $(COMMON_SRC)

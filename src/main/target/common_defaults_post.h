@@ -38,6 +38,15 @@
 #endif
 #endif
 
+// pg/pixel OSD
+
+#ifdef USE_SPRACING_PIXEL_OSD
+// Note: SP Racing Pixel OSD is an implementation of a PixelOSD.  Others may be forthcoming, use appropriate code gating.
+#ifndef USE_PIXEL_OSD
+#define USE_PIXEL_OSD
+#endif
+#endif
+
 // pg/flash
 
 #ifdef USE_FLASH_M25P16

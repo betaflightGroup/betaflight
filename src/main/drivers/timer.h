@@ -62,6 +62,8 @@ typedef enum {
     TIM_USE_TRANSPONDER    = 0x20,
     TIM_USE_BEEPER         = 0x40,
     TIM_USE_CAMERA_CONTROL = 0x80,
+    TIM_USE_VIDEO_SYNC     = 0x100,
+    TIM_USE_VIDEO_PIXEL    = 0x200,
 } timerUsageFlag_e;
 
 // use different types from capture and overflow - multiple overflow handlers are implemented as linked list

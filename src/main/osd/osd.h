@@ -86,8 +86,10 @@ extern const char * const osdTimerSourceNames[OSD_NUM_TIMER_TYPES];
 #define OSD_TIMER_PRECISION(timer)  ((timer >> 4) & 0x0F)
 #define OSD_TIMER_ALARM(timer)      ((timer >> 8) & 0xFF)
 
-#ifdef USE_MAX7456
+#if defined(USE_MAX7456)
 #define OSD_DRAW_FREQ_DENOM 5
+#elif defined(USE_SPRACING_PIXEL_OSD)
+#define OSD_DRAW_FREQ_DENOM 0
 #else
 // MWOSD @ 115200 baud
 #define OSD_DRAW_FREQ_DENOM 10
@@ -254,6 +256,7 @@ typedef enum {
     OSD_DISPLAYPORT_DEVICE_MAX7456,
     OSD_DISPLAYPORT_DEVICE_MSP,
     OSD_DISPLAYPORT_DEVICE_FRSKYOSD,
+    OSD_DISPLAYPORT_DEVICE_SPRACING_PIXEL_OSD,
 } osdDisplayPortDevice_e;
 
 // Make sure the number of warnings do not exceed the available 32bit storage
