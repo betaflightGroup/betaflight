@@ -57,6 +57,9 @@
 #include "drivers/flash.h"
 #include "drivers/osd_symbols.h"
 #include "drivers/sdcard.h"
+#ifdef USE_VCP
+#include "drivers/serial_usb_vcp.h"
+#endif
 #include "drivers/time.h"
 
 #include "fc/rc_controls.h"
@@ -338,6 +341,9 @@ void pgResetFn_osdConfig(osdConfig_t *osdConfig)
 
     osdConfig->camera_frame_width = 24;
     osdConfig->camera_frame_height = 11;
+
+    // Turn off replacing craft name for DJI OSD
+    osdWarnSetState(OSD_WARNING_DJI, false);
 }
 
 void pgResetFn_osdElementConfig(osdElementConfig_t *osdElementConfig)
@@ -1045,6 +1051,15 @@ void osdUpdate(timeUs_t currentTimeUs)
 void osdSuppressStats(bool flag)
 {
     suppressStatsDisplay = flag;
+}
+
+bool osdWarnDjiEnabled(void)
+{
+    return osdWarnGetState(OSD_WARNING_DJI)
+#ifdef USE_VCP
+                && !usbVcpIsConnected()
+#endif
+    ;
 }
 
 #ifdef USE_OSD_PROFILES

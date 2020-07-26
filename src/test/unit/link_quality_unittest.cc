@@ -89,6 +89,8 @@ extern "C" {
 
     void osdRefresh(timeUs_t currentTimeUs);
     uint16_t updateLinkQualitySamples(uint16_t value);
+    bool usbCableIsInserted(void) { return false; }
+    bool usbVcpIsConnected(void) { return false; }
 #define LINK_QUALITY_SAMPLE_COUNT 16
 }
 
