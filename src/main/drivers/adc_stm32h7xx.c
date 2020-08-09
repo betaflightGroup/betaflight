@@ -281,18 +281,22 @@ void adcInit(const adcConfig_t *config)
 
     if (config->vbat.enabled) {
         adcOperatingConfig[ADC_BATTERY].tag = config->vbat.ioTag;
+        adcOperatingConfig[ADC_BATTERY].adcDevice = config->vbat.device;
     }
 
     if (config->rssi.enabled) {
         adcOperatingConfig[ADC_RSSI].tag = config->rssi.ioTag;  //RSSI_ADC_CHANNEL;
+        adcOperatingConfig[ADC_RSSI].adcDevice = config->rssi.device;
     }
 
     if (config->external1.enabled) {
         adcOperatingConfig[ADC_EXTERNAL1].tag = config->external1.ioTag; //EXTERNAL1_ADC_CHANNEL;
+        adcOperatingConfig[ADC_EXTERNAL1].adcDevice = config->external1.device;
     }
 
     if (config->current.enabled) {
         adcOperatingConfig[ADC_CURRENT].tag = config->current.ioTag;  //CURRENT_METER_ADC_CHANNEL;
+        adcOperatingConfig[ADC_CURRENT].adcDevice = config->current.device;
     }
 
 #ifdef USE_ADC_INTERNAL
@@ -310,6 +314,8 @@ void adcInit(const adcConfig_t *config)
             map = ADC_TAG_MAP_VREFINT;
             dev = ffs(adcTagMap[map].devices) - 1;
         } else {
+            dev = ADC_CFG_TO_DEV(adcOperatingConfig[i].adcDevice);
+
             if (!adcOperatingConfig[i].tag) {
                 continue;
             }
@@ -322,24 +328,30 @@ void adcInit(const adcConfig_t *config)
             // Found a tag map entry for this input pin
             // Find an ADC device that can handle this input pin
 
-            for (dev = 0; dev < ADCDEV_COUNT; dev++) {
-                if (!adcDevice[dev].ADCx
+            bool useConfiguredDevice = (dev != ADCINVALID) && (adcTagMap[map].devices & (1 << dev)); {
+
+            if (!useConfiguredDevice)
+                // If the ADC was configured to use a specific device, but that device was not active, then try and find another active instance that works for the pin.
+
+                for (dev = 0; dev < ADCDEV_COUNT; dev++) {
+                    if (!adcDevice[dev].ADCx
 #ifndef USE_DMA_SPEC
-                     || !adcDevice[dev].dmaResource
+                         || !adcDevice[dev].dmaResource
 #endif
-                   ) {
-                    // Instance not activated
+                       ) {
+                        // Instance not activated
+                        continue;
+                    }
+                    if (adcTagMap[map].devices & (1 << dev)) {
+                        // Found an activated ADC instance for this input pin
+                        break;
+                    }
+                }
+
+                if (dev == ADCDEV_COUNT) {
+                    // No valid device found, go next channel.
                     continue;
                 }
-                if (adcTagMap[map].devices & (1 << dev)) {
-                    // Found an activated ADC instance for this input pin
-                    break;
-                }
-            }
-
-            if (dev == ADCDEV_COUNT) {
-                // No valid device found, go next channel.
-                continue;
             }
         }
 
