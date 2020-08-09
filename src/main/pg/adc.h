@@ -31,6 +31,9 @@
 typedef struct adcChannelConfig_t {
     bool enabled;
     ioTag_t ioTag;
+#if defined(STM32H7)
+    int8_t device; // ADCDevice
+#endif
 } adcChannelConfig_t;
 
 typedef struct adcConfig_s {
