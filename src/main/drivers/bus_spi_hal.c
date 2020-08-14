@@ -20,6 +20,8 @@
  * HAL version resurrected from v3.1.7 (by jflyper)
  */
 
+// Note that the HAL driver is polled only
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <strings.h>
@@ -35,6 +37,46 @@
 #include "io_impl.h"
 #include "nvic.h"
 #include "rcc.h"
+
+// Position of Prescaler bits are different from MCU to MCU
+
+static uint32_t baudRatePrescaler[8] = {
+    SPI_BAUDRATEPRESCALER_2,
+    SPI_BAUDRATEPRESCALER_4,
+    SPI_BAUDRATEPRESCALER_8,
+    SPI_BAUDRATEPRESCALER_16,
+    SPI_BAUDRATEPRESCALER_32,
+    SPI_BAUDRATEPRESCALER_64,
+    SPI_BAUDRATEPRESCALER_128,
+    SPI_BAUDRATEPRESCALER_256,
+};
+
+static void spiDivisorToBRbits(SPI_TypeDef *instance, uint16_t divisor)
+{
+    SPIDevice device = spiDeviceByInstance(instance);
+
+    spiDevice_t *spi = &(spiDevice[device]);
+
+    int prescalerIndex = ffs(divisor) - 2; // prescaler begins at "/2"
+
+    if (prescalerIndex < 0 || prescalerIndex >= (int)ARRAYLEN(baudRatePrescaler)) {
+        return;
+    }
+
+    if (spi->hspi.Init.BaudRatePrescaler != baudRatePrescaler[prescalerIndex]) {
+        spi->hspi.Init.BaudRatePrescaler = baudRatePrescaler[prescalerIndex];
+
+        WRITE_REG(spi->hspi.Instance->CFG1, spi->hspi.Init.BaudRatePrescaler |
+                                            SPI_CRCCALCULATION_DISABLE |
+                                            spi->hspi.Init.FifoThreshold     |
+                                            SPI_DATASIZE_8BIT);
+    }
+}
+
+static void spiSetDivisor(SPI_TypeDef *instance, uint16_t divisor)
+{
+    spiDivisorToBRbits(instance, divisor);
+}
 
 void spiInitDevice(SPIDevice device, bool leadingEdge)
 {
@@ -103,115 +145,101 @@ void spiInitDevice(SPIDevice device, bool leadingEdge)
     HAL_SPI_Init(&spi->hspi);
 }
 
-// return uint8_t value or -1 when failure
-uint8_t spiTransferByte(SPI_TypeDef *instance, uint8_t out)
-{
-    uint8_t in;
-
-    spiTransfer(instance, &out, &in, 1);
-    return in;
-}
-
-/**
- * Return true if the bus is currently in the middle of a transmission.
- */
-bool spiIsBusBusy(SPI_TypeDef *instance)
-{
-    SPIDevice device = spiDeviceByInstance(instance);
-    if(spiDevice[device].hspi.State == HAL_SPI_STATE_BUSY)
-        return true;
-    else
-        return false;
-}
-
-bool spiTransfer(SPI_TypeDef *instance, const uint8_t *out, uint8_t *in, int len)
+static bool spiPrivReadWriteBufPolled(SPI_TypeDef *instance, const uint8_t *txData, uint8_t *rxData, int len)
 {
     SPIDevice device = spiDeviceByInstance(instance);
     HAL_StatusTypeDef status;
 
 #define SPI_DEFAULT_TIMEOUT 10
 
-    if (!in) {
+    if (!rxData) {
         // Tx only
-        status = HAL_SPI_Transmit(&spiDevice[device].hspi, out, len, SPI_DEFAULT_TIMEOUT);
-    } else if(!out) {
+        status = HAL_SPI_Transmit(&spiDevice[device].hspi, txData, len, SPI_DEFAULT_TIMEOUT);
+    } else if(!txData) {
         // Rx only
-        status = HAL_SPI_Receive(&spiDevice[device].hspi, in, len, SPI_DEFAULT_TIMEOUT);
+        status = HAL_SPI_Receive(&spiDevice[device].hspi, rxData, len, SPI_DEFAULT_TIMEOUT);
     } else {
         // Tx and Rx
-        status = HAL_SPI_TransmitReceive(&spiDevice[device].hspi, out, in, len, SPI_DEFAULT_TIMEOUT);
+        status = HAL_SPI_TransmitReceive(&spiDevice[device].hspi, txData, rxData, len, SPI_DEFAULT_TIMEOUT);
     }
 
-    if(status != HAL_OK) {
-        spiTimeoutUserCallback(instance);
+    return (status == HAL_OK);
+}
+
+void spiPrivInitStream(extDevice_t *dev, bool preInit)
+{
+    UNUSED(dev);
+    UNUSED(preInit);
+}
+
+void spiPrivStartDMA(extDevice_t *dev)
+{
+    UNUSED(dev);
+}
+
+void spiPrivStopDMA (extDevice_t *dev)
+{
+    UNUSED(dev);
+}
+
+void spiResetDescriptors(busDevice_t *bus)
+{
+    UNUSED(bus);
+}
+
+void spiResetStream(dmaChannelDescriptor_t *descriptor)
+{
+    UNUSED(descriptor);
+}
+
+// Transfer setup and start
+void spiSequence(extDevice_t *dev, busSegment_t *segments)
+{
+    busDevice_t *bus = dev->bus;
+    bool readSafe = true;
+
+    bus->initSegment = true;
+    bus->curSegment = segments;
+
+    // Switch bus speed
+    spiSetDivisor(bus->busType_u.spi.instance, dev->busType_u.spi.speed);
+
+    // Manually work through the segment list performing a transfer for each
+    while (bus->curSegment->len) {
+        // Assert Chip Select
+        IOLo(dev->busType_u.spi.csnPin);
+
+        spiPrivReadWriteBufPolled(
+                bus->busType_u.spi.instance,
+                bus->curSegment->txData,
+                bus->curSegment->rxData,
+                bus->curSegment->len);
+
+        if (bus->curSegment->negateCS) {
+            // Negate Chip Select
+            IOHi(dev->busType_u.spi.csnPin);
+        }
+
+        if (bus->curSegment->callback) {
+            switch(bus->curSegment->callback(dev->callbackArg)) {
+            case BUS_BUSY:
+                // Repeat the last DMA segment
+                bus->curSegment--;
+                break;
+
+            case BUS_ABORT:
+                bus->curSegment = (busSegment_t *)NULL;
+                return;
+
+            case BUS_READY:
+            default:
+                // Advance to the next DMA segment
+                break;
+            }
+        }
+        bus->curSegment++;
     }
 
-    return true;
+    bus->curSegment = (busSegment_t *)NULL;
 }
-
-// Position of Prescaler bits are different from MCU to MCU
-
-static uint32_t baudRatePrescaler[8] = {
-    SPI_BAUDRATEPRESCALER_2,
-    SPI_BAUDRATEPRESCALER_4,
-    SPI_BAUDRATEPRESCALER_8,
-    SPI_BAUDRATEPRESCALER_16,
-    SPI_BAUDRATEPRESCALER_32,
-    SPI_BAUDRATEPRESCALER_64,
-    SPI_BAUDRATEPRESCALER_128,
-    SPI_BAUDRATEPRESCALER_256,
-};
-
-void spiSetDivisor(SPI_TypeDef *instance, uint16_t divisor)
-{
-    SPIDevice device = spiDeviceByInstance(instance);
-
-    HAL_SPI_DeInit(&spiDevice[device].hspi);
-
-    spiDevice_t *spi = &(spiDevice[device]);
-
-    int prescalerIndex = ffs(divisor) - 2; // prescaler begins at "/2"
-
-    if (prescalerIndex < 0 || prescalerIndex >= (int)ARRAYLEN(baudRatePrescaler)) {
-        return;
-    }
-
-    spi->hspi.Init.BaudRatePrescaler = baudRatePrescaler[prescalerIndex];
-
-    HAL_SPI_Init(&spi->hspi);
-}
-
-#ifdef USE_DMA
-DMA_HandleTypeDef* dmaHandleByInstance(SPI_TypeDef *instance)
-{
-    return &spiDevice[spiDeviceByInstance(instance)].hdma;
-}
-
-void SPI1_IRQHandler(void)
-{
-    HAL_SPI_IRQHandler(&spiDevice[SPIDEV_1].hspi);
-}
-
-void SPI2_IRQHandler(void)
-{
-    HAL_SPI_IRQHandler(&spiDevice[SPIDEV_2].hspi);
-}
-
-void SPI3_IRQHandler(void)
-{
-    HAL_SPI_IRQHandler(&spiDevice[SPIDEV_3].hspi);
-}
-
-void SPI4_IRQHandler(void)
-{
-    HAL_SPI_IRQHandler(&spiDevice[SPIDEV_4].hspi);
-}
-
-void dmaSPIIRQHandler(dmaChannelDescriptor_t* descriptor)
-{
-    SPIDevice device = descriptor->userParam;
-    if (device != SPIINVALID)
-        HAL_DMA_IRQHandler(&spiDevice[device].hdma);
-}
-#endif // USE_DMA
 #endif

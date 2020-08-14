@@ -20,6 +20,8 @@
 
 #pragma once
 
+#define USE_LATE_TASK_STATISTICS
+
 #if defined(AIRBOTF4)
 #define TARGET_BOARD_IDENTIFIER "AIR4"
 #define USBD_PRODUCT_STRING     "AirbotF4"

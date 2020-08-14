@@ -20,6 +20,9 @@
 #define SCHEDULER_DELAY_LIMIT 1
 #define TASK_GYROPID_DESIRED_PERIOD 100
 
+#define DMA_DATA
+#define DMA_DATA_ZERO_INIT
+
 #define USE_ACC
 #define USE_CMS
 #define CMS_MAX_DEVICE 4
@@ -61,7 +64,6 @@
 #define USE_UART5
 #define USE_SOFTSERIAL1
 #define USE_SOFTSERIAL2
-#define USE_TASK_STATISTICS
 
 #define SERIAL_PORT_COUNT 8
 

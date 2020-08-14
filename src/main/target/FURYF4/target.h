@@ -20,6 +20,8 @@
 
 #pragma once
 
+#define USE_LATE_TASK_STATISTICS
+
 #ifdef FURYF4OSD
 #define TARGET_BOARD_IDENTIFIER "FY4O"
 #define USBD_PRODUCT_STRING     "FuryF4OSD"
@@ -158,4 +160,4 @@
 #define TARGET_IO_PORTD         (BIT(2))
 
 #define USABLE_TIMER_CHANNEL_COUNT 7
-#define USED_TIMERS             ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(5) | TIM_N(8) | TIM_N(11) )
+#define USED_TIMERS             ( TIM_N(2) | TIM_N(3) | TIM_N(5) | TIM_N(8) | TIM_N(11) )

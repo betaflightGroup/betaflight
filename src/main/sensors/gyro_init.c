@@ -629,6 +629,11 @@ bool gyroInit(void)
     }
 
     if (gyro.gyroToUse == GYRO_CONFIG_USE_GYRO_2 || gyro.gyroToUse == GYRO_CONFIG_USE_GYRO_BOTH) {
+        static DMA_DATA uint8_t gyroBuf2[GYRO_BUF_SIZE];
+        // SPI DMA buffer required per device
+        gyro.gyroSensor2.gyroDev.dev.txBuf = gyroBuf2;
+        gyro.gyroSensor2.gyroDev.dev.rxBuf = &gyroBuf2[GYRO_BUF_SIZE/2];;
+
         gyroInitSensor(&gyro.gyroSensor2, gyroDeviceConfig(1));
         gyro.gyroHasOverflowProtection =  gyro.gyroHasOverflowProtection && gyro.gyroSensor2.gyroDev.gyroHasOverflowProtection;
         detectedSensors[SENSOR_INDEX_GYRO] = gyro.gyroSensor2.gyroDev.gyroHardware;
@@ -640,6 +645,10 @@ bool gyroInit(void)
     }
 
     if (gyro.gyroToUse == GYRO_CONFIG_USE_GYRO_1 || gyro.gyroToUse == GYRO_CONFIG_USE_GYRO_BOTH) {
+        static DMA_DATA uint8_t gyroBuf1[GYRO_BUF_SIZE];
+        // SPI DMA buffer required per device
+        gyro.gyroSensor1.gyroDev.dev.txBuf = gyroBuf1;
+        gyro.gyroSensor1.gyroDev.dev.rxBuf = &gyroBuf1[GYRO_BUF_SIZE/2];;
         gyroInitSensor(&gyro.gyroSensor1, gyroDeviceConfig(0));
         gyro.gyroHasOverflowProtection =  gyro.gyroHasOverflowProtection && gyro.gyroSensor1.gyroDev.gyroHasOverflowProtection;
         detectedSensors[SENSOR_INDEX_GYRO] = gyro.gyroSensor1.gyroDev.gyroHardware;
@@ -686,9 +695,10 @@ void gyroSetTargetLooptime(uint8_t pidDenom)
     }
 }
 
-const busDevice_t *gyroSensorBus(void)
+
+gyroDev_t *gyroActiveDev(void)
 {
-    return &ACTIVE_GYRO->gyroDev.bus;
+    return &ACTIVE_GYRO->gyroDev;
 }
 
 const mpuDetectionResult_t *gyroMpuDetectionResult(void)
@@ -702,20 +712,20 @@ int16_t gyroRateDps(int axis)
 }
 
 #ifdef USE_GYRO_REGISTER_DUMP
-static const busDevice_t *gyroSensorBusByDevice(uint8_t whichSensor)
+static extDevice_t *gyroSensorDevByInstance(uint8_t whichSensor)
 {
 #ifdef USE_MULTI_GYRO
     if (whichSensor == GYRO_CONFIG_USE_GYRO_2) {
-        return &gyro.gyroSensor2.gyroDev.bus;
+        return &gyro.gyroSensor2.gyroDev.dev;
     }
 #else
     UNUSED(whichSensor);
 #endif
-    return &gyro.gyroSensor1.gyroDev.bus;
+    return &gyro.gyroSensor1.gyroDev.dev;
 }
 
 uint8_t gyroReadRegister(uint8_t whichSensor, uint8_t reg)
 {
-    return mpuGyroReadRegister(gyroSensorBusByDevice(whichSensor), reg);
+    return mpuGyroReadRegister(gyroSensorDevByInstance(whichSensor), reg);
 }
 #endif // USE_GYRO_REGISTER_DUMP

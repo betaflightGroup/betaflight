@@ -66,13 +66,8 @@
 #define USBD_LANGID_STRING              0x409
 #define USBD_MANUFACTURER_STRING        FC_FIRMWARE_NAME
 
-#ifdef USBD_PRODUCT_STRING
-  #define USBD_PRODUCT_HS_STRING          USBD_PRODUCT_STRING
-  #define USBD_PRODUCT_FS_STRING          USBD_PRODUCT_STRING
-#else
-  #define USBD_PRODUCT_HS_STRING          "STM32 Virtual ComPort in HS mode"
-  #define USBD_PRODUCT_FS_STRING          "STM32 Virtual ComPort in FS Mode"
-#endif /* USBD_PRODUCT_STRING */
+#define USBD_PRODUCT_HS_STRING          "STM32 Virtual ComPort in HS mode"
+#define USBD_PRODUCT_FS_STRING          "STM32 Virtual ComPort in FS Mode"
 
 #ifdef USBD_SERIALNUMBER_STRING
   #define USBD_SERIALNUMBER_HS_STRING          USBD_SERIALNUMBER_STRING
@@ -224,8 +219,8 @@ uint8_t *  USBD_USR_DeviceDescriptor( uint8_t speed , uint16_t *length)
     (void)speed;
 #ifdef USE_USB_CDC_HID
     if (usbDevConfig()->type == COMPOSITE) {
-	    *length = sizeof(USBD_DeviceDesc_Composite);
-	    return USBD_DeviceDesc_Composite;
+        *length = sizeof(USBD_DeviceDesc_Composite);
+        return USBD_DeviceDesc_Composite;
     }
 #endif
     *length = sizeof(USBD_DeviceDesc);

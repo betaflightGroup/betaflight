@@ -87,6 +87,8 @@
 #include "rx/crsf.h"
 #include "rx/rx.h"
 
+#include "scheduler/scheduler.h"
+
 #include "sensors/acceleration.h"
 #include "sensors/battery.h"
 #include "sensors/esc_sensor.h"
@@ -1046,6 +1048,7 @@ void osdUpdate(timeUs_t currentTimeUs)
 
     if (!osdIsReady) {
         if (!displayCheckReady(osdDisplayPort, false)) {
+            ignoreTaskShortExecTime();
             return;
         }
 
@@ -1056,17 +1059,17 @@ void osdUpdate(timeUs_t currentTimeUs)
         showVisualBeeper = true;
     }
 
-#ifdef MAX7456_DMA_CHANNEL_TX
     // don't touch buffers if DMA transaction is in progress
     if (displayIsTransferInProgress(osdDisplayPort)) {
+        ignoreTaskShortExecTime();
         return;
     }
-#endif // MAX7456_DMA_CHANNEL_TX
 
 #ifdef USE_SLOW_MSP_DISPLAYPORT_RATE_WHEN_UNARMED
     static uint32_t idlecounter = 0;
     if (!ARMING_FLAG(ARMED)) {
         if (idlecounter++ % 4 != 0) {
+            ignoreTaskShortExecTime();
             return;
         }
     }
@@ -1089,6 +1092,7 @@ void osdUpdate(timeUs_t currentTimeUs)
         if (doDrawScreen) {
             displayDrawScreen(osdDisplayPort);
         }
+        ignoreTaskShortExecTime();
     }
     ++counter;
 }

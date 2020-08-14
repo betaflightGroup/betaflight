@@ -25,6 +25,7 @@
 #include "common/axis.h"
 #include "common/maths.h"
 #include "common/sensor_alignment.h"
+#include "common/time.h"
 #include "drivers/exti.h"
 #include "drivers/bus.h"
 #include "drivers/sensor.h"
@@ -33,8 +34,6 @@
 #pragma GCC diagnostic push
 #if defined(SIMULATOR_BUILD) && defined(SIMULATOR_MULTITHREAD)
 #include <pthread.h>
-#elif !defined(UNIT_TEST)
-#pragma GCC diagnostic warning "-Wpadded"
 #endif
 
 #define GYRO_SCALE_2000DPS (2000.0f / (1 << 15))   // 16.384 dps/lsb scalefactor for 2000dps sensors
@@ -88,7 +87,7 @@ typedef struct gyroDev_s {
     sensorGyroReadFuncPtr readFn;                             // read 3 axis data function
     sensorGyroReadDataFuncPtr temperatureFn;                  // read temperature if available
     extiCallbackRec_t exti;
-    busDevice_t bus;
+    extDevice_t dev;
     float scale;                                             // scalefactor
     float gyroZero[XYZ_AXIS_COUNT];
     float gyroADC[XYZ_AXIS_COUNT];                           // gyro data after calibration and alignment
@@ -98,7 +97,20 @@ typedef struct gyroDev_s {
     mpuDetectionResult_t mpuDetectionResult;
     sensor_align_e gyroAlign;
     gyroRateKHz_e gyroRateKHz;
-    bool dataReady;
+    enum {
+        INIT = 0,
+        EXTI_INT_DMA,
+        EXTI_INT,
+        NO_EXTI_INT
+    } gyroModeSPI;
+#ifdef USE_GYRO_EXTI
+    uint32_t detectedEXTI;
+    int32_t gyroLastEXTI;
+    int32_t gyroSyncEXTI;
+    int32_t gyroShortPeriod;
+    int32_t gyroDmaMaxDuration;
+#endif
+    volatile bool dataReady;
     bool gyro_high_fsr;
     uint8_t hardware_lpf;
     uint8_t hardware_32khz_lpf;
@@ -118,12 +130,11 @@ typedef struct accDev_s {
     float acc_1G_rec;
     sensorAccInitFuncPtr initFn;                              // initialize function
     sensorAccReadFuncPtr readFn;                              // read 3 axis data function
-    busDevice_t bus;
     uint16_t acc_1G;
     int16_t ADCRaw[XYZ_AXIS_COUNT];
     mpuDetectionResult_t mpuDetectionResult;
     sensor_align_e accAlign;
-    bool dataReady;
+    gyroDev_t *gyro;
     bool acc_high_fsr;
     char revisionCode;                                      // a revision code for the sensor, if known
     uint8_t filler[2];

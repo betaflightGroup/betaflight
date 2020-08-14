@@ -126,19 +126,12 @@ void fakeAccSet(accDev_t *acc, int16_t x, int16_t y, int16_t z)
     fakeAccData[Y] = y;
     fakeAccData[Z] = z;
 
-    acc->dataReady = true;
-
     accDevUnLock(acc);
 }
 
 static bool fakeAccRead(accDev_t *acc)
 {
     accDevLock(acc);
-    if (acc->dataReady == false) {
-        accDevUnLock(acc);
-        return false;
-    }
-    acc->dataReady = false;
 
     acc->ADCRaw[X] = fakeAccData[X];
     acc->ADCRaw[Y] = fakeAccData[Y];

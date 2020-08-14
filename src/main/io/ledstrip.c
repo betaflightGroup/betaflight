@@ -68,6 +68,8 @@
 
 #include "rx/rx.h"
 
+#include "scheduler/scheduler.h"
+
 #include "sensors/acceleration.h"
 #include "sensors/barometer.h"
 #include "sensors/battery.h"
@@ -1063,8 +1065,11 @@ static void applyStatusProfile(timeUs_t now) {
         }
     }
 
-    if (!timActive)
+    if (!timActive) {
+        // Call ignoreTaskShortExecTime() unless data is being processed
+        ignoreTaskShortExecTime();
         return;          // no change this update, keep old state
+    }
 
     applyLedFixedLayers();
     for (timId_e timId = 0; timId < ARRAYLEN(layerTable); timId++) {
@@ -1248,6 +1253,8 @@ void ledStripUpdate(timeUs_t currentTimeUs)
 #endif
 
     if (!isWS2811LedStripReady()) {
+        // Call ignoreTaskShortExecTime() unless data is being processed
+        ignoreTaskShortExecTime();
         return;
     }
 
@@ -1274,6 +1281,9 @@ void ledStripUpdate(timeUs_t currentTimeUs)
             default:
                 break;
         }
+    } else {
+        // Call ignoreTaskShortExecTime() unless data is being processed
+        ignoreTaskShortExecTime();
     }
 }
 

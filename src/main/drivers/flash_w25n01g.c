@@ -135,8 +135,8 @@ typedef struct bblut_s {
 
 // These will be gone
 
-#define DISABLE(busdev)       IOHi((busdev)->busdev_u.spi.csnPin); __NOP()
-#define ENABLE(busdev)        __NOP(); IOLo((busdev)->busdev_u.spi.csnPin)
+#define DISABLE(dev)       IOHi((dev)->busType_u.spi.csnPin); __NOP()
+#define ENABLE(dev)        __NOP(); IOLo((dev)->busType_u.spi.csnPin)
 
 static bool w25n01g_waitForReady(flashDevice_t *fdevice);
 
@@ -152,12 +152,20 @@ static void w25n01g_setTimeout(flashDevice_t *fdevice, uint32_t timeoutMillis)
 static void w25n01g_performOneByteCommand(flashDeviceIO_t *io, uint8_t command)
 {
     if (io->mode == FLASHIO_SPI) {
-        busDevice_t *busdev = io->handle.busdev;
+        extDevice_t *dev = io->handle.dev;
 
-        ENABLE(busdev);
-        spiTransferByte(busdev->busdev_u.spi.instance, command);
-        DISABLE(busdev);
+        busSegment_t segments[] = {
+                {&command, NULL, sizeof (command), true, NULL},
+                {NULL, NULL, 0, true, NULL},
+        };
 
+        // Ensure any prior DMA has completed before continuing
+        spiWaitClaim(dev);
+
+        spiSequence(dev, &segments[0]);
+
+        // Block pending completion of SPI access
+        spiWait(dev);
     }
 #ifdef USE_QUADSPI
     else if (io->mode == FLASHIO_QUADSPI) {
@@ -170,13 +178,22 @@ static void w25n01g_performOneByteCommand(flashDeviceIO_t *io, uint8_t command)
 static void w25n01g_performCommandWithPageAddress(flashDeviceIO_t *io, uint8_t command, uint32_t pageAddress)
 {
     if (io->mode == FLASHIO_SPI) {
-        busDevice_t *busdev = io->handle.busdev;
+        extDevice_t *dev = io->handle.dev;
 
-        const uint8_t cmd[] = { command, 0, (pageAddress >> 8) & 0xff, (pageAddress >> 0) & 0xff};
+        uint8_t cmd[] = { command, 0, (pageAddress >> 8) & 0xff, (pageAddress >> 0) & 0xff};
 
-        ENABLE(busdev);
-        spiTransfer(busdev->busdev_u.spi.instance, cmd, NULL, sizeof(cmd));
-        DISABLE(busdev);
+        busSegment_t segments[] = {
+                {cmd, NULL, sizeof (cmd), true, NULL},
+                {NULL, NULL, 0, true, NULL},
+        };
+
+        // Ensure any prior DMA has completed before continuing
+        spiWaitClaim(dev);
+
+        spiSequence(dev, &segments[0]);
+
+        // Block pending completion of SPI access
+        spiWait(dev);
     }
 #ifdef USE_QUADSPI
     else if (io->mode == FLASHIO_QUADSPI) {
@@ -190,14 +207,23 @@ static void w25n01g_performCommandWithPageAddress(flashDeviceIO_t *io, uint8_t c
 static uint8_t w25n01g_readRegister(flashDeviceIO_t *io, uint8_t reg)
 {
     if (io->mode == FLASHIO_SPI) {
-        busDevice_t *busdev = io->handle.busdev;
+        extDevice_t *dev = io->handle.dev;
 
-        ENABLE(busdev);
-        const uint8_t cmd[3] = { W25N01G_INSTRUCTION_READ_STATUS_REG, reg, 0 };
+        uint8_t cmd[3] = { W25N01G_INSTRUCTION_READ_STATUS_REG, reg, 0 };
         uint8_t in[3];
 
-        spiTransfer(busdev->busdev_u.spi.instance, cmd, in, sizeof(cmd));
-        DISABLE(busdev);
+        busSegment_t segments[] = {
+                {cmd, in, sizeof (cmd), true, NULL},
+                {NULL, NULL, 0, true, NULL},
+        };
+
+        // Ensure any prior DMA has completed before continuing
+        spiWaitClaim(dev);
+
+        spiSequence(dev, &segments[0]);
+
+        // Block pending completion of SPI access
+        spiWait(dev);
 
         return in[2];
     }
@@ -218,12 +244,21 @@ static uint8_t w25n01g_readRegister(flashDeviceIO_t *io, uint8_t reg)
 static void w25n01g_writeRegister(flashDeviceIO_t *io, uint8_t reg, uint8_t data)
 {
     if (io->mode == FLASHIO_SPI) {
-        busDevice_t *busdev = io->handle.busdev;
-        const uint8_t cmd[3] = { W25N01G_INSTRUCTION_WRITE_STATUS_REG, reg, data };
+        extDevice_t *dev = io->handle.dev;
+        uint8_t cmd[3] = { W25N01G_INSTRUCTION_WRITE_STATUS_REG, reg, data };
 
-        ENABLE(busdev);
-        spiTransfer(busdev->busdev_u.spi.instance, cmd, NULL, sizeof(cmd));
-        DISABLE(busdev);
+        busSegment_t segments[] = {
+                {cmd, NULL, sizeof (cmd), true, NULL},
+                {NULL, NULL, 0, true, NULL},
+        };
+
+        // Ensure any prior DMA has completed before continuing
+        spiWaitClaim(dev);
+
+        spiSequence(dev, &segments[0]);
+
+        // Block pending completion of SPI access
+        spiWait(dev);
    }
 #ifdef USE_QUADSPI
    else if (io->mode == FLASHIO_QUADSPI) {
@@ -246,7 +281,7 @@ static void w25n01g_deviceReset(flashDevice_t *fdevice)
 
     // Protection for upper 1/32 (BP[3:0] = 0101, TB=0), WP-E on; to protect bad block replacement area
     // DON'T DO THIS. This will prevent writes through the bblut as well.
-    // w25n01g_writeRegister(busdev, W25N01G_PROT_REG, W25N01G_PROT_PB0_ENABLE|W25N01G_PROT_PB2_ENABLE|W25N01G_PROT_WP_E_ENABLE);
+    // w25n01g_writeRegister(dev, W25N01G_PROT_REG, W25N01G_PROT_PB0_ENABLE|W25N01G_PROT_PB2_ENABLE|W25N01G_PROT_WP_E_ENABLE);
 
     // No protection, WP-E off, WP-E prevents use of IO2
     w25n01g_writeRegister(io, W25N01G_PROT_REG, W25N01G_PROT_CLEAR);
@@ -380,13 +415,22 @@ static void w25n01g_programDataLoad(flashDevice_t *fdevice, uint16_t columnAddre
     w25n01g_waitForReady(fdevice);
 
     if (fdevice->io.mode == FLASHIO_SPI) {
-        busDevice_t *busdev = fdevice->io.handle.busdev;
-        const uint8_t cmd[] = { W25N01G_INSTRUCTION_PROGRAM_DATA_LOAD, columnAddress >> 8, columnAddress & 0xff };
+        extDevice_t *dev = fdevice->io.handle.dev;
+        uint8_t cmd[] = { W25N01G_INSTRUCTION_PROGRAM_DATA_LOAD, columnAddress >> 8, columnAddress & 0xff };
 
-        ENABLE(busdev);
-        spiTransfer(busdev->busdev_u.spi.instance, cmd, NULL, sizeof(cmd));
-        spiTransfer(busdev->busdev_u.spi.instance, data, NULL, length);
-        DISABLE(busdev);
+         busSegment_t segments[] = {
+                 {cmd, NULL, sizeof (cmd), true, NULL},
+                 {(uint8_t *)data, NULL, length, true, NULL},
+                 {NULL, NULL, 0, true, NULL},
+         };
+
+         // Ensure any prior DMA has completed before continuing
+         spiWaitClaim(dev);
+
+         spiSequence(dev, &segments[0]);
+
+         // Block pending completion of SPI access
+         spiWait(dev);
    }
 #ifdef USE_QUADSPI
    else if (fdevice->io.mode == FLASHIO_QUADSPI) {
@@ -401,18 +445,26 @@ static void w25n01g_programDataLoad(flashDevice_t *fdevice, uint16_t columnAddre
 
 static void w25n01g_randomProgramDataLoad(flashDevice_t *fdevice, uint16_t columnAddress, const uint8_t *data, int length)
 {
-    const uint8_t cmd[] = { W25N01G_INSTRUCTION_RANDOM_PROGRAM_DATA_LOAD, columnAddress >> 8, columnAddress & 0xff };
+    uint8_t cmd[] = { W25N01G_INSTRUCTION_RANDOM_PROGRAM_DATA_LOAD, columnAddress >> 8, columnAddress & 0xff };
 
     w25n01g_waitForReady(fdevice);
 
     if (fdevice->io.mode == FLASHIO_SPI) {
-        busDevice_t *busdev = fdevice->io.handle.busdev;
+        extDevice_t *dev = fdevice->io.handle.dev;
 
-        ENABLE(busdev);
-        spiTransfer(busdev->busdev_u.spi.instance, cmd, NULL, sizeof(cmd));
-        spiTransfer(busdev->busdev_u.spi.instance, data, NULL, length);
-        DISABLE(busdev);
+        busSegment_t segments[] = {
+                {cmd, NULL, sizeof (cmd), true, NULL},
+                {(uint8_t *)data, NULL, length, true, NULL},
+                {NULL, NULL, 0, true, NULL},
+        };
 
+        // Ensure any prior DMA has completed before continuing
+        spiWaitClaim(dev);
+
+        spiSequence(dev, &segments[0]);
+
+        // Block pending completion of SPI access
+        spiWait(dev);
     }
 #ifdef USE_QUADSPI
     else if (fdevice->io.mode == FLASHIO_QUADSPI) {
@@ -474,8 +526,10 @@ static uint32_t programLoadAddress;
 bool bufferDirty = false;
 bool isProgramming = false;
 
-void w25n01g_pageProgramBegin(flashDevice_t *fdevice, uint32_t address)
+void w25n01g_pageProgramBegin(flashDevice_t *fdevice, uint32_t address, void (*callback)(uint32_t length))
 {
+    fdevice->callback = callback;
+
     if (bufferDirty) {
         if (address != programLoadAddress) {
             w25n01g_waitForReady(fdevice);
@@ -494,9 +548,12 @@ void w25n01g_pageProgramBegin(flashDevice_t *fdevice, uint32_t address)
     }
 }
 
-void w25n01g_pageProgramContinue(flashDevice_t *fdevice, const uint8_t *data, int length)
+uint32_t w25n01g_pageProgramContinue(flashDevice_t *fdevice, uint8_t const **buffers, uint32_t *bufferSizes, uint32_t bufferCount)
 {
-    // Check for page boundary overrun
+    if (bufferCount < 1) {
+        fdevice->callback(0);
+        return 0;
+    }
 
     w25n01g_waitForReady(fdevice);
 
@@ -505,15 +562,21 @@ void w25n01g_pageProgramContinue(flashDevice_t *fdevice, const uint8_t *data, in
     isProgramming = false;
 
     if (!bufferDirty) {
-        w25n01g_programDataLoad(fdevice, W25N01G_LINEAR_TO_COLUMN(programLoadAddress), data, length);
+        w25n01g_programDataLoad(fdevice, W25N01G_LINEAR_TO_COLUMN(programLoadAddress), buffers[0], bufferSizes[0]);
     } else {
-        w25n01g_randomProgramDataLoad(fdevice, W25N01G_LINEAR_TO_COLUMN(programLoadAddress), data, length);
+        w25n01g_randomProgramDataLoad(fdevice, W25N01G_LINEAR_TO_COLUMN(programLoadAddress), buffers[0], bufferSizes[0]);
     }
 
     // XXX Test if write enable is reset after each data loading.
 
     bufferDirty = true;
-    programLoadAddress += length;
+    programLoadAddress += bufferSizes[0];
+
+    if (fdevice->callback) {
+        fdevice->callback(bufferSizes[0]);
+    }
+
+    return bufferSizes[0];
 }
 
 static uint32_t currentPage = UINT32_MAX;
@@ -549,10 +612,10 @@ void w25n01g_pageProgramFinish(flashDevice_t *fdevice)
  * break this operation up into one beginProgram call, one or more continueProgram calls, and one finishProgram call.
  */
 
-void w25n01g_pageProgram(flashDevice_t *fdevice, uint32_t address, const uint8_t *data, int length)
+void w25n01g_pageProgram(flashDevice_t *fdevice, uint32_t address, const uint8_t *data, uint32_t length, void (*callback)(uint32_t length))
 {
-    w25n01g_pageProgramBegin(fdevice, address);
-    w25n01g_pageProgramContinue(fdevice, data, length);
+    w25n01g_pageProgramBegin(fdevice, address, callback);
+    w25n01g_pageProgramContinue(fdevice, &data, &length, 1);
     w25n01g_pageProgramFinish(fdevice);
 }
 
@@ -596,7 +659,7 @@ void w25n01g_addError(uint32_t address, uint8_t code)
 // (3) Issue READ_DATA on column address.
 // (4) Return transferLength.
 
-int w25n01g_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, int length)
+int w25n01g_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, uint32_t length)
 {
     uint32_t targetPage = W25N01G_LINEAR_TO_PAGE(address);
 
@@ -617,7 +680,7 @@ int w25n01g_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer,
         currentPage = targetPage;
     }
 
-    uint16_t column = W25N01G_LINEAR_TO_COLUMN(address);
+    uint32_t column = W25N01G_LINEAR_TO_COLUMN(address);
     uint16_t transferLength;
 
     if (length > W25N01G_PAGE_SIZE - column) {
@@ -627,7 +690,7 @@ int w25n01g_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer,
     }
 
     if (fdevice->io.mode == FLASHIO_SPI) {
-        busDevice_t *busdev = fdevice->io.handle.busdev;
+        extDevice_t *dev = fdevice->io.handle.dev;
 
         uint8_t cmd[4];
         cmd[0] = W25N01G_INSTRUCTION_READ_DATA;
@@ -635,11 +698,19 @@ int w25n01g_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer,
         cmd[2] = (column >> 0) & 0xff;
         cmd[3] = 0;
 
-        ENABLE(busdev);
-        spiTransfer(busdev->busdev_u.spi.instance, cmd, NULL, sizeof(cmd));
-        spiTransfer(busdev->busdev_u.spi.instance, NULL, buffer, length);
-        DISABLE(busdev);
+        busSegment_t segments[] = {
+                {cmd, NULL, sizeof (cmd), false, NULL},
+                {NULL, buffer, length, true, NULL},
+                {NULL, NULL, 0, true, NULL},
+        };
 
+        // Ensure any prior DMA has completed before continuing
+        spiWaitClaim(dev);
+
+        spiSequence(dev, &segments[0]);
+
+        // Block pending completion of SPI access
+        spiWait(dev);
     }
 #ifdef USE_QUADSPI
     else if (fdevice->io.mode == FLASHIO_QUADSPI) {
@@ -687,7 +758,7 @@ int w25n01g_readExtensionBytes(flashDevice_t *fdevice, uint32_t address, uint8_t
     uint32_t column = 2048;
 
     if (fdevice->io.mode == FLASHIO_SPI) {
-        busDevice_t *busdev = fdevice->io.handle.busdev;
+        extDevice_t *dev = fdevice->io.handle.dev;
 
         uint8_t cmd[4];
         cmd[0] = W25N01G_INSTRUCTION_READ_DATA;
@@ -695,10 +766,19 @@ int w25n01g_readExtensionBytes(flashDevice_t *fdevice, uint32_t address, uint8_t
         cmd[2] = (column >> 0) & 0xff;
         cmd[3] = 0;
 
-        ENABLE(busdev);
-        spiTransfer(busdev->busdev_u.spi.instance, cmd, NULL, sizeof(cmd));
-        spiTransfer(busdev->busdev_u.spi.instance, NULL, buffer, length);
-        DISABLE(busdev);
+        busSegment_t segments[] = {
+                {cmd, NULL, sizeof (cmd), false, NULL},
+                {NULL, buffer, length, true, NULL},
+                {NULL, NULL, 0, true, NULL},
+        };
+
+        // Ensure any prior DMA has completed before continuing
+        spiWaitClaim(dev);
+
+        spiSequence(dev, &segments[0]);
+
+        // Block pending completion of SPI access
+        spiWait(dev);
 
     }
 #ifdef USE_QUADSPI
@@ -738,30 +818,67 @@ const flashVTable_t w25n01g_vTable = {
     .getGeometry = w25n01g_getGeometry,
 };
 
+typedef volatile struct cb_context_s {
+    flashDevice_t *fdevice;
+    bblut_t *bblut;
+    int lutsize;
+    int lutindex;
+} cb_context_t;
+
+// Called in ISR context
+// Read of BBLUT entry has just completed
+busStatus_e w25n01g_readBBLUTCallback(uint32_t arg)
+{
+    cb_context_t *cb_context = (cb_context_t *)arg;
+    flashDevice_t *fdevice = cb_context->fdevice;
+    uint8_t *rxData = fdevice->io.handle.dev->bus->curSegment->rxData;
+
+
+    cb_context->bblut->pba = (rxData[0] << 16)|rxData[1];
+    cb_context->bblut->lba = (rxData[2] << 16)|rxData[3];
+
+    if (++cb_context->lutindex < cb_context->lutsize) {
+        cb_context->bblut++;
+        return BUS_BUSY; // Repeat the operation
+    }
+
+    return BUS_READY; // All done
+}
+
+
 void w25n01g_readBBLUT(flashDevice_t *fdevice, bblut_t *bblut, int lutsize)
 {
-
+    cb_context_t cb_context;
     uint8_t in[4];
 
+    cb_context.fdevice = fdevice;
+    fdevice->callbackArg = (uint32_t)&cb_context;
+
     if (fdevice->io.mode == FLASHIO_SPI) {
-        busDevice_t *busdev = fdevice->io.handle.busdev;
+        extDevice_t *dev = fdevice->io.handle.dev;
 
         uint8_t cmd[4];
 
         cmd[0] = W25N01G_INSTRUCTION_READ_BBM_LUT;
         cmd[1] = 0;
 
-        ENABLE(busdev);
+        cb_context.bblut = &bblut[0];
+        cb_context.lutsize = lutsize;
+        cb_context.lutindex = 0;
 
-        spiTransfer(busdev->busdev_u.spi.instance, cmd, NULL, 2);
+        busSegment_t segments[] = {
+                {cmd, NULL, sizeof (cmd), false, NULL},
+                {NULL, in, sizeof (in), true, w25n01g_readBBLUTCallback},
+                {NULL, NULL, 0, true, NULL},
+        };
 
-        for (int i = 0 ; i < lutsize ; i++) {
-            spiTransfer(busdev->busdev_u.spi.instance, NULL, in, 4);
-            bblut[i].pba = (in[0] << 16)|in[1];
-            bblut[i].lba = (in[2] << 16)|in[3];
-        }
+        // Ensure any prior DMA has completed before continuing
+        spiWaitClaim(dev);
 
-        DISABLE(busdev);
+        spiSequence(dev, &segments[0]);
+
+        // Block pending completion of SPI access
+        spiWait(dev);
     }
 #ifdef USE_QUADSPI
     else if (fdevice->io.mode == FLASHIO_QUADSPI) {
@@ -788,13 +905,22 @@ void w25n01g_writeBBLUT(flashDevice_t *fdevice, uint16_t lba, uint16_t pba)
     w25n01g_waitForReady(fdevice);
 
     if (fdevice->io.mode == FLASHIO_SPI) {
-        busDevice_t *busdev = fdevice->io.handle.busdev;
+        extDevice_t *dev = fdevice->io.handle.dev;
 
         uint8_t cmd[5] = { W25N01G_INSTRUCTION_BB_MANAGEMENT, lba >> 8, lba, pba >> 8, pba };
 
-        ENABLE(busdev);
-        spiTransfer(busdev->busdev_u.spi.instance, cmd, NULL, sizeof(cmd));
-        DISABLE(busdev);
+        busSegment_t segments[] = {
+                {cmd, NULL, sizeof (cmd), true, NULL},
+                {NULL, NULL, 0, true, NULL},
+        };
+
+        // Ensure any prior DMA has completed before continuing
+        spiWaitClaim(dev);
+
+        spiSequence(dev, &segments[0]);
+
+        // Block pending completion of SPI access
+        spiWait(dev);
     }
 #ifdef USE_QUADSPI
     else if (fdevice->io.mode == FLASHIO_QUADSPI) {

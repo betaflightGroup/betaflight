@@ -210,40 +210,6 @@ static IO_t busSwitchResetPin        = IO_NONE;
 }
 #endif
 
-bool requiresSpiLeadingEdge(SPIDevice device)
-{
-#if defined(CONFIG_IN_SDCARD) || defined(CONFIG_IN_EXTERNAL_FLASH)
-#if !defined(SDCARD_SPI_INSTANCE) && !defined(RX_SPI_INSTANCE)
-    UNUSED(device);
-#endif
-#if defined(SDCARD_SPI_INSTANCE)
-    if (device == spiDeviceByInstance(SDCARD_SPI_INSTANCE)) {
-        return true;
-    }
-#endif
-#if defined(RX_SPI_INSTANCE)
-    if (device == spiDeviceByInstance(RX_SPI_INSTANCE)) {
-        return true;
-    }
-#endif
-#else
-#if !defined(USE_SDCARD) && !defined(USE_RX_SPI)
-    UNUSED(device);
-#endif
-#if defined(USE_SDCARD)
-    if (device == SPI_CFG_TO_DEV(sdcardConfig()->device)) {
-        return true;
-    }
-#endif
-#if defined(USE_RX_SPI)
-    if (device == SPI_CFG_TO_DEV(rxSpiConfig()->spibus)) {
-        return true;
-    }
-#endif
-#endif // CONFIG_IN_SDCARD || CONFIG_IN_EXTERNAL_FLASH
-
-    return false;
-}
 
 static void configureSPIAndQuadSPI(void)
 {
@@ -257,22 +223,22 @@ static void configureSPIAndQuadSPI(void)
     spiPreinit();
 
 #ifdef USE_SPI_DEVICE_1
-    spiInit(SPIDEV_1, requiresSpiLeadingEdge(SPIDEV_1));
+    spiInit(SPIDEV_1);
 #endif
 #ifdef USE_SPI_DEVICE_2
-    spiInit(SPIDEV_2, requiresSpiLeadingEdge(SPIDEV_2));
+    spiInit(SPIDEV_2);
 #endif
 #ifdef USE_SPI_DEVICE_3
-    spiInit(SPIDEV_3, requiresSpiLeadingEdge(SPIDEV_3));
+    spiInit(SPIDEV_3);
 #endif
 #ifdef USE_SPI_DEVICE_4
-    spiInit(SPIDEV_4, requiresSpiLeadingEdge(SPIDEV_4));
+    spiInit(SPIDEV_4);
 #endif
 #ifdef USE_SPI_DEVICE_5
-    spiInit(SPIDEV_5, requiresSpiLeadingEdge(SPIDEV_5));
+    spiInit(SPIDEV_5);
 #endif
 #ifdef USE_SPI_DEVICE_6
-    spiInit(SPIDEV_6, requiresSpiLeadingEdge(SPIDEV_6));
+    spiInit(SPIDEV_6);
 #endif
 #endif // USE_SPI
 
@@ -655,6 +621,10 @@ void init(void)
             emfat_init_files();
         }
 #endif
+        // There's no more initialisation to be done, so enable DMA where possible for SPI
+#ifdef USE_SPI
+        spiInitBusDMA();
+#endif
         if (mscStart() == 0) {
              mscWaitForButton();
         } else {
@@ -1025,6 +995,11 @@ void init(void)
 #ifdef USE_MOTOR
     motorPostInit();
     motorEnable();
+#endif
+
+#ifdef USE_SPI
+    // Attempt to enable DMA on all SPI busses
+    spiInitBusDMA();
 #endif
 
     swdPinsInit();

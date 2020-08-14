@@ -24,6 +24,7 @@
 
 #include "drivers/bus_i2c.h"
 #include "drivers/io_types.h"
+#include "drivers/dma.h"
 
 typedef enum {
     BUSTYPE_NONE = 0,
@@ -35,44 +36,111 @@ typedef enum {
 
 struct spiDevice_s;
 
+typedef enum {
+    BUS_READY,
+    BUS_BUSY,
+    BUS_ABORT
+} busStatus_e;
+
+
+// Bus interface, independent of connected device
 typedef struct busDevice_s {
-    busType_e bustype;
+    busType_e busType;
     union {
-        struct deviceSpi_s {
+        struct busSpi_s {
             SPI_TypeDef *instance;
-#ifdef USE_SPI_TRANSACTION
-            struct SPIDevice_s *device;    // Back ptr to controller for this device.
-            // Cached SPI_CR1 for spiBusTransactionXXX
-            uint16_t modeCache;        // XXX cr1Value may be a better name?
-#endif
-#if defined(USE_HAL_DRIVER)
-            SPI_HandleTypeDef* handle; // cached here for efficiency
-#endif
-            IO_t csnPin;
+            uint16_t speed;
+            bool leadingEdge;
         } spi;
-        struct deviceI2C_s {
+        struct busI2C_s {
             I2CDevice device;
+        } i2c;
+        struct busMpuSlave_s {
+            struct extDevice_s *master;
+        } mpuSlave;
+    } busType_u;
+    bool useDMA;
+    bool useAtomicWait;
+    uint8_t deviceCount;
+    resourceOwner_e owner; // owner of first device to use this bus
+    dmaChannelDescriptor_t *dmaTx;
+    dmaChannelDescriptor_t *dmaRx;
+    uint32_t dmaTxChannel;
+    uint32_t dmaRxChannel;
+#ifndef UNIT_TEST
+    // Use a reference here as this saves RAM for unused descriptors
+#if defined(USE_FULL_LL_DRIVER)
+    LL_DMA_InitTypeDef          *initTx;
+    LL_DMA_InitTypeDef          *initRx;
+#else
+    DMA_InitTypeDef             *initTx;
+    DMA_InitTypeDef             *initRx;
+#endif
+#endif // UNIT_TEST
+    struct busSegment_s* volatile curSegment;
+    bool initSegment;
+} busDevice_t;
+
+/* Each SPI access may comprise multiple parts, for example, wait/write enable/write/data each of which
+ * is defined by a segment, with optional callback after each is completed
+ */
+typedef struct busSegment_s {
+    uint8_t *txData;
+    uint8_t *rxData;
+    int len;
+    bool negateCS; // Should CS be negated at the end of this segment
+    busStatus_e (*callback)(uint32_t arg);
+} busSegment_t;
+
+// External device has an associated bus and bus dependent address
+typedef struct extDevice_s {
+    busDevice_t *bus;
+    union {
+        struct extSpi_s {
+            uint16_t speed;
+            IO_t csnPin;
+            bool leadingEdge;
+        } spi;
+        struct extI2C_s {
             uint8_t address;
         } i2c;
-        struct deviceMpuSlave_s {
-            const struct busDevice_s *master;
+        struct extMpuSlave_s {
             uint8_t address;
         } mpuSlave;
-    } busdev_u;
-} busDevice_t;
+    } busType_u;
+#ifndef UNIT_TEST
+    // Cache the init structure for the next DMA transfer to reduce inter-segment delay
+#if defined(USE_HAL_DRIVER)
+    LL_DMA_InitTypeDef          initTx;
+    LL_DMA_InitTypeDef          initRx;
+#else
+    DMA_InitTypeDef             initTx;
+    DMA_InitTypeDef             initRx;
+#endif
+#endif // UNIT_TEST
+    // Per device buffer reference if needed
+    uint8_t *txBuf, *rxBuf;
+    // Connected devices on the same bus may support different speeds
+    uint32_t callbackArg;
+} extDevice_t;
+
 
 #ifdef TARGET_BUS_INIT
 void targetBusInit(void);
 #endif
 
-bool busRawWriteRegister(const busDevice_t *bus, uint8_t reg, uint8_t data);
-bool busWriteRegister(const busDevice_t *bus, uint8_t reg, uint8_t data);
-bool busRawWriteRegisterStart(const busDevice_t *bus, uint8_t reg, uint8_t data);
-bool busWriteRegisterStart(const busDevice_t *bus, uint8_t reg, uint8_t data);
-bool busRawReadRegisterBuffer(const busDevice_t *bus, uint8_t reg, uint8_t *data, uint8_t length);
-bool busReadRegisterBuffer(const busDevice_t *bus, uint8_t reg, uint8_t *data, uint8_t length);
-uint8_t busReadRegister(const busDevice_t *bus, uint8_t reg);
-bool busRawReadRegisterBufferStart(const busDevice_t *busdev, uint8_t reg, uint8_t *data, uint8_t length);
-bool busReadRegisterBufferStart(const busDevice_t *busdev, uint8_t reg, uint8_t *data, uint8_t length);
-bool busBusy(const busDevice_t *busdev, bool *error);
-void busDeviceRegister(const busDevice_t *busdev);
+// Access routines where the register is accessed directly
+bool busRawWriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data);
+bool busRawWriteRegisterStart(extDevice_t *dev, uint8_t reg, uint8_t data);
+bool busRawReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
+bool busRawReadRegisterBufferStart(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
+// Write routines where the register is masked with 0x7f
+bool busWriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data);
+bool busWriteRegisterStart(extDevice_t *dev, uint8_t reg, uint8_t data);
+// Read routines where the register is ORed with 0x80
+bool busReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
+bool busReadRegisterBufferStart(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
+uint8_t busReadRegister(extDevice_t *dev, uint8_t reg);
+
+bool busBusy(extDevice_t *dev, bool *error);
+void busDeviceRegister(extDevice_t *dev);

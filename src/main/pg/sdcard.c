@@ -47,6 +47,11 @@ void pgResetFn_sdcardConfig(sdcardConfig_t *config)
     config->device = SPI_DEV_TO_CFG(SPIINVALID);
     config->mode = SDCARD_MODE_NONE;
 
+#if defined(STM32H7) && defined(USE_SDCARD_SDIO) // H7 only for now, likely should be applied to F4/F7 too
+    config->mode = SDCARD_MODE_SDIO;
+    config->useDma = true;
+#endif
+
 #ifdef USE_SDCARD_SPI
     // These settings do not work for Unified Targets
     // They are only left in place to support legacy targets

@@ -54,6 +54,8 @@
 #include "flight/pid.h"
 #include "flight/gps_rescue.h"
 
+#include "scheduler/scheduler.h"
+
 #include "sensors/sensors.h"
 
 #define LOG_ERROR        '?'
@@ -673,10 +675,14 @@ static void updateGpsIndicator(timeUs_t currentTimeUs)
 
 void gpsUpdate(timeUs_t currentTimeUs)
 {
+    static timeUs_t maxTimeUs = 0;
+    timeUs_t endTimeUs;
+
     // read out available GPS bytes
     if (gpsPort) {
-        while (serialRxBytesWaiting(gpsPort))
+        while (serialRxBytesWaiting(gpsPort)) {
             gpsNewData(serialRead(gpsPort));
+        }
     } else if (GPS_update & GPS_MSP_UPDATE) { // GPS data received via MSP
         gpsSetState(GPS_RECEIVING_DATA);
         gpsData.lastMessage = millis();
@@ -737,6 +743,7 @@ void gpsUpdate(timeUs_t currentTimeUs)
             }
             break;
     }
+
     if (sensors(SENSOR_GPS)) {
         updateGpsIndicator(currentTimeUs);
     }
@@ -748,6 +755,17 @@ void gpsUpdate(timeUs_t currentTimeUs)
         updateGPSRescueState();
     }
 #endif
+    // Call ignoreTaskShortExecTime() unless this took appreciable time
+    // Note that this will mess up the rate/Hz display under tasks, but the code
+    // takes widely varying time to complete
+    endTimeUs = micros();
+    if ((endTimeUs - currentTimeUs) > maxTimeUs) {
+        maxTimeUs = endTimeUs - currentTimeUs;
+    } else {
+        ignoreTaskShortExecTime();
+        // Decay max time
+        maxTimeUs--;
+    }
 }
 
 static void gpsNewData(uint16_t c)

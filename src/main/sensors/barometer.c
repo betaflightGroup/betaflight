@@ -43,6 +43,7 @@
 #include "drivers/barometer/barometer_ms5611.h"
 #include "drivers/barometer/barometer_lps.h"
 #include "drivers/bus.h"
+#include "drivers/bus_i2c_busdev.h"
 #include "drivers/bus_spi.h"
 #include "drivers/io.h"
 #include "drivers/time.h"
@@ -113,21 +114,21 @@ void pgResetFn_barometerConfig(barometerConfig_t *barometerConfig)
 #endif
 
 #if defined(DEFAULT_BARO_SPI_BMP388) || defined(DEFAULT_BARO_SPI_BMP280) || defined(DEFAULT_BARO_SPI_MS5611) || defined(DEFAULT_BARO_SPI_QMP6988) || defined(DEFAULT_BARO_SPI_LPS) || defined(DEFAULT_BARO_SPI_DPS310)
-    barometerConfig->baro_bustype = BUSTYPE_SPI;
+    barometerConfig->baro_busType = BUSTYPE_SPI;
     barometerConfig->baro_spi_device = SPI_DEV_TO_CFG(spiDeviceByInstance(BARO_SPI_INSTANCE));
     barometerConfig->baro_spi_csn = IO_TAG(BARO_CS_PIN);
     barometerConfig->baro_i2c_device = I2C_DEV_TO_CFG(I2CINVALID);
     barometerConfig->baro_i2c_address = 0;
 #elif defined(DEFAULT_BARO_MS5611) || defined(DEFAULT_BARO_BMP388) || defined(DEFAULT_BARO_BMP280) || defined(DEFAULT_BARO_BMP085) ||defined(DEFAULT_BARO_QMP6988) || defined(DEFAULT_BARO_DPS310)
     // All I2C devices shares a default config with address = 0 (per device default)
-    barometerConfig->baro_bustype = BUSTYPE_I2C;
+    barometerConfig->baro_busType = BUSTYPE_I2C;
     barometerConfig->baro_i2c_device = I2C_DEV_TO_CFG(BARO_I2C_INSTANCE);
     barometerConfig->baro_i2c_address = 0;
     barometerConfig->baro_spi_device = SPI_DEV_TO_CFG(SPIINVALID);
     barometerConfig->baro_spi_csn = IO_TAG_NONE;
 #else
     barometerConfig->baro_hardware = BARO_NONE;
-    barometerConfig->baro_bustype = BUSTYPE_NONE;
+    barometerConfig->baro_busType = BUSTYPE_NONE;
     barometerConfig->baro_i2c_device = I2C_DEV_TO_CFG(I2CINVALID);
     barometerConfig->baro_i2c_address = 0;
     barometerConfig->baro_spi_device = SPI_DEV_TO_CFG(SPIINVALID);
@@ -154,14 +155,16 @@ static bool baroReady = false;
 void baroPreInit(void)
 {
 #ifdef USE_SPI
-    if (barometerConfig()->baro_bustype == BUSTYPE_SPI) {
+    if (barometerConfig()->baro_busType == BUSTYPE_SPI) {
         spiPreinitRegister(barometerConfig()->baro_spi_csn, IOCFG_IPU, 1);
     }
 #endif
 }
 
-bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse)
+bool baroDetect(baroDev_t *baroDev, baroSensor_e baroHardwareToUse)
 {
+    extDevice_t *dev = &baroDev->dev;
+
     // Detect what pressure sensors are available. baro->update() is set to sensor-specific update function
 
     baroSensor_e baroHardware = baroHardwareToUse;
@@ -170,26 +173,22 @@ bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse)
     UNUSED(dev);
 #endif
 
-    switch (barometerConfig()->baro_bustype) {
+    switch (barometerConfig()->baro_busType) {
 #ifdef USE_I2C
     case BUSTYPE_I2C:
-        dev->busdev.bustype = BUSTYPE_I2C;
-        dev->busdev.busdev_u.i2c.device = I2C_CFG_TO_DEV(barometerConfig()->baro_i2c_device);
-        dev->busdev.busdev_u.i2c.address = barometerConfig()->baro_i2c_address;
+        i2cBusSetInstance(dev, barometerConfig()->baro_i2c_device);
+        dev->busType_u.i2c.address = barometerConfig()->baro_i2c_address;
         break;
 #endif
 
 #ifdef USE_SPI
     case BUSTYPE_SPI:
         {
-            SPI_TypeDef *instance = spiInstanceByDevice(SPI_CFG_TO_DEV(barometerConfig()->baro_spi_device));
-            if (!instance) {
+            if (!spiSetBusInstance(dev, barometerConfig()->baro_spi_device, OWNER_BARO_CS)) {
                 return false;
             }
 
-            dev->busdev.bustype = BUSTYPE_SPI;
-            spiBusSetInstance(&dev->busdev, instance);
-            dev->busdev.busdev_u.spi.csnPin = IOGetByTag(barometerConfig()->baro_spi_csn);
+            dev->busType_u.spi.csnPin = IOGetByTag(barometerConfig()->baro_spi_csn);
         }
         break;
 #endif
@@ -211,7 +210,7 @@ bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse)
 
             static const bmp085Config_t *bmp085Config = &defaultBMP085Config;
 
-            if (bmp085Detect(bmp085Config, dev)) {
+            if (bmp085Detect(bmp085Config, baroDev)) {
                 baroHardware = BARO_BMP085;
                 break;
             }
@@ -221,7 +220,7 @@ bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse)
 
     case BARO_MS5611:
 #if defined(USE_BARO_MS5611) || defined(USE_BARO_SPI_MS5611)
-        if (ms5611Detect(dev)) {
+        if (ms5611Detect(baroDev)) {
             baroHardware = BARO_MS5611;
             break;
         }
@@ -230,7 +229,7 @@ bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse)
 
     case BARO_LPS:
 #if defined(USE_BARO_SPI_LPS)
-        if (lpsDetect(dev)) {
+        if (lpsDetect(baroDev)) {
             baroHardware = BARO_LPS;
             break;
         }
@@ -240,7 +239,7 @@ bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse)
     case BARO_DPS310:
 #if defined(USE_BARO_DPS310) || defined(USE_BARO_SPI_DPS310)
         {
-            if (baroDPS310Detect(dev)) {
+            if (baroDPS310Detect(baroDev)) {
                 baroHardware = BARO_DPS310;
                 break;
             }
@@ -257,7 +256,7 @@ bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse)
 
             static const bmp388Config_t *bmp388Config = &defaultBMP388Config;
 
-            if (bmp388Detect(bmp388Config, dev)) {
+            if (bmp388Detect(bmp388Config, baroDev)) {
                 baroHardware = BARO_BMP388;
                 break;
             }
@@ -267,7 +266,7 @@ bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse)
 
     case BARO_BMP280:
 #if defined(USE_BARO_BMP280) || defined(USE_BARO_SPI_BMP280)
-        if (bmp280Detect(dev)) {
+        if (bmp280Detect(baroDev)) {
             baroHardware = BARO_BMP280;
             break;
         }
@@ -276,7 +275,7 @@ bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse)
 
      case BARO_QMP6988:
 #if defined(USE_BARO_QMP6988) || defined(USE_BARO_SPI_QMP6988)
-        if (qmp6988Detect(dev)) {
+        if (qmp6988Detect(baroDev)) {
             baroHardware = BARO_QMP6988;
             break;
         }
@@ -390,7 +389,13 @@ uint32_t baroUpdate(void)
     // Tell the scheduler to ignore how long this task takes unless the pressure is being read
     // as that takes the longest
     if (state != BAROMETER_NEEDS_PRESSURE_READ) {
-           ignoreTaskTime();
+        ignoreTaskStateTime();
+    }
+
+    if (busBusy(&baro.dev.dev, NULL)) {
+        // If the bus is busy, simply return to have another go later
+        ignoreTaskStateTime();
+        return sleepTime;
     }
 
     switch (state) {
@@ -423,7 +428,7 @@ uint32_t baroUpdate(void)
             if (baro.dev.read_up(&baro.dev)) {
                 state = BAROMETER_NEEDS_PRESSURE_SAMPLE;
             } else {
-                ignoreTaskTime();
+                ignoreTaskStateTime();
             }
         break;
 

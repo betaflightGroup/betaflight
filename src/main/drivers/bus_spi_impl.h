@@ -47,7 +47,7 @@ typedef struct spiHardware_s {
     uint8_t af;
 #endif
     rccPeriphTag_t rcc;
-#if defined(USE_DMA) && defined(USE_HAL_DRIVER)
+#ifdef USE_DMA
     uint8_t dmaIrqHandler;
 #endif
 } spiHardware_t;
@@ -69,19 +69,15 @@ typedef struct SPIDevice_s {
     rccPeriphTag_t rcc;
     volatile uint16_t errorCount;
     bool leadingEdge;
-#if defined(USE_HAL_DRIVER)
-    SPI_HandleTypeDef hspi;
 #ifdef USE_DMA
-    DMA_HandleTypeDef hdma;
     uint8_t dmaIrqHandler;
-#endif
-#endif
-#ifdef USE_SPI_TRANSACTION
-    uint16_t cr1SoftCopy;   // Copy of active CR1 value for this SPI instance
 #endif
 } spiDevice_t;
 
 extern spiDevice_t spiDevice[SPIDEV_COUNT];
 
-void spiInitDevice(SPIDevice device, bool leadingEdge);
-uint32_t spiTimeoutUserCallback(SPI_TypeDef *instance);
+void spiInitDevice(SPIDevice device);
+void spiPrivInitStream(extDevice_t *dev, bool preInit);
+void spiPrivStartDMA(extDevice_t *dev);
+void spiPrivStopDMA (extDevice_t *dev);
+

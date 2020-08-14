@@ -19,6 +19,9 @@
  */
 
 #pragma once
+
+#define USE_LATE_TASK_STATISTICS
+
 #define TARGET_BOARD_IDENTIFIER "REVN"
 
 #define USBD_PRODUCT_STRING "Revo Nano"
@@ -36,14 +39,18 @@
 #define GYRO_1_SPI_INSTANCE     SPI2
 
 #define USE_ACC
-#define USE_ACC_SPI_MPU6500
+#define USE_ACC_SPI_MPU9250
 
 #define USE_GYRO
-#define USE_GYRO_SPI_MPU6500
+#define USE_GYRO_SPI_MPU9250
 #define GYRO_1_ALIGN            CW270_DEG
 
 #define USE_BARO
 #define USE_BARO_MS5611
+
+#define USE_MAG
+#define USE_MAG_AK8963
+#define USE_MAG_MPU925X_AK8963
 
 // MPU6500 interrupts
 #define USE_EXTI

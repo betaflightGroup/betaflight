@@ -105,9 +105,9 @@ static bool lis3mdlRead(magDev_t * mag, int16_t *magData)
 {
     uint8_t buf[6];
 
-    busDevice_t *busdev = &mag->busdev;
+    extDevice_t *dev = &mag->dev;
 
-    bool ack = busReadRegisterBuffer(busdev, LIS3MDL_REG_OUT_X_L, buf, 6);
+    bool ack = busReadRegisterBuffer(dev, LIS3MDL_REG_OUT_X_L, buf, 6);
 
     if (!ack) {
         return false;
@@ -122,15 +122,15 @@ static bool lis3mdlRead(magDev_t * mag, int16_t *magData)
 
 static bool lis3mdlInit(magDev_t *mag)
 {
-    busDevice_t *busdev = &mag->busdev;
+    extDevice_t *dev = &mag->dev;
 
-    busDeviceRegister(busdev);
+    busDeviceRegister(dev);
 
-    busWriteRegister(busdev, LIS3MDL_REG_CTRL_REG2, LIS3MDL_FS_4GAUSS);
-    busWriteRegister(busdev, LIS3MDL_REG_CTRL_REG1, LIS3MDL_TEMP_EN | LIS3MDL_OM_ULTRA_HI_PROF | LIS3MDL_DO_80);
-    busWriteRegister(busdev, LIS3MDL_REG_CTRL_REG5, LIS3MDL_BDU);
-    busWriteRegister(busdev, LIS3MDL_REG_CTRL_REG4, LIS3MDL_ZOM_UHP);
-    busWriteRegister(busdev, LIS3MDL_REG_CTRL_REG3, 0x00);
+    busWriteRegister(dev, LIS3MDL_REG_CTRL_REG2, LIS3MDL_FS_4GAUSS);
+    busWriteRegister(dev, LIS3MDL_REG_CTRL_REG1, LIS3MDL_TEMP_EN | LIS3MDL_OM_ULTRA_HI_PROF | LIS3MDL_DO_80);
+    busWriteRegister(dev, LIS3MDL_REG_CTRL_REG5, LIS3MDL_BDU);
+    busWriteRegister(dev, LIS3MDL_REG_CTRL_REG4, LIS3MDL_ZOM_UHP);
+    busWriteRegister(dev, LIS3MDL_REG_CTRL_REG3, 0x00);
 
     delay(100);
 
@@ -139,15 +139,15 @@ static bool lis3mdlInit(magDev_t *mag)
 
 bool lis3mdlDetect(magDev_t * mag)
 {
-    busDevice_t *busdev = &mag->busdev;
+    extDevice_t *dev = &mag->dev;
 
     uint8_t sig = 0;
 
-    if (busdev->bustype == BUSTYPE_I2C && busdev->busdev_u.i2c.address == 0) {
-        busdev->busdev_u.i2c.address = LIS3MDL_MAG_I2C_ADDRESS;
+    if (dev->bus->busType == BUSTYPE_I2C && dev->busType_u.i2c.address == 0) {
+        dev->busType_u.i2c.address = LIS3MDL_MAG_I2C_ADDRESS;
     }
 
-    bool ack = busReadRegisterBuffer(&mag->busdev, LIS3MDL_REG_WHO_AM_I, &sig, 1);
+    bool ack = busReadRegisterBuffer(&mag->dev, LIS3MDL_REG_WHO_AM_I, &sig, 1);
 
     if (!ack || sig != LIS3MDL_DEVICE_ID) {
         return false;

@@ -395,6 +395,8 @@ bool isFlipOverAfterCrashActive(void) { return false; }
 
 void ws2811LedStripEnable(void) { }
 
-void setUsedLedCount(unsigned) { };
+void setUsedLedCount(unsigned) { }
 void pinioBoxTaskControl(void) {}
+void ignoreTaskShortExecTime(void) {}
+void ignoreTaskStateTime(void) {}
 }

@@ -50,19 +50,46 @@ REGION_ALIAS("STACKRAM", DTCM_RAM)
 REGION_ALIAS("FASTRAM", DTCM_RAM)
 REGION_ALIAS("MAIN", FLASH)
 
+INCLUDE "stm32_h750_common.ld"
+
 SECTIONS
 {
-  .DMA_RAM (NOLOAD) :
+  /* used during startup to initialized dmaram_data */
+  _sdmaram_idata = LOADADDR(.dmaram_data);
+
+  . = ALIGN(32);
+  .dmaram_data :
   {
-    . = ALIGN(32);
     PROVIDE(dmaram_start = .);
     _sdmaram = .;
     _dmaram_start__ = _sdmaram;
+    _sdmaram_data = .;        /* create a global symbol at data start */
+    *(.dmaram_data)           /* .data sections */
+    *(.dmaram_data*)          /* .data* sections */
+    . = ALIGN(32);
+    _edmaram_data = .;        /* define a global symbol at data end */
+  } >RAM AT >FLASH
+
+  . = ALIGN(32);
+  .dmaram_bss (NOLOAD) :
+  {
+    _sdmaram_bss = .;
+    __dmaram_bss_start__ = _sdmaram_bss;
+    *(.dmaram_bss)
+    *(SORT_BY_ALIGNMENT(.dmaram_bss*))
+    . = ALIGN(32);
+    _edmaram_bss = .;
+    __dmaram_bss_end__ = _edmaram_bss;
+  } >RAM
+
+  . = ALIGN(32);
+  .DMA_RAM (NOLOAD) :
+  {
     KEEP(*(.DMA_RAM))
     PROVIDE(dmaram_end = .);
     _edmaram = .;
     _dmaram_end__ = _edmaram;
-  } >D2_RAM
+  } >RAM
 
   .DMA_RW_D2 (NOLOAD) :
   {
@@ -89,5 +116,4 @@ SECTIONS
   } >RAM
   }
 
-INCLUDE "stm32_h750_common.ld"
 INCLUDE "stm32_h750_common_post.ld"

@@ -202,6 +202,10 @@ uint16_t batteryWarningVoltage;
 uint8_t useHottAlarmSoundPeriod (void) { return 0; }
 const uint32_t baudRates[] = {0, 9600, 19200, 38400, 57600, 115200, 230400, 250000, 400000}; // see baudRate_e
 
+uint8_t debugMode;
+int32_t schedLoopStartCycles;
+int32_t taskGuardCycles;
+
 uint32_t micros(void) {return 0;}
 
 int32_t getAmperage(void) {
@@ -324,7 +328,6 @@ uint8_t serialRead(serialPort_t *){return 0;}
 void bufWriterAppend(bufWriter_t *, uint8_t ch){ printf("%c", ch); }
 void serialWriteBufShim(void *, const uint8_t *, int) {}
 bufWriter_t *bufWriterInit(uint8_t *, int, bufWrite_t, void *) {return NULL;}
-void schedulerSetCalulateTaskStatistics(bool) {}
 void setArmingDisabled(armingDisableFlags_e) {}
 
 void waitForSerialPortToFinishTransmitting(serialPort_t *) {}

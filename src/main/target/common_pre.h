@@ -28,7 +28,7 @@
 // -Wpadded can be turned on to check padding of structs
 //#pragma GCC diagnostic warning "-Wpadded"
 
-//#define SCHEDULER_DEBUG // define this to use scheduler debug[] values. Undefined by default for performance reasons
+#define SCHEDULER_DEBUG // define this to use scheduler debug[] values. Undefined by default for performance reasons
 
 #define I2C1_OVERCLOCK true
 #define I2C2_OVERCLOCK true
@@ -69,7 +69,6 @@
 #define USE_TIMER_MGMT
 #define USE_PERSISTENT_OBJECTS
 #define USE_CUSTOM_DEFAULTS_ADDRESS
-#define USE_SPI_TRANSACTION
 
 #if defined(STM32F40_41xxx) || defined(STM32F411xE)
 #define USE_OVERCLOCK
@@ -99,7 +98,7 @@
 #define USE_TIMER_MGMT
 #define USE_PERSISTENT_OBJECTS
 #define USE_CUSTOM_DEFAULTS_ADDRESS
-#define USE_SPI_TRANSACTION
+#define USE_LATE_TASK_STATISTICS
 #endif // STM32F7
 
 #ifdef STM32H7
@@ -192,6 +191,23 @@
 #define FAST_DATA
 #endif // USE_FAST_DATA
 
+#if defined(STM32F4)
+// F4 can't DMA to/from CCM (core coupled memory) SRAM (where the stack lives)
+#define DMA_DATA_ZERO_INIT
+#define DMA_DATA
+#define DMA_DATA_AUTO               static
+#elif defined (STM32F7)
+// F7 has no cache coherency issues DMAing to/from DTCM, otherwise buffers must be cache aligned
+#define DMA_DATA_ZERO_INIT          FAST_DATA_ZERO_INIT
+#define DMA_DATA                    FAST_DATA
+#define DMA_DATA_AUTO               static DMA_DATA
+#else
+// DMA to/from any memory
+#define DMA_DATA_ZERO_INIT          __attribute__ ((section(".dmaram_bss"), aligned(32)))
+#define DMA_DATA                    __attribute__ ((section(".dmaram_data"), aligned(32)))
+#define DMA_DATA_AUTO               static DMA_DATA
+#endif
+
 #if defined(STM32F4) || defined (STM32H7)
 // Data in RAM which is guaranteed to not be reset on hot reboot
 #define PERSISTENT                  __attribute__ ((section(".persistent_data"), aligned(4)))
@@ -199,8 +215,10 @@
 
 #ifdef USE_DMA_RAM
 #if defined(STM32H7)
-#define DMA_RAM __attribute__((section(".DMA_RAM")))
-#define DMA_RW_AXI __attribute__((section(".DMA_RW_AXI")))
+#define DMA_RAM __attribute__((section(".DMA_RAM"), aligned(32)))
+#define DMA_RW_AXI __attribute__((section(".DMA_RW_AXI"), aligned(32)))
+extern uint8_t _dmaram_start__;
+extern uint8_t _dmaram_end__;
 #elif defined(STM32G4)
 #define DMA_RAM_R __attribute__((section(".DMA_RAM_R")))
 #define DMA_RAM_W __attribute__((section(".DMA_RAM_W")))
@@ -223,7 +241,6 @@
 
 #define USE_CLI
 #define USE_SERIAL_PASSTHROUGH
-#define USE_TASK_STATISTICS
 #define USE_GYRO_REGISTER_DUMP  // Adds gyroregisters command to cli to dump configured register values
 #define USE_IMU_CALC
 #define USE_PPM

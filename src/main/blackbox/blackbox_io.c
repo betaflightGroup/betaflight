@@ -374,6 +374,11 @@ void blackboxEraseAll(void)
 {
     switch (blackboxConfig()->device) {
     case BLACKBOX_DEVICE_FLASH:
+        /* Stop the recorder as if blackbox_mode = ALWAYS it will attempt to resume writing after
+         * the erase and leave a corrupted first log.
+         * Possible enhancement here is to restart logging after erase.
+         */
+        blackboxInit();
         flashfsEraseCompletely();
         break;
     default:

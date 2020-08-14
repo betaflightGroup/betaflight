@@ -90,9 +90,9 @@ typedef struct sdcard_t {
     IO_t cardDetectPin;
 
 #ifdef USE_SDCARD_SPI
-    busDevice_t busdev;
-    bool useDMAForTx;
+    extDevice_t dev;
     dmaChannelDescriptor_t * dma;
+    uint8_t idleCount;
 #endif
 
 #ifdef USE_SDCARD_SDIO
