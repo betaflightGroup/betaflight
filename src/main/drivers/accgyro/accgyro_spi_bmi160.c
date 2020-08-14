@@ -98,14 +98,14 @@ uint8_t bmi160Detect(const busDevice_t *bus)
         return BMI_160_SPI;
     }
 
-    spiSetDivisor(bus->busdev_u.spi.instance, spiCalculateDivider(BMI160_MAX_SPI_CLK_HZ));
+    spiSetClkDivisor(dev, spiCalculateDivider(BMI160_MAX_SPI_CLK_HZ));
 
     /* Read this address to activate SPI (see p. 84) */
-    spiBusReadRegister(bus, 0x7F);
+    spiReadRegMsk(bus, 0x7F);
     delay(100); // Give SPI some time to start up
 
     /* Check the chip ID */
-    if (spiBusReadRegister(bus, BMI160_REG_CHIPID) != 0xd1) {
+    if (spiReadRegMsk(bus, BMI160_REG_CHIPID) != 0xd1) {
         return MPU_NONE;
     }
 
@@ -147,47 +147,47 @@ static int32_t BMI160_Config(const busDevice_t *bus)
 {
 
     // Set normal power mode for gyro and accelerometer
-    spiBusWriteRegister(bus, BMI160_REG_CMD, BMI160_PMU_CMD_PMU_GYR_NORMAL);
+    spiWriteReg(bus, BMI160_REG_CMD, BMI160_PMU_CMD_PMU_GYR_NORMAL);
     delay(100); // can take up to 80ms
 
-    spiBusWriteRegister(bus, BMI160_REG_CMD, BMI160_PMU_CMD_PMU_ACC_NORMAL);
+    spiWriteReg(bus, BMI160_REG_CMD, BMI160_PMU_CMD_PMU_ACC_NORMAL);
     delay(5); // can take up to 3.8ms
 
     // Verify that normal power mode was entered
-    uint8_t pmu_status = spiBusReadRegister(bus, BMI160_REG_PMU_STAT);
+    uint8_t pmu_status = spiReadRegMsk(bus, BMI160_REG_PMU_STAT);
     if ((pmu_status & 0x3C) != 0x14) {
         return -3;
     }
 
     // Set odr and ranges
     // Set acc_us = 0 acc_bwp = 0b010 so only the first filter stage is used
-    spiBusWriteRegister(bus, BMI160_REG_ACC_CONF, 0x20 | BMI160_ODR_800_Hz);
+    spiWriteReg(bus, BMI160_REG_ACC_CONF, 0x20 | BMI160_ODR_800_Hz);
     delay(1);
 
     // Set gyr_bwp = 0b010 so only the first filter stage is used
-    spiBusWriteRegister(bus, BMI160_REG_GYR_CONF, 0x20 | BMI160_ODR_3200_Hz);
+    spiWriteReg(bus, BMI160_REG_GYR_CONF, 0x20 | BMI160_ODR_3200_Hz);
     delay(1);
 
-    spiBusWriteRegister(bus, BMI160_REG_ACC_RANGE, BMI160_RANGE_8G);
+    spiWriteReg(bus, BMI160_REG_ACC_RANGE, BMI160_RANGE_8G);
     delay(1);
 
-    spiBusWriteRegister(bus, BMI160_REG_GYR_RANGE, BMI160_RANGE_2000DPS);
+    spiWriteReg(bus, BMI160_REG_GYR_RANGE, BMI160_RANGE_2000DPS);
     delay(1);
 
     // Enable offset compensation
-    uint8_t val = spiBusReadRegister(bus, BMI160_REG_OFFSET_0);
-    spiBusWriteRegister(bus, BMI160_REG_OFFSET_0, val | 0xC0);
+    uint8_t val = spiReadRegMsk(bus, BMI160_REG_OFFSET_0);
+    spiWriteReg(bus, BMI160_REG_OFFSET_0, val | 0xC0);
 
     // Enable data ready interrupt
-    spiBusWriteRegister(bus, BMI160_REG_INT_EN1, BMI160_INT_EN1_DRDY);
+    spiWriteReg(bus, BMI160_REG_INT_EN1, BMI160_INT_EN1_DRDY);
     delay(1);
 
     // Enable INT1 pin
-    spiBusWriteRegister(bus, BMI160_REG_INT_OUT_CTRL, BMI160_INT_OUT_CTRL_INT1_CONFIG);
+    spiWriteReg(bus, BMI160_REG_INT_OUT_CTRL, BMI160_INT_OUT_CTRL_INT1_CONFIG);
     delay(1);
 
     // Map data ready interrupt to INT1 pin
-    spiBusWriteRegister(bus, BMI160_REG_INT_MAP1, BMI160_REG_INT_MAP1_INT1_DRDY);
+    spiWriteReg(bus, BMI160_REG_INT_MAP1, BMI160_REG_INT_MAP1_INT1_DRDY);
     delay(1);
 
     return 0;
@@ -197,14 +197,14 @@ static int32_t BMI160_do_foc(const busDevice_t *bus)
 {
     // assume sensor is mounted on top
     uint8_t val = 0x7D;;
-    spiBusWriteRegister(bus, BMI160_REG_FOC_CONF, val);
+    spiWriteReg(bus, BMI160_REG_FOC_CONF, val);
 
     // Start FOC
-    spiBusWriteRegister(bus, BMI160_REG_CMD, BMI160_CMD_START_FOC);
+    spiWriteReg(bus, BMI160_REG_CMD, BMI160_CMD_START_FOC);
 
     // Wait for FOC to complete
     for (int i=0; i<50; i++) {
-        val = spiBusReadRegister(bus, BMI160_REG_STATUS);
+        val = spiReadRegMsk(bus, BMI160_REG_STATUS);
         if (val & BMI160_REG_STATUS_FOC_RDY) {
             break;
         }
@@ -215,14 +215,14 @@ static int32_t BMI160_do_foc(const busDevice_t *bus)
     }
 
     // Program NVM
-    val = spiBusReadRegister(bus, BMI160_REG_CONF);
-    spiBusWriteRegister(bus, BMI160_REG_CONF, val | BMI160_REG_CONF_NVM_PROG_EN);
+    val = spiReadRegMsk(bus, BMI160_REG_CONF);
+    spiWriteReg(bus, BMI160_REG_CONF, val | BMI160_REG_CONF_NVM_PROG_EN);
 
-    spiBusWriteRegister(bus, BMI160_REG_CMD, BMI160_CMD_PROG_NVM);
+    spiWriteReg(bus, BMI160_REG_CMD, BMI160_CMD_PROG_NVM);
 
     // Wait for NVM programming to complete
     for (int i=0; i<50; i++) {
-        val = spiBusReadRegister(bus, BMI160_REG_STATUS);
+        val = spiReadRegMsk(bus, BMI160_REG_STATUS);
         if (val & BMI160_REG_STATUS_NVM_RDY) {
             break;
         }
@@ -275,9 +275,9 @@ bool bmi160AccRead(accDev_t *acc)
     uint8_t bmi160_rx_buf[BUFFER_SIZE];
     static const uint8_t bmi160_tx_buf[BUFFER_SIZE] = {BMI160_REG_ACC_DATA_X_LSB | 0x80, 0, 0, 0, 0, 0, 0};
 
-    IOLo(acc->bus.busdev_u.spi.csnPin);
-    spiTransfer(acc->bus.busdev_u.spi.instance, bmi160_tx_buf, bmi160_rx_buf, BUFFER_SIZE);   // receive response
-    IOHi(acc->bus.busdev_u.spi.csnPin);
+    IOLo(acc->bus.busType_u.spi.csnPin);
+    spiPrivReadWriteBufPolled(acc->bus.busType_u.spi.instance, bmi160_tx_buf, bmi160_rx_buf, BUFFER_SIZE);   // receive response
+    IOHi(acc->bus.busType_u.spi.csnPin);
 
     acc->ADCRaw[X] = (int16_t)((bmi160_rx_buf[IDX_ACCEL_XOUT_H] << 8) | bmi160_rx_buf[IDX_ACCEL_XOUT_L]);
     acc->ADCRaw[Y] = (int16_t)((bmi160_rx_buf[IDX_ACCEL_YOUT_H] << 8) | bmi160_rx_buf[IDX_ACCEL_YOUT_L]);
@@ -303,9 +303,9 @@ bool bmi160GyroRead(gyroDev_t *gyro)
     uint8_t bmi160_rx_buf[BUFFER_SIZE];
     static const uint8_t bmi160_tx_buf[BUFFER_SIZE] = {BMI160_REG_GYR_DATA_X_LSB | 0x80, 0, 0, 0, 0, 0, 0};
 
-    IOLo(gyro->bus.busdev_u.spi.csnPin);
-    spiTransfer(gyro->bus.busdev_u.spi.instance, bmi160_tx_buf, bmi160_rx_buf, BUFFER_SIZE);   // receive response
-    IOHi(gyro->bus.busdev_u.spi.csnPin);
+    IOLo(gyro->bus.busType_u.spi.csnPin);
+    spiPrivReadWriteBufPolled(gyro->bus.busType_u.spi.instance, bmi160_tx_buf, bmi160_rx_buf, BUFFER_SIZE);   // receive response
+    IOHi(gyro->bus.busType_u.spi.csnPin);
 
     gyro->gyroADCRaw[X] = (int16_t)((bmi160_rx_buf[IDX_GYRO_XOUT_H] << 8) | bmi160_rx_buf[IDX_GYRO_XOUT_L]);
     gyro->gyroADCRaw[Y] = (int16_t)((bmi160_rx_buf[IDX_GYRO_YOUT_H] << 8) | bmi160_rx_buf[IDX_GYRO_YOUT_L]);

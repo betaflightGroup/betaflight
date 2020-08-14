@@ -189,6 +189,10 @@ typedef struct {
     void* test;
 } DMA_Channel_TypeDef;
 
+typedef struct {
+    void* test;
+} DMA_InitTypeDef;
+
 uint8_t DMA_GetFlagStatus(void *);
 void DMA_Cmd(DMA_Channel_TypeDef*, FunctionalState );
 void DMA_ClearFlag(uint32_t);

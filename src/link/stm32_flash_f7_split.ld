@@ -120,7 +120,7 @@ SECTIONS
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-  } >RAM AT >AXIM_FLASH
+  } >RAM AT >AXIM_FLASH1
 
   /* Uninitialized data section */
   . = ALIGN(4);
@@ -166,7 +166,7 @@ SECTIONS
 
     . = ALIGN(4);
     _efastram_data = .;        /* define a global symbol at data end */
-  } >FASTRAM AT >AXIM_FLASH
+  } >FASTRAM AT >AXIM_FLASH1
 
   . = ALIGN(4);
   .fastram_bss (NOLOAD) :
