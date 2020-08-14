@@ -25,6 +25,7 @@
 #pragma once
 
 #include "drivers/bus.h"
+#include "drivers/dma.h"
 
 struct flashVTable_s;
 
@@ -36,7 +37,7 @@ typedef enum {
 
 typedef struct flashDeviceIO_s {
     union {
-        busDevice_t *busdev; // Device interface dependent handle (spi/i2c)
+        extDevice_t *dev; // Device interface dependent handle (spi/i2c)
     #ifdef USE_QUADSPI
         QUADSPI_TypeDef *quadSpi;
     #endif
@@ -55,6 +56,8 @@ typedef struct flashDevice_s {
     bool couldBeBusy;
     uint32_t timeoutAt;
     flashDeviceIO_t io;
+    void (*callback)(uint32_t arg);
+    uint32_t callbackArg;
 } flashDevice_t;
 
 typedef struct flashVTable_s {
@@ -62,11 +65,11 @@ typedef struct flashVTable_s {
     bool (*waitForReady)(flashDevice_t *fdevice);
     void (*eraseSector)(flashDevice_t *fdevice, uint32_t address);
     void (*eraseCompletely)(flashDevice_t *fdevice);
-    void (*pageProgramBegin)(flashDevice_t *fdevice, uint32_t address);
-    void (*pageProgramContinue)(flashDevice_t *fdevice, const uint8_t *data, int length);
+    void (*pageProgramBegin)(flashDevice_t *fdevice, uint32_t address, void (*callback)(uint32_t length));
+    uint32_t (*pageProgramContinue)(flashDevice_t *fdevice, uint8_t const **buffers, uint32_t *bufferSizes, uint32_t bufferCount);
     void (*pageProgramFinish)(flashDevice_t *fdevice);
-    void (*pageProgram)(flashDevice_t *fdevice, uint32_t address, const uint8_t *data, int length);
+    void (*pageProgram)(flashDevice_t *fdevice, uint32_t address, const uint8_t *data, uint32_t length, void (*callback)(uint32_t length));
     void (*flush)(flashDevice_t *fdevice);
-    int (*readBytes)(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, int length);
+    int (*readBytes)(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, uint32_t length);
     const flashGeometry_t *(*getGeometry)(flashDevice_t *fdevice);
 } flashVTable_t;

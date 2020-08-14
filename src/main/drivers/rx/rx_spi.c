@@ -46,11 +46,8 @@
 // 10 MHz max SPI frequency
 #define RX_MAX_SPI_CLK_HZ 10000000
 
-#define ENABLE_RX() IOLo(busdev->busdev_u.spi.csnPin)
-#define DISABLE_RX() IOHi(busdev->busdev_u.spi.csnPin)
-
-static busDevice_t rxSpiDevice;
-static busDevice_t *busdev = &rxSpiDevice;
+static extDevice_t rxSpiDevice;
+static extDevice_t *dev = &rxSpiDevice;
 
 static IO_t extiPin = IO_NONE;
 static extiCallbackRec_t rxSpiExtiCallbackRec;
@@ -78,25 +75,19 @@ void rxSpiExtiHandler(extiCallbackRec_t* callback)
 
 bool rxSpiDeviceInit(const rxSpiConfig_t *rxSpiConfig)
 {
-    SPI_TypeDef *instance = spiInstanceByDevice(SPI_CFG_TO_DEV(rxSpiConfig->spibus));
-
-    if (!instance) {
+    if (!spiSetBusInstance(dev, rxSpiConfig->spibus, OWNER_RX_SPI_CS)) {
         return false;
     }
-
-    spiBusSetInstance(busdev, instance);
 
     const IO_t rxCsPin = IOGetByTag(rxSpiConfig->csnTag);
     IOInit(rxCsPin, OWNER_RX_SPI_CS, 0);
     IOConfigGPIO(rxCsPin, SPI_IO_CS_CFG);
-    busdev->busdev_u.spi.csnPin = rxCsPin;
+    dev->busType_u.spi.csnPin = rxCsPin;
+
+    dev->busType_u.spi.leadingEdge = true;
 
     IOHi(rxCsPin);
-#ifdef USE_SPI_TRANSACTION
-    spiBusTransactionInit(busdev, SPI_MODE0_POL_LOW_EDGE_1ST, spiCalculateDivider(RX_MAX_SPI_CLK_HZ));
-#else
-    spiBusSetDivisor(busdev, spiCalculateDivider(RX_MAX_SPI_CLK_HZ));
-#endif
+    spiSetClkDivisor(dev, spiCalculateDivider(RX_MAX_SPI_CLK_HZ));
 
     extiPin = IOGetByTag(rxSpiConfig->extiIoTag);
 
@@ -122,34 +113,34 @@ void rxSpiExtiInit(ioConfig_t rxSpiExtiPinConfig, extiTrigger_t rxSpiExtiPinTrig
 
 uint8_t rxSpiTransferByte(uint8_t data)
 {
-    return spiBusTransferByte(busdev, data);
+    return spiReadWrite(dev, data);
 }
 
 void rxSpiWriteByte(uint8_t data)
 {
-    spiBusWriteByte(busdev, data);
+    spiWrite(dev, data);
 }
 
 void rxSpiWriteCommand(uint8_t command, uint8_t data)
 {
-    spiBusWriteRegister(busdev, command, data);
+    spiWriteReg(dev, command, data);
 }
 
 void rxSpiWriteCommandMulti(uint8_t command, const uint8_t *data, uint8_t length)
 {
-    spiBusWriteRegisterBuffer(busdev, command, data, length);
+    spiWriteRegBuf(dev, command, (uint8_t *)data, length);
 }
 
 uint8_t rxSpiReadCommand(uint8_t command, uint8_t data)
 {
     UNUSED(data);
-    return spiBusRawReadRegister(busdev, command);
+    return spiReadReg(dev, command);
 }
 
 void rxSpiReadCommandMulti(uint8_t command, uint8_t commandData, uint8_t *retData, uint8_t length)
 {
     UNUSED(commandData);
-    spiBusRawReadRegisterBuffer(busdev, command, retData, length);
+    spiReadRegBuf(dev, command, retData, length);
 }
 
 bool rxSpiExtiConfigured(void)

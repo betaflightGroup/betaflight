@@ -173,9 +173,9 @@ void HandleStuckSysTick(void)
     uint32_t tickStart = HAL_GetTick();
     uint32_t tickEnd = 0;
 
-    int attemptsRemaining = 80 * 1000;
+    // H7 at 480Mhz requires a loop count of 160000. Double this for the timeout to be safe.
+    int attemptsRemaining = 320000;
     while (((tickEnd = HAL_GetTick()) == tickStart) && --attemptsRemaining) {
-        // H7 at 400Mhz - attemptsRemaining was reduced by debug build: 5,550, release build: 33,245
     }
 
     if (tickStart == tickEnd) {
@@ -769,7 +769,9 @@ void SystemInit (void)
 #error Unknown MCU type
 #endif
 #elif defined(USE_EXST)
-    // Don't touch the vector table, the bootloader will have already set it.
+    extern void *isr_vector_table_base;
+
+    SCB->VTOR = (uint32_t)&isr_vector_table_base;
 #else
     SCB->VTOR = FLASH_BANK1_BASE | VECT_TAB_OFFSET;       /* Vector Table Relocation in Internal FLASH */
 #endif
@@ -780,6 +782,10 @@ void SystemInit (void)
 
     SystemClock_Config();
     SystemCoreClockUpdate();
+
+#ifdef STM32H7
+    initialiseD2MemorySections();
+#endif
 
     // Configure MPU
 

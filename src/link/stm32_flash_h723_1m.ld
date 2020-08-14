@@ -162,7 +162,7 @@ SECTIONS
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-  } >RAM AT >FLASH
+  } >FASTRAM AT >FLASH
 
   /* Uninitialized data section */
   . = ALIGN(4);
@@ -178,7 +178,7 @@ SECTIONS
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >RAM
+  } >FASTRAM
 
   /* Uninitialized data section */
   . = ALIGN(4);
@@ -223,17 +223,42 @@ SECTIONS
     __fastram_bss_end__ = _efastram_bss;
   } >FASTRAM
 
-  .DMA_RAM (NOLOAD) :
+  /* used during startup to initialized dmaram_data */
+  _sdmaram_idata = LOADADDR(.dmaram_data);
+
+  . = ALIGN(32);
+  .dmaram_data :
   {
-    . = ALIGN(32);
     PROVIDE(dmaram_start = .);
     _sdmaram = .;
     _dmaram_start__ = _sdmaram;
+    _sdmaram_data = .;        /* create a global symbol at data start */
+    *(.dmaram_data)           /* .data sections */
+    *(.dmaram_data*)          /* .data* sections */
+    . = ALIGN(32);
+    _edmaram_data = .;        /* define a global symbol at data end */
+  } >RAM AT >FLASH
+
+  . = ALIGN(32);
+  .dmaram_bss (NOLOAD) :
+  {
+    _sdmaram_bss = .;
+    __dmaram_bss_start__ = _sdmaram_bss;
+    *(.dmaram_bss)
+    *(SORT_BY_ALIGNMENT(.dmaram_bss*))
+    . = ALIGN(32);
+    _edmaram_bss = .;
+    __dmaram_bss_end__ = _edmaram_bss;
+  } >RAM
+
+  . = ALIGN(32);
+  .DMA_RAM (NOLOAD) :
+  {
     KEEP(*(.DMA_RAM))
     PROVIDE(dmaram_end = .);
     _edmaram = .;
     _dmaram_end__ = _edmaram;
-  } >D2_RAM
+  } >RAM
 
   .DMA_RW_D2 (NOLOAD) :
   {

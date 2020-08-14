@@ -186,20 +186,15 @@ static void hmc5883lConfigureDataReadyInterruptHandling(magDev_t* mag)
 }
 
 #ifdef USE_MAG_SPI_HMC5883
-static void hmc5883SpiInit(busDevice_t *busdev)
+static void hmc5883SpiInit(extDevice_t *dev)
 {
-    busDeviceRegister(busdev);
+    busDeviceRegister(dev);
 
-    IOHi(busdev->busdev_u.spi.csnPin); // Disable
+    IOHi(dev->busType_u.spi.csnPin); // Disable
 
-    IOInit(busdev->busdev_u.spi.csnPin, OWNER_COMPASS_CS, 0);
-    IOConfigGPIO(busdev->busdev_u.spi.csnPin, IOCFG_OUT_PP);
-
-#ifdef USE_SPI_TRANSACTION
-    spiBusTransactionInit(busdev, SPI_MODE3_POL_HIGH_EDGE_2ND, spiCalculateDivider(HMC5883_MAX_SPI_CLK_HZ));
-#else
-    spiBusSetDivisor(busdev, spiCalculateDivider(HMC5883_MAX_SPI_CLK_HZ));
-#endif
+    IOInit(dev->busType_u.spi.csnPin, OWNER_COMPASS_CS, 0);
+    IOConfigGPIO(dev->busType_u.spi.csnPin, IOCFG_OUT_PP);
+    spiSetClkDivisor(dev, spiCalculateDivider(HMC5883_MAX_SPI_CLK_HZ));
 }
 #endif
 
@@ -207,9 +202,9 @@ static bool hmc5883lRead(magDev_t *mag, int16_t *magData)
 {
     uint8_t buf[6];
 
-    busDevice_t *busdev = &mag->busdev;
+    extDevice_t *dev = &mag->dev;
 
-    bool ack = busReadRegisterBuffer(busdev, HMC58X3_REG_DATA, buf, 6);
+    bool ack = busReadRegisterBuffer(dev, HMC58X3_REG_DATA, buf, 6);
 
     if (!ack) {
         return false;
@@ -225,12 +220,12 @@ static bool hmc5883lRead(magDev_t *mag, int16_t *magData)
 static bool hmc5883lInit(magDev_t *mag)
 {
 
-    busDevice_t *busdev = &mag->busdev;
+    extDevice_t *dev = &mag->dev;
 
     // leave test mode
-    busWriteRegister(busdev, HMC58X3_REG_CONFA, HMC_CONFA_8_SAMLES | HMC_CONFA_DOR_15HZ | HMC_CONFA_NORMAL);    // Configuration Register A  -- 0 11 100 00  num samples: 8 ; output rate: 15Hz ; normal measurement mode
-    busWriteRegister(busdev, HMC58X3_REG_CONFB, HMC_CONFB_GAIN_1_3GA);                                          // Configuration Register B  -- 001 00000    configuration gain 1.3Ga
-    busWriteRegister(busdev, HMC58X3_REG_MODE, HMC_MODE_CONTINOUS);                                             // Mode register             -- 000000 00    continuous Conversion Mode
+    busWriteRegister(dev, HMC58X3_REG_CONFA, HMC_CONFA_8_SAMLES | HMC_CONFA_DOR_15HZ | HMC_CONFA_NORMAL);    // Configuration Register A  -- 0 11 100 00  num samples: 8 ; output rate: 15Hz ; normal measurement mode
+    busWriteRegister(dev, HMC58X3_REG_CONFB, HMC_CONFB_GAIN_1_3GA);                                          // Configuration Register B  -- 001 00000    configuration gain 1.3Ga
+    busWriteRegister(dev, HMC58X3_REG_MODE, HMC_MODE_CONTINOUS);                                             // Mode register             -- 000000 00    continuous Conversion Mode
 
     delay(100);
 
@@ -240,23 +235,23 @@ static bool hmc5883lInit(magDev_t *mag)
 
 bool hmc5883lDetect(magDev_t* mag)
 {
-    busDevice_t *busdev = &mag->busdev;
+    extDevice_t *dev = &mag->dev;
 
     uint8_t sig = 0;
 
 #ifdef USE_MAG_SPI_HMC5883
-    if (busdev->bustype == BUSTYPE_SPI) {
-        hmc5883SpiInit(&mag->busdev);
+    if (dev->bus->busType == BUSTYPE_SPI) {
+        hmc5883SpiInit(dev);
     }
 #endif
 
 #ifdef USE_MAG_HMC5883
-    if (busdev->bustype == BUSTYPE_I2C && busdev->busdev_u.i2c.address == 0) {
-        busdev->busdev_u.i2c.address = HMC5883_MAG_I2C_ADDRESS;
+    if (dev->bus->busType == BUSTYPE_I2C && dev->busType_u.i2c.address == 0) {
+        dev->busType_u.i2c.address = HMC5883_MAG_I2C_ADDRESS;
     }
 #endif
 
-    bool ack = busReadRegisterBuffer(&mag->busdev, HMC58X3_REG_IDA, &sig, 1);
+    bool ack = busReadRegisterBuffer(&mag->dev, HMC58X3_REG_IDA, &sig, 1);
 
     if (!ack || sig != HMC5883_DEVICE_ID) {
         return false;

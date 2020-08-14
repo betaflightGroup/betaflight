@@ -64,33 +64,33 @@ void mpu6500GyroInit(gyroDev_t *gyro)
         accel_range = ICM_HIGH_RANGE_FSR_16G;
     }
 
-    busWriteRegister(&gyro->bus, MPU_RA_PWR_MGMT_1, MPU6500_BIT_RESET);
+    busWriteRegister(&gyro->dev, MPU_RA_PWR_MGMT_1, MPU6500_BIT_RESET);
     delay(100);
-    busWriteRegister(&gyro->bus, MPU_RA_SIGNAL_PATH_RESET, 0x07);
+    busWriteRegister(&gyro->dev, MPU_RA_SIGNAL_PATH_RESET, 0x07);
     delay(100);
-    busWriteRegister(&gyro->bus, MPU_RA_PWR_MGMT_1, 0);
+    busWriteRegister(&gyro->dev, MPU_RA_PWR_MGMT_1, 0);
     delay(100);
-    busWriteRegister(&gyro->bus, MPU_RA_PWR_MGMT_1, INV_CLK_PLL);
+    busWriteRegister(&gyro->dev, MPU_RA_PWR_MGMT_1, INV_CLK_PLL);
     delay(15);
-    busWriteRegister(&gyro->bus, MPU_RA_GYRO_CONFIG, gyro_range << 3);
+    busWriteRegister(&gyro->dev, MPU_RA_GYRO_CONFIG, gyro_range << 3);
     delay(15);
-    busWriteRegister(&gyro->bus, MPU_RA_ACCEL_CONFIG, accel_range << 3);
+    busWriteRegister(&gyro->dev, MPU_RA_ACCEL_CONFIG, accel_range << 3);
     delay(15);
-    busWriteRegister(&gyro->bus, MPU_RA_CONFIG, mpuGyroDLPF(gyro));
+    busWriteRegister(&gyro->dev, MPU_RA_CONFIG, mpuGyroDLPF(gyro));
     delay(15);
-    busWriteRegister(&gyro->bus, MPU_RA_SMPLRT_DIV, gyro->mpuDividerDrops); // Get Divider Drops
+    busWriteRegister(&gyro->dev, MPU_RA_SMPLRT_DIV, gyro->mpuDividerDrops); // Get Divider Drops
     delay(100);
 
     // Data ready interrupt configuration
 #ifdef USE_MPU9250_MAG
-    busWriteRegister(&gyro->bus, MPU_RA_INT_PIN_CFG, MPU6500_BIT_INT_ANYRD_2CLEAR | MPU6500_BIT_BYPASS_EN);  // INT_ANYRD_2CLEAR, BYPASS_EN
+    busWriteRegister(&gyro->dev, MPU_RA_INT_PIN_CFG, MPU6500_BIT_INT_ANYRD_2CLEAR | MPU6500_BIT_BYPASS_EN);  // INT_ANYRD_2CLEAR, BYPASS_EN
 #else
-    busWriteRegister(&gyro->bus, MPU_RA_INT_PIN_CFG, MPU6500_BIT_INT_ANYRD_2CLEAR);  // INT_ANYRD_2CLEAR
+    busWriteRegister(&gyro->dev, MPU_RA_INT_PIN_CFG, MPU6500_BIT_INT_ANYRD_2CLEAR);  // INT_ANYRD_2CLEAR
 #endif
     delay(15);
 
 #ifdef USE_MPU_DATA_READY_SIGNAL
-    busWriteRegister(&gyro->bus, MPU_RA_INT_ENABLE, MPU6500_BIT_RAW_RDY_EN); // RAW_RDY_EN interrupt enable
+    busWriteRegister(&gyro->dev, MPU_RA_INT_ENABLE, MPU6500_BIT_RAW_RDY_EN); // RAW_RDY_EN interrupt enable
 #endif
     delay(15);
 }

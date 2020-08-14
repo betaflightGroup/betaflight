@@ -82,32 +82,32 @@ static bool ak8975Init(magDev_t *mag)
     uint8_t asa[3];
     uint8_t status;
 
-    const busDevice_t *busdev = &mag->busdev;
+    extDevice_t *dev = &mag->dev;
 
-    busDeviceRegister(busdev);
+    busDeviceRegister(dev);
 
-    busWriteRegister(busdev, AK8975_MAG_REG_CNTL, CNTL_MODE_POWER_DOWN); // power down before entering fuse mode
+    busWriteRegister(dev, AK8975_MAG_REG_CNTL, CNTL_MODE_POWER_DOWN); // power down before entering fuse mode
     delay(20);
 
-    busWriteRegister(busdev, AK8975_MAG_REG_CNTL, CNTL_MODE_FUSE_ROM); // Enter Fuse ROM access mode
+    busWriteRegister(dev, AK8975_MAG_REG_CNTL, CNTL_MODE_FUSE_ROM); // Enter Fuse ROM access mode
     delay(10);
 
-    busReadRegisterBuffer(busdev, AK8975_MAG_REG_ASAX, asa, sizeof(asa)); // Read the x-, y-, and z-axis asa values
+    busReadRegisterBuffer(dev, AK8975_MAG_REG_ASAX, asa, sizeof(asa)); // Read the x-, y-, and z-axis asa values
     delay(10);
 
     mag->magGain[X] = asa[X] + 128;
     mag->magGain[Y] = asa[Y] + 128;
     mag->magGain[Z] = asa[Z] + 128;
 
-    busWriteRegister(busdev, AK8975_MAG_REG_CNTL, CNTL_MODE_POWER_DOWN); // power down after reading.
+    busWriteRegister(dev, AK8975_MAG_REG_CNTL, CNTL_MODE_POWER_DOWN); // power down after reading.
     delay(10);
 
     // Clear status registers
-    busReadRegisterBuffer(busdev, AK8975_MAG_REG_ST1, &status, 1);
-    busReadRegisterBuffer(busdev, AK8975_MAG_REG_ST2, &status, 1);
+    busReadRegisterBuffer(dev, AK8975_MAG_REG_ST1, &status, 1);
+    busReadRegisterBuffer(dev, AK8975_MAG_REG_ST2, &status, 1);
 
     // Trigger first measurement
-    busWriteRegister(busdev, AK8975_MAG_REG_CNTL, CNTL_BIT_16_BIT | CNTL_MODE_ONCE);
+    busWriteRegister(dev, AK8975_MAG_REG_CNTL, CNTL_BIT_16_BIT | CNTL_MODE_ONCE);
     return true;
 }
 
@@ -122,21 +122,21 @@ static bool ak8975Read(magDev_t *mag, int16_t *magData)
     uint8_t status;
     uint8_t buf[6];
 
-    const busDevice_t *busdev = &mag->busdev;
+    extDevice_t *dev = &mag->dev;
 
-    ack = busReadRegisterBuffer(busdev, AK8975_MAG_REG_ST1, &status, 1);
+    ack = busReadRegisterBuffer(dev, AK8975_MAG_REG_ST1, &status, 1);
     if (!ack || (status & ST1_REG_DATA_READY) == 0) {
         return false;
     }
 
-    busReadRegisterBuffer(busdev, AK8975_MAG_REG_HXL, buf, 6); // read from AK8975_MAG_REG_HXL to AK8975_MAG_REG_HZH
+    busReadRegisterBuffer(dev, AK8975_MAG_REG_HXL, buf, 6); // read from AK8975_MAG_REG_HXL to AK8975_MAG_REG_HZH
 
-    ack = busReadRegisterBuffer(busdev, AK8975_MAG_REG_ST2, &status, 1);
+    ack = busReadRegisterBuffer(dev, AK8975_MAG_REG_ST2, &status, 1);
     if (!ack) {
         return false;
     }
 
-    busWriteRegister(busdev, AK8975_MAG_REG_CNTL, CNTL_BIT_16_BIT | CNTL_MODE_ONCE); // start reading again    uint8_t status2 = buf[6];
+    busWriteRegister(dev, AK8975_MAG_REG_CNTL, CNTL_BIT_16_BIT | CNTL_MODE_ONCE); // start reading again    uint8_t status2 = buf[6];
 
     if (status & ST2_REG_DATA_ERROR) {
         return false;
@@ -157,13 +157,13 @@ bool ak8975Detect(magDev_t *mag)
 {
     uint8_t sig = 0;
 
-    busDevice_t *busdev = &mag->busdev;
+    extDevice_t *dev = &mag->dev;
 
-    if (busdev->bustype == BUSTYPE_I2C && busdev->busdev_u.i2c.address == 0) {
-        busdev->busdev_u.i2c.address = AK8975_MAG_I2C_ADDRESS;
+    if (dev->bus->busType == BUSTYPE_I2C && dev->busType_u.i2c.address == 0) {
+        dev->busType_u.i2c.address = AK8975_MAG_I2C_ADDRESS;
     }
 
-    bool ack = busReadRegisterBuffer(busdev, AK8975_MAG_REG_WIA, &sig, 1);
+    bool ack = busReadRegisterBuffer(dev, AK8975_MAG_REG_WIA, &sig, 1);
 
     if (!ack || sig != AK8975_DEVICE_ID) { // 0x48 / 01001000 / 'H'
         return false;

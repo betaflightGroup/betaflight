@@ -191,34 +191,34 @@
 static uint32_t rawP = 0;
 static uint16_t rawT = 0;
 
-bool lpsWriteCommand(busDevice_t *busdev, uint8_t cmd, uint8_t byte)
+bool lpsWriteCommand(extDevice_t *dev, uint8_t cmd, uint8_t byte)
 {
-    return spiBusWriteRegister(busdev, cmd, byte);
+    return spiWriteRegRB(dev, cmd, byte);
 }
 
-bool lpsReadCommand(busDevice_t *busdev, uint8_t cmd, uint8_t *data, uint8_t len)
+bool lpsReadCommand(extDevice_t *dev, uint8_t cmd, uint8_t *data, uint8_t len)
 {
-    return spiBusReadRegisterBuffer(busdev, cmd | 0x80 | 0x40, data, len);
+    return spiReadRegMskBufRB(dev, cmd | 0x80 | 0x40, data, len);
 }
 
-bool lpsWriteVerify(busDevice_t *busdev, uint8_t cmd, uint8_t byte)
+bool lpsWriteVerify(extDevice_t *dev, uint8_t cmd, uint8_t byte)
 {
     uint8_t temp = 0xff;
-    spiBusWriteRegister(busdev, cmd, byte);
-    spiBusReadRegisterBuffer(busdev, cmd, &temp, 1);
+    spiWriteReg(dev, cmd, byte);
+    temp = spiReadRegMsk(dev, cmd);
     if (byte == temp) return true;
     return false;
 }
 
-static void lpsOn(busDevice_t *busdev, uint8_t CTRL1_val)
+static void lpsOn(extDevice_t *dev, uint8_t CTRL1_val)
 {
-    lpsWriteCommand(busdev, LPS_CTRL1, CTRL1_val | 0x80);
+    lpsWriteCommand(dev, LPS_CTRL1, CTRL1_val | 0x80);
     //Instead of delay let's ready status reg
 }
 
-static void lpsOff(busDevice_t *busdev)
+static void lpsOff(extDevice_t *dev)
 {
-    lpsWriteCommand(busdev, LPS_CTRL1, 0x00 | (0x01 << 2));
+    lpsWriteCommand(dev, LPS_CTRL1, 0x00 | (0x01 << 2));
 }
 
 static void lpsNothing(baroDev_t *baro)
@@ -236,10 +236,10 @@ static bool lpsNothingBool(baroDev_t *baro)
 static bool lpsRead(baroDev_t *baro)
 {
     uint8_t status = 0x00;
-    lpsReadCommand(&baro->busdev, LPS_STATUS, &status, 1);
+    lpsReadCommand(&baro->dev, LPS_STATUS, &status, 1);
     if (status & 0x03) {
         uint8_t temp[5];
-        lpsReadCommand(&baro->busdev, LPS_OUT_XL, temp, 5);
+        lpsReadCommand(&baro->dev, LPS_OUT_XL, temp, 5);
 
         /* Build the raw data */
         rawP = temp[0] | (temp[1] << 8) | (temp[2] << 16) | ((temp[2] & 0x80) ? 0xff000000 : 0);
@@ -261,36 +261,32 @@ static void lpsCalculate(int32_t *pressure, int32_t *temperature)
 bool lpsDetect(baroDev_t *baro)
 {
     //Detect
-    busDevice_t *busdev = &baro->busdev;
+    extDevice_t *dev = &baro->dev;
 
-    if (busdev->bustype != BUSTYPE_SPI) {
+    if (dev->bus->busType != BUSTYPE_SPI) {
         return false;
     }
 
-    IOInit(busdev->busdev_u.spi.csnPin, OWNER_BARO_CS, 0);
-    IOConfigGPIO(busdev->busdev_u.spi.csnPin, IOCFG_OUT_PP);
-    IOHi(busdev->busdev_u.spi.csnPin); // Disable
-#ifdef USE_SPI_TRANSACTION
-    spiBusTransactionInit(busdev, SPI_MODE3_POL_HIGH_EDGE_2ND, spiCalculateDivider(LPS_MAX_SPI_CLK_HZ)); // Baro can work only on up to 10Mhz SPI bus
-#else
-    spiBusSetDivisor(busdev, spiCalculateDivider(LPS_MAX_SPI_CLK_HZ)); // Baro can work only on up to 10Mhz SPI bus
-#endif
+    IOInit(dev->busType_u.spi.csnPin, OWNER_BARO_CS, 0);
+    IOConfigGPIO(dev->busType_u.spi.csnPin, IOCFG_OUT_PP);
+    IOHi(dev->busType_u.spi.csnPin); // Disable
+    spiSetClkDivisor(dev, spiCalculateDivider(LPS_MAX_SPI_CLK_HZ));
 
     uint8_t temp = 0x00;
-    lpsReadCommand(&baro->busdev, LPS_WHO_AM_I, &temp, 1);
+    lpsReadCommand(&baro->dev, LPS_WHO_AM_I, &temp, 1);
     if (temp != LPS25_ID && temp != LPS22_ID && temp != LPS33_ID && temp != LPS35_ID) {
         return false;
     }
 
     //Init, if writeVerify is false fallback to false on detect
     bool ret = false;
-    lpsOff(busdev);
-    ret = lpsWriteVerify(busdev, LPS_CTRL2, (0x00 << 1)); if (ret != true) return false;
-    ret = lpsWriteVerify(busdev, LPS_RES_CONF, (LPS_AVT_64 | LPS_AVP_512)); if (ret != true) return false;
-    ret = lpsWriteVerify(busdev, LPS_CTRL4, 0x01); if (ret != true) return false;
-    lpsOn(busdev, (0x04 << 4) | (0x01 << 1) | (0x01 << 2) | (0x01 << 3));
+    lpsOff(dev);
+    ret = lpsWriteVerify(dev, LPS_CTRL2, (0x00 << 1)); if (ret != true) return false;
+    ret = lpsWriteVerify(dev, LPS_RES_CONF, (LPS_AVT_64 | LPS_AVP_512)); if (ret != true) return false;
+    ret = lpsWriteVerify(dev, LPS_CTRL4, 0x01); if (ret != true) return false;
+    lpsOn(dev, (0x04 << 4) | (0x01 << 1) | (0x01 << 2) | (0x01 << 3));
 
-    lpsReadCommand(busdev, LPS_CTRL1, &temp, 1);
+    lpsReadCommand(dev, LPS_CTRL1, &temp, 1);
 
     baro->combined_read = true;
     baro->ut_delay = 1;

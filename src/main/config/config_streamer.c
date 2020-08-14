@@ -389,6 +389,8 @@ static int write_word(config_streamer_t *c, config_streamer_buffer_align_type_t 
 
     uint32_t flashSectorSize = flashGeometry->sectorSize;
     uint32_t flashPageSize = flashGeometry->pageSize;
+    const uint8_t *buffers[1];
+    uint32_t bufferSizes[1];
 
     bool onPageBoundary = (flashAddress % flashPageSize == 0);
     if (onPageBoundary) {
@@ -402,10 +404,13 @@ static int write_word(config_streamer_t *c, config_streamer_buffer_align_type_t 
             flashEraseSector(flashAddress);
         }
 
-        flashPageProgramBegin(flashAddress);
+        flashPageProgramBegin(flashAddress, NULL);
     }
 
-    flashPageProgramContinue((uint8_t *)buffer, CONFIG_STREAMER_BUFFER_SIZE);
+    buffers[0] = (uint8_t *)buffer;
+    bufferSizes[0] = CONFIG_STREAMER_BUFFER_SIZE;
+
+    flashPageProgramContinue(buffers, bufferSizes, 1);
 
 #elif defined(CONFIG_IN_RAM) || defined(CONFIG_IN_SDCARD)
     if (c->address == (uintptr_t)&eepromData[0]) {
