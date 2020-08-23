@@ -253,22 +253,38 @@ int osdConvertTemperatureToSelectedUnit(int tempInDegreesCelcius)
 static void osdFormatAltitudeString(char * buff, int32_t altitudeCm)
 {
     const int alt = osdGetMetersToSelectedUnit(altitudeCm) / 10;
+    uint8_t roundPart = 0;
 
     int pos = 0;
     buff[pos++] = SYM_ALTITUDE;
     if (alt < 0) {
         buff[pos++] = '-';
     }
-    tfp_sprintf(buff + pos, "%01d.%01d%c", abs(alt) / 10 , abs(alt) % 10, osdGetMetersToSelectedUnitSymbol());
+
+    switch (osdConfig()->altitude_decimals) {
+    case 0:
+        if ((abs(alt) % 10) >= 5) {
+            roundPart = 1;
+        }
+        tfp_sprintf(buff + pos, "%01d%c", abs(alt) / 10 + roundPart, osdGetMetersToSelectedUnitSymbol());
+        break;
+    default:
+        tfp_sprintf(buff + pos, "%01d.%01d%c", abs(alt) / 10, abs(alt) % 10, osdGetMetersToSelectedUnitSymbol());
+        break;
+    }
 }
 
 #ifdef USE_GPS
-static void osdFormatCoordinate(char *buff, char sym, int32_t val)
+static void osdFormatCoordinate(char *buff, char sym, int32_t val, uint8_t coord_dec)
 {
-    // latitude maximum integer width is 3 (-90).
-    // longitude maximum integer width is 4 (-180).
-    // We show 7 decimals, so we need to use 12 characters:
-    // eg: s-180.1234567z   s=symbol, z=zero terminator, decimal separator  between 0 and 1
+    // latitude maximum integer width is 3 (-90)
+    // longitude maximum integer width is 4 (-180)
+    // decimals from 4 to 7 according to user setting
+
+    // example for 7 decimals:
+    // total maximum length is 13 plus zero terminator:
+    // s-180.1234567z
+    // s=symbol, z=zero terminator, decimal separator between 0 and 1
 
     int pos = 0;
     buff[pos++] = sym;
@@ -276,7 +292,42 @@ static void osdFormatCoordinate(char *buff, char sym, int32_t val)
         buff[pos++] = '-';
         val = -val;
     }
-    tfp_sprintf(buff + pos, "%d.%07d", val / GPS_DEGREES_DIVIDER, val % GPS_DEGREES_DIVIDER);
+
+    char coordFormat[8];
+    int32_t decimalPart = labs(val % GPS_DEGREES_DIVIDER);
+    int32_t roundPart = 0;
+
+    switch (coord_dec) {
+    case 4:
+        strcpy(coordFormat, "%d.%04d");
+        roundPart = labs(decimalPart % 1000);
+        decimalPart /= 1000;
+        if (roundPart >= 500) {
+            decimalPart += 1;
+        }
+        break;
+    case 5:
+        strcpy(coordFormat, "%d.%05d");
+        roundPart = labs(decimalPart % 100);
+        decimalPart /= 100;
+        if (roundPart >= 50) {
+            decimalPart += 1;
+        }
+        break;
+    case 6:
+        strcpy(coordFormat, "%d.%06d");
+        roundPart = labs(decimalPart % 10);
+        decimalPart /= 10;
+        if (roundPart >= 5) {
+            decimalPart += 1;
+        }
+        break;
+    default:
+        strcpy(coordFormat, "%d.%07d");
+        break;
+    }
+
+    tfp_sprintf(buff + pos, coordFormat, val / GPS_DEGREES_DIVIDER, decimalPart);
 }
 #endif // USE_GPS
 
@@ -713,7 +764,18 @@ static void osdElementCrosshairs(osdElementParms_t *element)
 static void osdElementCurrentDraw(osdElementParms_t *element)
 {
     const int32_t amperage = getAmperage();
-    tfp_sprintf(element->buff, "%3d.%02d%c", abs(amperage) / 100, abs(amperage) % 100, SYM_AMP);
+
+    switch (osdConfig()->current_draw_decimals) {
+    case 0:
+        tfp_sprintf(element->buff, "%3d%c", abs(amperage) / 100, SYM_AMP);
+        break;
+    case 1:
+        tfp_sprintf(element->buff, "%3d.%01d%c", abs(amperage) / 100, (abs(amperage) / 10) % 10, SYM_AMP);
+        break;
+    default:
+        tfp_sprintf(element->buff, "%3d.%02d%c", abs(amperage) / 100, abs(amperage) % 100, SYM_AMP);
+        break;
+    }
 }
 
 static void osdElementDebug(osdElementParms_t *element)
@@ -902,12 +964,12 @@ static void osdElementGpsHomeDistance(osdElementParms_t *element)
 
 static void osdElementGpsLatitude(osdElementParms_t *element)
 {
-    osdFormatCoordinate(element->buff, SYM_LAT, gpsSol.llh.lat);
+    osdFormatCoordinate(element->buff, SYM_LAT, gpsSol.llh.lat, osdConfig()->gps_coordinates_decimals);
 }
 
 static void osdElementGpsLongitude(osdElementParms_t *element)
 {
-    osdFormatCoordinate(element->buff, SYM_LON, gpsSol.llh.lon);
+    osdFormatCoordinate(element->buff, SYM_LON, gpsSol.llh.lon, osdConfig()->gps_coordinates_decimals);
 }
 
 static void osdElementGpsSats(osdElementParms_t *element)

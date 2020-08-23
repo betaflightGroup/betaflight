@@ -1245,6 +1245,13 @@ const clivalue_t valueTable[] = {
 // PG_OSD_CONFIG
 #ifdef USE_OSD
     { "osd_units",                  VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_UNIT }, PG_OSD_CONFIG, offsetof(osdConfig_t, units) },
+    { "osd_current_draw_decimals",  VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 2 }, PG_OSD_CONFIG, offsetof(osdConfig_t, current_draw_decimals) },
+#if defined(USE_BARO) || defined(USE_GPS)
+    { "osd_altitude_decimals",      VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 1 }, PG_OSD_CONFIG, offsetof(osdConfig_t, altitude_decimals) },
+#endif
+#ifdef USE_GPS
+    { "osd_gps_coordinates_decimals", VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 4, 7 }, PG_OSD_CONFIG, offsetof(osdConfig_t, gps_coordinates_decimals) },
+#endif
 
 // Please try to keep the OSD warnings in the same order as presented in the Configurator.
 // This makes it easier for the user to relate the CLI output as warnings are in the same relative

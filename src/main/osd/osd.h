@@ -263,6 +263,9 @@ typedef struct osdConfig_s {
     uint8_t rssi_alarm;
 
     osd_unit_e units;
+    uint8_t current_draw_decimals;
+    uint8_t altitude_decimals;
+    uint8_t gps_coordinates_decimals;
 
     uint16_t timers[OSD_TIMER_COUNT];
     uint32_t enabledWarnings;

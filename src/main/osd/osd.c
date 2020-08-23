@@ -318,6 +318,10 @@ void pgResetFn_osdConfig(osdConfig_t *osdConfig)
     osdConfig->ahMaxPitch = 20; // 20 degrees
     osdConfig->ahMaxRoll = 40; // 40 degrees
 
+    osdConfig->current_draw_decimals = 2;
+    osdConfig->altitude_decimals = 1;
+    osdConfig->gps_coordinates_decimals = 7;
+
     osdConfig->osdProfileIndex = 1;
     osdConfig->ahInvert = false;
     for (int i=0; i < OSD_PROFILE_COUNT; i++) {
