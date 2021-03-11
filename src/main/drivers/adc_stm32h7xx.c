@@ -95,7 +95,7 @@ const adcDevice_t adcHardware[ADCDEV_COUNT] = {
 
 adcDevice_t adcDevice[ADCDEV_COUNT];
 
-#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx)
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx)
 #define ADC_DEVICE_FOR_INTERNAL ADC_DEVICES_3
 #elif defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
 #define ADC_DEVICE_FOR_INTERNAL ADC_DEVICES_2
@@ -251,10 +251,10 @@ int adcFindTagMapEntry(ioTag_t tag)
 }
 
 // H743, H750 and H7A3 seems to use 16-bit precision value,
-// while H723 and H725 seems to use 12-bit precision value.
+// while H723 and H725, H730 seems to use 12-bit precision value.
 #if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
 #define VREFINT_CAL_SHIFT 4
-#elif defined(STM32H723xx) || defined(STM32H725xx)
+#elif defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx)
 #define VREFINT_CAL_SHIFT 0
 #else
 #error Unknown MCU

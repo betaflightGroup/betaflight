@@ -305,6 +305,33 @@ pllConfig_t pll1Config72x = {
 
 #define MCU_RCC_CRS_SYNC_SOURCE RCC_CRS_SYNC_SOURCE_USB1
 
+#elif defined(STM32H730xx)
+
+// Nominal max 550MHz, but >520Mhz requires ECC to be disabled, CPUFREQ_BOOST set in option bytes and prevents OCTOSPI clock from running at the correct clock speed.
+// 4.9.24 FLASH option status register 2 (FLASH_OPTSR2_CUR)
+// "Bit 2CPUFREQ_BOOST: CPU frequency boost status bitThis bit indicates whether the CPU frequency can be boosted or not. When it is set, the ECC on ITCM and DTCM are no more used"
+// ...
+// So use 520Mhz so that OCTOSPI clk can be 200Mhz with OCTOPSI prescaler 2 via PLL2R or 130Mhz with OCTOPSI prescaler 1 via PLL1Q
+
+pllConfig_t pll1Config73x = {
+    .clockMhz = 520,
+    .m = 2,
+    .n = 130,
+    .p = 1,
+    .q = 4,
+    .r = 2,
+    .vos = PWR_REGULATOR_VOLTAGE_SCALE0,
+    .vciRange = RCC_PLL1VCIRANGE_1,
+};
+
+#define MCU_HCLK_DIVIDER RCC_HCLK_DIV2
+
+// RM0468 (Rev.2) Table 16.
+// 520MHz (AXI Interface clock) at VOS0 is 3WS
+#define MCU_FLASH_LATENCY FLASH_LATENCY_3
+
+#define MCU_RCC_CRS_SYNC_SOURCE RCC_CRS_SYNC_SOURCE_USB1
+
 #else
 #error Unknown MCU type
 #endif
@@ -338,6 +365,8 @@ static void SystemClockHSE_Config(void)
     pll1Config = &pll1Config7A3;
 #elif defined(STM32H723xx) || defined(STM32H725xx)
     pll1Config = &pll1Config72x;
+#elif defined(STM32H730xx)
+    pll1Config = &pll1Config73x;
 #else
 #error Unknown MCU type
 #endif
@@ -450,8 +479,8 @@ void SystemClock_Config(void)
 {
     // Configure power supply
 
-#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx)
-    // Legacy H7 devices (H743, H750) and newer but SMPS-less devices(H7A3, H723)
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx) || defined(STM32H730xx)
+    // Legacy H7 devices (H743, H750) and newer but SMPS-less devices(H7A3, H723, H730)
 
     HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
 
@@ -620,6 +649,8 @@ void SystemClock_Config(void)
 
 #endif
 
+    // TODO H730 OCTOSPI clock for 100Mhz flash chips should use PLL2R at 200Mhz
+
     // Configure MCO clocks for clock test/verification
 
     // Possible sources for MCO1:
@@ -716,7 +747,7 @@ void SystemInit (void)
     RCC->CR |= RCC_CR_HSEON;
     RCC->CR |= RCC_CR_HSI48ON;
 
-#if defined(STM32H743xx) || defined(STM32H750xx)
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx)
     /* Reset D1CFGR register */
     RCC->D1CFGR = 0x00000000;
 
@@ -773,7 +804,7 @@ void SystemInit (void)
 
     /* Configure the Vector Table location add offset address ------------------*/
 #if defined(VECT_TAB_SRAM)
-#if defined(STM32H743xx) || defined(STM32H750xx)
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx)
     SCB->VTOR = D1_AXISRAM_BASE  | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal ITCMSRAM */
 #elif defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
     SCB->VTOR = CD_AXISRAM_BASE  | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal ITCMSRAM */

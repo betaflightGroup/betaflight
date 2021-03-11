@@ -90,7 +90,7 @@ const struct ioPortDef_s ioPortDefs[] = {
     { RCC_AHB4(GPIOF) },
     { RCC_AHB4(GPIOG) },
     { RCC_AHB4(GPIOH) },
-#if !(defined(STM32H723xx) || defined(STM32H725xx))
+#if !(defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx))
     { RCC_AHB4(GPIOI) },
 #endif
 };
