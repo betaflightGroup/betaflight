@@ -56,8 +56,6 @@
 #include "rc.h"
 
 
-typedef float (applyRatesFn)(const int axis, float rcCommandf, const float rcCommandfAbs);
-
 #ifdef USE_INTERPOLATED_SP
 // Setpoint in degrees/sec before RC-Smoothing is applied
 static float rawSetpoint[XYZ_AXIS_COUNT];
@@ -68,7 +66,6 @@ static float oldRcCommand[XYZ_AXIS_COUNT];
 static float setpointRate[3], rcDeflection[3], rcDeflectionAbs[3];
 static float throttlePIDAttenuation;
 static bool reverseMotors = false;
-static applyRatesFn *applyRates;
 static uint16_t currentRxRefreshRate;
 static bool isRxDataNew = false;
 static float rcCommandDivider = 500.0f;
@@ -152,65 +149,70 @@ STATIC_ASSERT(CONTROL_RATE_CONFIG_RATE_LIMIT_MAX <= SETPOINT_RATE_LIMIT, CONTROL
 
 #define RC_RATE_INCREMENTAL 14.54f
 
-float applyBetaflightRates(const int axis, float rcCommandf, const float rcCommandfAbs)
+float applyBetaflightRates(float rcCommandf, uint8_t rateprofileRcRate, uint8_t rateprofileRate, uint8_t rateprofileExpo)
 {
-    if (currentControlRateProfile->rcExpo[axis]) {
-        const float expof = currentControlRateProfile->rcExpo[axis] / 100.0f;
+    const float rcCommandfAbs = fabsf(rcCommandf);
+    if (rateprofileExpo) {
+        const float expof = rateprofileExpo / 100.0f;
         rcCommandf = rcCommandf * power3(rcCommandfAbs) * expof + rcCommandf * (1 - expof);
     }
 
-    float rcRate = currentControlRateProfile->rcRates[axis] / 100.0f;
+    float rcRate = rateprofileRcRate / 100.0f;
     if (rcRate > 2.0f) {
         rcRate += RC_RATE_INCREMENTAL * (rcRate - 2.0f);
     }
     float angleRate = 200.0f * rcRate * rcCommandf;
-    if (currentControlRateProfile->rates[axis]) {
-        const float rcSuperfactor = 1.0f / (constrainf(1.0f - (rcCommandfAbs * (currentControlRateProfile->rates[axis] / 100.0f)), 0.01f, 1.00f));
+    if (rateprofileRate) {
+        const float rcSuperfactor = 1.0f / (constrainf(1.0f - (rcCommandfAbs * (rateprofileRate / 100.0f)), 0.01f, 1.00f));
         angleRate *= rcSuperfactor;
     }
 
     return angleRate;
 }
 
-float applyRaceFlightRates(const int axis, float rcCommandf, const float rcCommandfAbs)
+float applyRaceFlightRates(float rcCommandf, uint8_t rateprofileRcRate, uint8_t rateprofileRate, uint8_t rateprofileExpo)
 {
+    const float rcCommandfAbs = fabsf(rcCommandf);
     // -1.0 to 1.0 ranged and curved
-    rcCommandf = ((1.0f + 0.01f * currentControlRateProfile->rcExpo[axis] * (rcCommandf * rcCommandf - 1.0f)) * rcCommandf);
+    rcCommandf = ((1.0f + 0.01f * rateprofileExpo * (rcCommandf * rcCommandf - 1.0f)) * rcCommandf);
     // convert to -2000 to 2000 range using acro+ modifier
-    float angleRate = 10.0f * currentControlRateProfile->rcRates[axis] * rcCommandf;
-    angleRate = angleRate * (1 + rcCommandfAbs * (float)currentControlRateProfile->rates[axis] * 0.01f);
+    float angleRate = 10.0f * rateprofileRcRate * rcCommandf;
+    angleRate = angleRate * (1 + rcCommandfAbs * (float)rateprofileRate * 0.01f);
 
     return angleRate;
 }
 
-float applyKissRates(const int axis, float rcCommandf, const float rcCommandfAbs)
+float applyKissRates(float rcCommandf, uint8_t rateprofileRcRate, uint8_t rateprofileRate, uint8_t rateprofileExpo)
 {
-    const float rcCurvef = currentControlRateProfile->rcExpo[axis] / 100.0f;
+    const float rcCommandfAbs = fabsf(rcCommandf);
+    const float rcCurvef = rateprofileExpo / 100.0f;
 
-    float kissRpyUseRates = 1.0f / (constrainf(1.0f - (rcCommandfAbs * (currentControlRateProfile->rates[axis] / 100.0f)), 0.01f, 1.00f));
-    float kissRcCommandf = (power3(rcCommandf) * rcCurvef + rcCommandf * (1 - rcCurvef)) * (currentControlRateProfile->rcRates[axis] / 1000.0f);
+    float kissRpyUseRates = 1.0f / (constrainf(1.0f - (rcCommandfAbs * (rateprofileRate / 100.0f)), 0.01f, 1.00f));
+    float kissRcCommandf = (power3(rcCommandf) * rcCurvef + rcCommandf * (1 - rcCurvef)) * (rateprofileRcRate / 1000.0f);
     float kissAngle = constrainf(((2000.0f * kissRpyUseRates) * kissRcCommandf), -SETPOINT_RATE_LIMIT, SETPOINT_RATE_LIMIT);
 
     return kissAngle;
 }
 
-float applyActualRates(const int axis, float rcCommandf, const float rcCommandfAbs)
+float applyActualRates(float rcCommandf, uint8_t rateprofileRcRate, uint8_t rateprofileRate, uint8_t rateprofileExpo)
 {
-    float expof = currentControlRateProfile->rcExpo[axis] / 100.0f;
+    const float rcCommandfAbs = fabsf(rcCommandf);
+    float expof = rateprofileExpo / 100.0f;
     expof = rcCommandfAbs * (powerf(rcCommandf, 5) * expof + rcCommandf * (1 - expof));
 
-    const float centerSensitivity = currentControlRateProfile->rcRates[axis] * 10.0f;
-    const float stickMovement = MAX(0, currentControlRateProfile->rates[axis] * 10.0f - centerSensitivity);
+    const float centerSensitivity = rateprofileRcRate * 10.0f;
+    const float stickMovement = MAX(0, rateprofileRate * 10.0f - centerSensitivity);
     const float angleRate = rcCommandf * centerSensitivity + stickMovement * expof;
 
     return angleRate;
 }
 
-float applyQuickRates(const int axis, float rcCommandf, const float rcCommandfAbs)
+float applyQuickRates(float rcCommandf, uint8_t rateprofileRcRate, uint8_t rateprofileRate, uint8_t rateprofileExpo)
 {
-    const uint16_t rcRate = currentControlRateProfile->rcRates[axis] * 2;
-    const uint16_t maxDPS = MAX(currentControlRateProfile->rates[axis] * 10, rcRate);
-    const float expof = currentControlRateProfile->rcExpo[axis] / 100.0f;
+    const float rcCommandfAbs = fabsf(rcCommandf);
+    const uint16_t rcRate = rateprofileRcRate * 2;
+    const uint16_t maxDPS = MAX(rateprofileRate * 10, rcRate);
+    const float expof = rateprofileExpo / 100.0f;
     const float superFactorConfig = ((float)maxDPS / rcRate - 1) / ((float)maxDPS / rcRate);
 
     float curve;
@@ -230,9 +232,29 @@ float applyQuickRates(const int axis, float rcCommandf, const float rcCommandfAb
     return angleRate;
 }
 
+typedef float (*applyRatesFn)(float rcCommandf, uint8_t rateprofileRcRate, uint8_t rateprofileRate, uint8_t rateprofileExpo);
+
+const applyRatesFn applyRatesFunctions[RATES_TYPE_COUNT] = {
+    [RATES_TYPE_BETAFLIGHT] = applyBetaflightRates,
+    [RATES_TYPE_RACEFLIGHT] = applyRaceFlightRates,
+    [RATES_TYPE_KISS]       = applyKissRates,
+    [RATES_TYPE_ACTUAL]     = applyActualRates,
+    [RATES_TYPE_QUICK]      = applyQuickRates,
+};
+
+float applyRatesType(float rcCommandf, ratesType_e ratesType, uint8_t rateprofileRcRate, uint8_t rateprofileRate, uint8_t rateprofileExpo)
+{
+    return applyRatesFunctions[ratesType](rcCommandf, rateprofileRcRate, rateprofileRate, rateprofileExpo);
+}
+
+static float applyRates(const int axis, float rcCommandf)
+{
+    return applyRatesType(rcCommandf, currentControlRateProfile->rates_type, currentControlRateProfile->rcRates[axis], currentControlRateProfile->rates[axis], currentControlRateProfile->rcExpo[axis]);
+}
+
 float applyCurve(int axis, float deflection)
 {
-    return applyRates(axis, deflection, fabsf(deflection));
+    return applyRates(axis, deflection);
 }
 
 float getRcCurveSlope(int axis, float deflection)
@@ -268,7 +290,7 @@ static void calculateSetpointRate(int axis)
         const float rcCommandfAbs = fabsf(rcCommandf);
         rcDeflectionAbs[axis] = rcCommandfAbs;
 
-        angleRate = applyRates(axis, rcCommandf, rcCommandfAbs);
+        angleRate = applyRates(axis, rcCommandf);
     }
     // Rate limit from profile (deg/sec)
     setpointRate[axis] = constrainf(angleRate, -1.0f * currentControlRateProfile->rate_limit[axis], 1.0f * currentControlRateProfile->rate_limit[axis]);
@@ -708,8 +730,7 @@ FAST_CODE void processRcCommand(void)
             } else {
                 rcCommandf = rcCommand[i] / rcCommandDivider;
             }
-            const float rcCommandfAbs = fabsf(rcCommandf);
-            rawSetpoint[i] = applyRates(i, rcCommandf, rcCommandfAbs);
+            rawSetpoint[i] = applyRates(i, rcCommandf);
             rawDeflection[i] = rcCommandf;
         }
     }
@@ -872,30 +893,6 @@ void initRcProcessing(void)
         lookupThrottleRC[i] = PWM_RANGE_MIN + (PWM_RANGE_MAX - PWM_RANGE_MIN) * lookupThrottleRC[i] / 1000; // [MINTHROTTLE;MAXTHROTTLE]
     }
 
-    switch (currentControlRateProfile->rates_type) {
-    case RATES_TYPE_BETAFLIGHT:
-    default:
-        applyRates = applyBetaflightRates;
-
-        break;
-    case RATES_TYPE_RACEFLIGHT:
-        applyRates = applyRaceFlightRates;
-
-        break;
-    case RATES_TYPE_KISS:
-        applyRates = applyKissRates;
-
-        break;
-    case RATES_TYPE_ACTUAL:
-        applyRates = applyActualRates;
-
-        break;
-    case RATES_TYPE_QUICK:
-        applyRates = applyQuickRates;
-
-        break;
-    }
-
     interpolationChannels = 0;
     switch (rxConfig()->rcInterpolationChannels) {
     case INTERPOLATION_CHANNELS_RPYT:
@@ -921,7 +918,7 @@ void initRcProcessing(void)
     }
 
 #ifdef USE_YAW_SPIN_RECOVERY
-    const int maxYawRate = (int)applyRates(FD_YAW, 1.0f, 1.0f);
+    const int maxYawRate = (int)applyRates(FD_YAW, 1.0f);
     initYawSpinRecovery(maxYawRate);
 #endif
 }

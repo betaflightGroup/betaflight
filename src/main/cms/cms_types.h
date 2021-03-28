@@ -37,6 +37,7 @@ typedef enum
     OME_Bool,
     OME_INT8,
     OME_UINT8,
+    OME_UINT8_SCALED,   // 0-255 scaled by base10 exponent that ranges from -3 to 2. So exponent=1 means 0-2550; exponent=-1 means 0-25.5
     OME_UINT16,
     OME_INT16,
     OME_UINT32,
@@ -126,6 +127,15 @@ typedef struct
     uint8_t max;
     uint8_t step;
 } OSD_UINT8_t;
+
+typedef struct
+{
+    uint8_t *val;
+    uint8_t min;
+    uint8_t max;
+    uint8_t step;
+    int8_t exponent;
+} OSD_UINT8_SCALED_t;
 
 typedef struct
 {

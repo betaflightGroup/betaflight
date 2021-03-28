@@ -28,6 +28,7 @@
 extern "C" {
     #include "platform.h"
     #include "target.h"
+    #include "common/printf.h"
     #include "cms/cms.h"
     #include "cms/cms_types.h"
     #include "fc/rc_modes.h"

@@ -37,26 +37,44 @@
 
 controlRateConfig_t *currentControlRateProfile;
 
+#define DEFAULT_RATES_TYPE RATES_TYPE_BETAFLIGHT
+
+const ratesSettingsTypes_t ratesSettingLimits[RATES_TYPE_COUNT] = {
+    [RATES_TYPE_BETAFLIGHT] = { 255, 100, 100 },
+    [RATES_TYPE_RACEFLIGHT] = { 200, 255, 100 },
+    [RATES_TYPE_KISS]       = { 255,  99, 100 },
+    [RATES_TYPE_ACTUAL]     = { 200, 200, 100 },
+    [RATES_TYPE_QUICK]      = { 255, 200, 100 },
+};
+
+const ratesSettingsTypes_t ratesSettingDefaults[RATES_TYPE_COUNT] = {
+    [RATES_TYPE_BETAFLIGHT] = { 100, 70,  0 },
+    [RATES_TYPE_RACEFLIGHT] = {  37, 80, 50 },
+    [RATES_TYPE_KISS]       = { 100, 70,  0 },
+    [RATES_TYPE_ACTUAL]     = {  20, 67, 54 },
+    [RATES_TYPE_QUICK]      = { 100, 67,  0 },
+};
+
 PG_REGISTER_ARRAY_WITH_RESET_FN(controlRateConfig_t, CONTROL_RATE_PROFILE_COUNT, controlRateProfiles, PG_CONTROL_RATE_PROFILES, 4);
 
 void pgResetFn_controlRateProfiles(controlRateConfig_t *controlRateConfig)
 {
     for (int i = 0; i < CONTROL_RATE_PROFILE_COUNT; i++) {
-        RESET_CONFIG(controlRateConfig_t, &controlRateConfig[i],
+        RESET_CONFIG_2(controlRateConfig_t, &controlRateConfig[i],
             .thrMid8 = 50,
             .thrExpo8 = 0,
             .dynThrPID = 65,
             .tpa_breakpoint = 1350,
-            .rates_type = RATES_TYPE_BETAFLIGHT,
-            .rcRates[FD_ROLL] = 100,
-            .rcRates[FD_PITCH] = 100,
-            .rcRates[FD_YAW] = 100,
-            .rcExpo[FD_ROLL] = 0,
-            .rcExpo[FD_PITCH] = 0,
-            .rcExpo[FD_YAW] = 0,
-            .rates[FD_ROLL] = 70,
-            .rates[FD_PITCH] = 70,
-            .rates[FD_YAW] = 70,
+            .rates_type = DEFAULT_RATES_TYPE,
+            .rcRates[FD_ROLL] = ratesSettingDefaults[DEFAULT_RATES_TYPE].rc_rate,
+            .rcRates[FD_PITCH] = ratesSettingDefaults[DEFAULT_RATES_TYPE].rc_rate,
+            .rcRates[FD_YAW] = ratesSettingDefaults[DEFAULT_RATES_TYPE].rc_rate,
+            .rcExpo[FD_ROLL] = ratesSettingDefaults[DEFAULT_RATES_TYPE].expo,
+            .rcExpo[FD_PITCH] = ratesSettingDefaults[DEFAULT_RATES_TYPE].expo,
+            .rcExpo[FD_YAW] = ratesSettingDefaults[DEFAULT_RATES_TYPE].expo,
+            .rates[FD_ROLL] = ratesSettingDefaults[DEFAULT_RATES_TYPE].srate,
+            .rates[FD_PITCH] = ratesSettingDefaults[DEFAULT_RATES_TYPE].srate,
+            .rates[FD_YAW] = ratesSettingDefaults[DEFAULT_RATES_TYPE].srate,
             .throttle_limit_type = THROTTLE_LIMIT_TYPE_OFF,
             .throttle_limit_percent = 100,
             .rate_limit[FD_ROLL] = CONTROL_RATE_CONFIG_RATE_LIMIT_MAX,
@@ -70,14 +88,6 @@ void pgResetFn_controlRateProfiles(controlRateConfig_t *controlRateConfig)
         );
     }
 }
-
-const ratesSettingsLimits_t ratesSettingLimits[RATES_TYPE_COUNT] = {
-    [RATES_TYPE_BETAFLIGHT] = { 255, 100, 100 },
-    [RATES_TYPE_RACEFLIGHT] = { 200, 255, 100 },
-    [RATES_TYPE_KISS]       = { 255,  99, 100 },
-    [RATES_TYPE_ACTUAL]     = { 200, 200, 100 },
-    [RATES_TYPE_QUICK]      = { 255, 200, 100 },
-};
 
 void loadControlRateProfile(void)
 {

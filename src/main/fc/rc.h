@@ -22,6 +22,7 @@
 
 #include "drivers/time.h"
 
+#include "fc/controlrate_profile.h"
 #include "fc/rc_controls.h"
 
 typedef enum {
@@ -57,3 +58,4 @@ uint32_t getRcFrameNumber();
 float getRcCurveSlope(int axis, float deflection);
 void updateRcRefreshRate(timeUs_t currentTimeUs);
 uint16_t getCurrentRxRefreshRate(void);
+float applyRatesType(float rcCommandf, ratesType_e ratesType, uint8_t rateprofileRcRate, uint8_t rateprofileRate, uint8_t rateprofileExpo);

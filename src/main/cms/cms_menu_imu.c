@@ -33,20 +33,24 @@
 #include "build/version.h"
 #include "build/build_config.h"
 
+#include "cli/settings.h"
+
 #include "cms/cms.h"
 #include "cms/cms_types.h"
 #include "cms/cms_menu_imu.h"
 
+#include "common/printf.h"
 #include "common/utils.h"
 
+#include "config/config.h"
 #include "config/feature.h"
 #include "config/simplified_tuning.h"
 
 #include "drivers/pwm_output.h"
 
-#include "config/config.h"
 #include "fc/controlrate_profile.h"
 #include "fc/core.h"
+#include "fc/rc.h"
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
 
@@ -58,8 +62,6 @@
 
 #include "sensors/battery.h"
 #include "sensors/gyro.h"
-
-#include "cli/settings.h"
 
 //
 // PID
@@ -75,15 +77,8 @@ static uint8_t rateProfileIndex;
 static char rateProfileIndexString[MAX_RATE_PROFILE_NAME_LENGTH + 5];
 static controlRateConfig_t rateProfile;
 
-static const char * const osdTableThrottleLimitType[] = {
-    "OFF", "SCALE", "CLIP"
-};
-
-#ifdef USE_MULTI_GYRO
-static const char * const osdTableGyroToUse[] = {
-    "FIRST", "SECOND", "BOTH"
-};
-#endif
+static ratesType_e previousRatesType;
+static uint16_t rcMaxRate[3];
 
 static void setProfileIndexString(char *profileString, int profileIndex, char *profileName)
 {
@@ -374,39 +369,70 @@ static const void *cmsx_RateProfileWriteback(displayPort_t *pDisp, const OSD_Ent
     return NULL;
 }
 
-static const void *cmsx_RateProfileOnEnter(displayPort_t *pDisp)
+static const void *cmsx_applyRatesReset(displayPort_t *pDisp, const void *self);
+
+static const void *cmsx_menuRateTypeChangeWarningEnter(displayPort_t *pDisp)
 {
     UNUSED(pDisp);
-
-    setProfileIndexString(rateProfileIndexString, rateProfileIndex, controlRateProfilesMutable(rateProfileIndex)->profileName);
-    cmsx_RateProfileRead();
-
+    inhibitSaveMenu();
     return NULL;
 }
 
-static const OSD_Entry cmsx_menuRateProfileEntries[] =
+static const void *cmsx_menuRateTypeChangeWarningExit(displayPort_t *pDisp, const OSD_Entry *self)
 {
-    { "-- RATE --", OME_Label, NULL, rateProfileIndexString, 0 },
+    UNUSED(pDisp);
+    if (self && self->type == OME_Back) {
+        rateProfile.rates_type = previousRatesType; // user canceled out of reset
+    }
+    return NULL;
+}
 
-    { "RC R RATE",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.rcRates[FD_ROLL],    1, CONTROL_RATE_CONFIG_RC_RATES_MAX, 1, 10 }, 0 },
-    { "RC P RATE",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.rcRates[FD_PITCH],    1, CONTROL_RATE_CONFIG_RC_RATES_MAX, 1, 10 }, 0 },
-    { "RC Y RATE",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.rcRates[FD_YAW], 1, CONTROL_RATE_CONFIG_RC_RATES_MAX, 1, 10 }, 0 },
+static const OSD_Entry cmsx_menuRateTypeChangeWarningEntries[] =
+{
+    { "WARNING!", OME_Label, NULL, NULL, 0},
+    { "", OME_Label, NULL, NULL, 0},
+    { "CHANGING RATES TYPE WILL", OME_Label, NULL, NULL, 0},
+    { "RESET RATES TO DEFAULTS", OME_Label, NULL, NULL, 0},
+    { "", OME_Label, NULL, NULL, 0},
+    { "BACK", OME_Back, NULL, NULL, 0 },
+    { "CONTINUE",  OME_Funcall, cmsx_applyRatesReset, NULL, 0 },
+    { NULL, OME_END, NULL, NULL, 0 }
+};
 
-    { "ROLL SUPER",  OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.rates[FD_ROLL],   0, CONTROL_RATE_CONFIG_RATE_MAX, 1, 10 }, 0 },
-    { "PITCH SUPER", OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.rates[FD_PITCH],   0, CONTROL_RATE_CONFIG_RATE_MAX, 1, 10 }, 0 },
-    { "YAW SUPER",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.rates[FD_YAW],   0, CONTROL_RATE_CONFIG_RATE_MAX, 1, 10 }, 0 },
+static CMS_Menu cmsx_menuRateTypeChangeWarning = {
+#ifdef CMS_MENU_DEBUG
+    .GUARD_text = "XWARNING",
+    .GUARD_type = OME_MENU,
+#endif
+    .onEnter = cmsx_menuRateTypeChangeWarningEnter,
+    .onExit = cmsx_menuRateTypeChangeWarningExit,
+    .entries = cmsx_menuRateTypeChangeWarningEntries,
+};
 
-    { "RC R EXPO",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.rcExpo[FD_ROLL],    0, 100, 1, 10 }, 0 },
-    { "RC P EXPO",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.rcExpo[FD_PITCH],    0, 100, 1, 10 }, 0 },
-    { "RC Y EXPO",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.rcExpo[FD_YAW], 0, 100, 1, 10 }, 0 },
 
-    { "THR MID",     OME_UINT8,  NULL, &(OSD_UINT8_t) { &rateProfile.thrMid8,           0,  100,  1}, 0 },
-    { "THR EXPO",    OME_UINT8,  NULL, &(OSD_UINT8_t) { &rateProfile.thrExpo8,          0,  100,  1}, 0 },
-    { "THRPID ATT",  OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.dynThrPID,         0,  100,  1, 10}, 0 },
-    { "TPA BRKPT",   OME_UINT16, NULL, &(OSD_UINT16_t){ &rateProfile.tpa_breakpoint, 1000, 2000, 10}, 0 },
+static const void *cmsx_rateTypeChange(displayPort_t *pDisp, const void *self);
+static const void *cmsx_rateParamChange(displayPort_t *pDisp, const void *self);
 
-    { "THR LIM TYPE",OME_TAB,    NULL, &(OSD_TAB_t)   { &rateProfile.throttle_limit_type, THROTTLE_LIMIT_TYPE_COUNT - 1, osdTableThrottleLimitType}, 0 },
-    { "THR LIM %",   OME_UINT8,  NULL, &(OSD_UINT8_t) { &rateProfile.throttle_limit_percent, 25,  100,  1}, 0 },
+static OSD_Entry cmsx_menuRateProfileEntries[] =
+{
+    { "-- RATE --",    OME_Label, NULL, rateProfileIndexString, 0 },
+    { "RATES TYPE",    OME_TAB,   &cmsx_rateTypeChange, &(OSD_TAB_t) { &rateProfile.rates_type, RATES_TYPE_COUNT - 1, lookupTableRatesType }, 0 },
+
+    // The following entries are dynamically updated based on the rates type
+    { "",              OME_UINT8_SCALED, &cmsx_rateParamChange, &(OSD_UINT8_SCALED_t) { &rateProfile.rcRates[FD_ROLL],  0, 0, 0, 0 }, 0 },
+    { "",              OME_UINT8_SCALED, &cmsx_rateParamChange, &(OSD_UINT8_SCALED_t) { &rateProfile.rates[FD_ROLL],    0, 0, 0, 0 }, 0 },
+    { "",              OME_UINT8_SCALED, &cmsx_rateParamChange, &(OSD_UINT8_SCALED_t) { &rateProfile.rcExpo[FD_ROLL],   0, 0, 0, 0 }, 0 },
+    { "--- MAX DEG/SEC", OME_UINT16, NULL, &(OSD_UINT16_t){ &rcMaxRate[FD_ROLL], 0, 2000, 0 }, DYNAMIC },
+
+    { "",              OME_UINT8_SCALED, &cmsx_rateParamChange, &(OSD_UINT8_SCALED_t) { &rateProfile.rcRates[FD_PITCH], 0, 0, 0, 0 }, 0 },
+    { "",              OME_UINT8_SCALED, &cmsx_rateParamChange, &(OSD_UINT8_SCALED_t) { &rateProfile.rates[FD_PITCH],   0, 0, 0, 0 }, 0 },
+    { "",              OME_UINT8_SCALED, &cmsx_rateParamChange, &(OSD_UINT8_SCALED_t) { &rateProfile.rcExpo[FD_PITCH],  0, 0, 0, 0 }, 0 },
+    { "--- MAX DEG/SEC", OME_UINT16, NULL, &(OSD_UINT16_t){ &rcMaxRate[FD_PITCH], 0, 2000, 0 }, DYNAMIC },
+
+    { "",              OME_UINT8_SCALED, &cmsx_rateParamChange, &(OSD_UINT8_SCALED_t) { &rateProfile.rcRates[FD_YAW],   0, 0, 0, 0 }, 0 },
+    { "",              OME_UINT8_SCALED, &cmsx_rateParamChange, &(OSD_UINT8_SCALED_t) { &rateProfile.rates[FD_YAW],     0, 0, 0, 0 }, 0 },
+    { "",              OME_UINT8_SCALED, &cmsx_rateParamChange, &(OSD_UINT8_SCALED_t) { &rateProfile.rcExpo[FD_YAW],    0, 0, 0, 0 }, 0 },
+    { "--- MAX DEG/SEC", OME_UINT16, NULL, &(OSD_UINT16_t){ &rcMaxRate[FD_YAW], 0, 2000, 0 }, DYNAMIC },
 
     { "ROLL LVL EXPO",  OME_FLOAT, NULL, &(OSD_FLOAT_t) { &rateProfile.levelExpo[FD_ROLL],  0, 100, 1, 10 }, 0 },
     { "PITCH LVL EXPO", OME_FLOAT, NULL, &(OSD_FLOAT_t) { &rateProfile.levelExpo[FD_PITCH], 0, 100, 1, 10 }, 0 },
@@ -414,6 +440,158 @@ static const OSD_Entry cmsx_menuRateProfileEntries[] =
     { "BACK", OME_Back, NULL, NULL, 0 },
     { NULL, OME_END, NULL, NULL, 0 }
 };
+
+
+#define RATE_ENTRY_LABEL_MAX_LENGTH 14   // The maximum length of the longest composite rate param label & axis name. Longest currently is "PITCH RC CURVE"
+
+static char ratesEntriesLabels[9][RATE_ENTRY_LABEL_MAX_LENGTH + 1]; // Stores the constructed menu labels
+
+typedef struct ratesTableEntryType_s {
+    const char * labelText;
+    uint8_t min;
+    uint8_t step;
+    int8_t exponent;
+} ratesTableEntryType_t;
+
+typedef struct ratesTableEntry_s {
+    ratesTableEntryType_t entryType[3];
+} ratesTableEntry_t;
+
+const ratesTableEntry_t ratesTable[RATES_TYPE_COUNT] = {
+    [RATES_TYPE_BETAFLIGHT] = { { { "RC RATE",  1, 1, -2 },
+                                  { "RATE",     0, 1, -2 },
+                                  { "RC EXPO",  0, 1, -2 } } },
+
+    [RATES_TYPE_RACEFLIGHT] = { { { "RATE",     1, 1, 1 },
+                                  { "ACRO+",    0, 1, 0 },
+                                  { "EXPO",     0, 1, 0 } } },
+
+    [RATES_TYPE_KISS]       = { { { "RC RATE",  1, 1, -2 },
+                                  { "RATE",     0, 1, -2 },
+                                  { "RC CURVE", 0, 1, -2 } } },
+
+    [RATES_TYPE_ACTUAL]     = { { { "CENTER",   1, 1, 1 },
+                                  { "MAX RATE", 0, 1, 1 },
+                                  { "EXPO",     0, 1, -2 } } },
+
+    [RATES_TYPE_QUICK]      = { { { "RC RATE",  1, 1, -2 },
+                                  { "MAX RATE", 0, 1, 1 },
+                                  { "EXPO",     0, 1, -2 } } },
+};
+
+static void calculateMaxRates(void)
+{
+    for (unsigned axis = 0; axis <= FD_YAW; axis++) {
+        rcMaxRate[axis] = constrain(lrintf(applyRatesType(1.0f, rateProfile.rates_type, rateProfile.rcRates[axis], rateProfile.rates[axis], rateProfile.rcExpo[axis])), 0, CONTROL_RATE_CONFIG_RATE_LIMIT_MAX);
+    }
+}
+
+static void rateProfileMenuBuild(void)
+{
+    const ratesType_e ratesType = rateProfile.rates_type;
+
+    for (unsigned axis = 0; axis <= FD_YAW; axis++) {
+        for (unsigned rateParamType = 0; rateParamType < 3; rateParamType++) {
+            const int labelIndex = axis * 3 + rateParamType;
+            const int menuIndex = axis * 4 + rateParamType + 2;  // index position in the cmsx_menuRateProfileEntries array
+            OSD_Entry *menuEntry = &cmsx_menuRateProfileEntries[menuIndex];
+
+            uint8_t max;
+            switch (rateParamType) {
+            case 0:
+                max = ratesSettingLimits[ratesType].rc_rate;
+                break;
+            case 1:
+                max = ratesSettingLimits[ratesType].srate;
+                break;
+            case 2:
+                max = ratesSettingLimits[ratesType].expo;
+                break;
+            }
+
+            tfp_sprintf((char *)&ratesEntriesLabels[labelIndex], "%s %s", lookupTableAxisNames[axis], ratesTable[ratesType].entryType[rateParamType].labelText);
+            menuEntry->text = (const char *)&ratesEntriesLabels[labelIndex];
+            OSD_UINT8_SCALED_t *data = (OSD_UINT8_SCALED_t *)(menuEntry->data);
+            data->min = ratesTable[ratesType].entryType[rateParamType].min;
+            data->max = max;
+            data->step = ratesTable[ratesType].entryType[rateParamType].step;
+            data->exponent = ratesTable[ratesType].entryType[rateParamType].exponent;
+        }
+    }
+
+    calculateMaxRates();
+}
+
+static bool ratesAreDefaults(ratesType_e ratesType)
+{
+    for (unsigned axis = 0; axis <= FD_YAW; axis++) {
+        if ((rateProfile.rcRates[axis] != ratesSettingDefaults[ratesType].rc_rate)
+            || (rateProfile.rates[axis] != ratesSettingDefaults[ratesType].srate)
+            || (rateProfile.rcExpo[axis] != ratesSettingDefaults[ratesType].expo)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void ratesResetToDefaults(displayPort_t *pDisp, ratesType_e ratesType)
+{
+    for (unsigned axis = 0; axis <= FD_YAW; axis++) {
+        rateProfile.rcRates[axis] = ratesSettingDefaults[ratesType].rc_rate;
+        rateProfile.rates[axis] = ratesSettingDefaults[ratesType].srate;
+        rateProfile.rcExpo[axis] = ratesSettingDefaults[ratesType].expo;
+    }
+
+    rateProfileMenuBuild();
+    displayClearScreen(pDisp);  // forces the menu to redraw
+    previousRatesType = ratesType;
+}
+
+static const void *cmsx_rateTypeChange(displayPort_t *pDisp, const void *self)
+{
+    UNUSED(self);
+    const ratesType_e ratesType = rateProfile.rates_type;
+
+    if (ratesType != previousRatesType) {
+        if (ratesAreDefaults(previousRatesType)) {
+            ratesResetToDefaults(pDisp, ratesType);
+        } else {
+            cmsMenuChange(pDisp, &cmsx_menuRateTypeChangeWarning);
+        }
+    }
+    return NULL;
+}
+
+static const void *cmsx_rateParamChange(displayPort_t *pDisp, const void *self)
+{
+    UNUSED(pDisp);
+    UNUSED(self);
+
+    calculateMaxRates();
+
+    return NULL;
+}
+
+static const void *cmsx_applyRatesReset(displayPort_t *pDisp, const void *self)
+{
+    UNUSED(self);
+    const ratesType_e ratesType = rateProfile.rates_type;
+
+    ratesResetToDefaults(pDisp, ratesType);
+
+    return MENU_CHAIN_BACK;
+}
+
+static const void *cmsx_RateProfileOnEnter(displayPort_t *pDisp)
+{
+    UNUSED(pDisp);
+
+    setProfileIndexString(rateProfileIndexString, rateProfileIndex, controlRateProfilesMutable(rateProfileIndex)->profileName);
+    cmsx_RateProfileRead();
+    previousRatesType = rateProfile.rates_type;
+    rateProfileMenuBuild();
+    return NULL;
+}
 
 static CMS_Menu cmsx_menuRateProfile = {
 #ifdef CMS_MENU_DEBUG
@@ -424,6 +602,33 @@ static CMS_Menu cmsx_menuRateProfile = {
     .onExit = cmsx_RateProfileWriteback,
     .onDisplayUpdate = NULL,
     .entries = cmsx_menuRateProfileEntries
+};
+
+static const OSD_Entry cmsx_menuRateProfileMiscEntries[] =
+{
+    { "-- RATE MISC --",    OME_Label, NULL, rateProfileIndexString, 0 },
+
+    { "THR MID",       OME_UINT8,  NULL, &(OSD_UINT8_t) { &rateProfile.thrMid8,           0,  100,  1}, 0 },
+    { "THR EXPO",      OME_UINT8,  NULL, &(OSD_UINT8_t) { &rateProfile.thrExpo8,          0,  100,  1}, 0 },
+    { "THRPID ATT",    OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &rateProfile.dynThrPID,         0,  100,  1, 10}, 0 },
+    { "TPA BRKPT",     OME_UINT16, NULL, &(OSD_UINT16_t){ &rateProfile.tpa_breakpoint, 1000, 2000, 10}, 0 },
+
+    { "THR LIM TYPE",  OME_TAB,    NULL, &(OSD_TAB_t)   { &rateProfile.throttle_limit_type, THROTTLE_LIMIT_TYPE_COUNT - 1, lookupTableThrottleLimitType }, 0 },
+    { "THR LIM %",     OME_UINT8,  NULL, &(OSD_UINT8_t) { &rateProfile.throttle_limit_percent, 25,  100,  1}, 0 },
+
+    { "BACK", OME_Back, NULL, NULL, 0 },
+    { NULL, OME_END, NULL, NULL, 0 }
+};
+
+static CMS_Menu cmsx_menuRateProfileMisc = {
+#ifdef CMS_MENU_DEBUG
+    .GUARD_text = "MENURATEMISC",
+    .GUARD_type = OME_MENU,
+#endif
+    .onEnter = cmsx_RateProfileOnEnter,
+    .onExit = cmsx_RateProfileWriteback,
+    .onDisplayUpdate = NULL,
+    .entries = cmsx_menuRateProfileMiscEntries
 };
 
 #ifdef USE_LAUNCH_CONTROL
@@ -730,7 +935,7 @@ static const OSD_Entry cmsx_menuFilterGlobalEntries[] =
     { "GYRO NF2",   OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_hz_2,     0, 500, 1 }, 0 },
     { "GYRO NF2C",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_cutoff_2, 0, 500, 1 }, 0 },
 #ifdef USE_MULTI_GYRO
-    { "GYRO TO USE",  OME_TAB,  NULL, &(OSD_TAB_t)    { &gyroConfig_gyro_to_use,  2, osdTableGyroToUse}, REBOOT_REQUIRED },
+    { "GYRO TO USE",  OME_TAB,  NULL, &(OSD_TAB_t)    { &gyroConfig_gyro_to_use,  2, lookupTableGyro }, REBOOT_REQUIRED },
 #endif
 
     { "BACK", OME_Back, NULL, NULL, 0 },
@@ -1000,6 +1205,7 @@ static const OSD_Entry cmsx_menuImuEntries[] =
 
     {"RATE PROF", OME_UINT8,   cmsx_rateProfileIndexOnChange, &(OSD_UINT8_t){ &tmpRateProfileIndex, 1, CONTROL_RATE_PROFILE_COUNT, 1}, 0},
     {"RATE",      OME_Submenu, cmsMenuChange,                 &cmsx_menuRateProfile,                                         0},
+    {"RATE MISC", OME_Submenu, cmsMenuChange,                 &cmsx_menuRateProfileMisc,                                     0},
 
     {"FILT GLB",  OME_Submenu, cmsMenuChange,                 &cmsx_menuFilterGlobal,                                        0},
 #if  (defined(USE_GYRO_DATA_ANALYSE) || defined(USE_DYN_LPF)) && defined(USE_EXTENDED_CMS_MENUS)

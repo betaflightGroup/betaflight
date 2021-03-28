@@ -186,7 +186,7 @@ static const char * const lookupTableAlignment[] = {
 };
 
 #ifdef USE_MULTI_GYRO
-static const char * const lookupTableGyro[] = {
+const char * const lookupTableGyro[] = {
     "FIRST", "SECOND", "BOTH"
 };
 #endif
@@ -347,7 +347,7 @@ static const char * const lookupTableGyroOverflowCheck[] = {
 };
 #endif
 
-static const char * const lookupTableRatesType[] = {
+const char * const lookupTableRatesType[] = {
     "BETAFLIGHT", "RACEFLIGHT", "KISS", "ACTUAL", "QUICK"
 };
 
@@ -370,7 +370,7 @@ static const char * const lookupOverclock[] = {
     };
 #endif
 
-static const char * const lookupTableThrottleLimitType[] = {
+const char * const lookupTableThrottleLimitType[] = {
     "OFF", "SCALE", "CLIP"
 };
 
@@ -473,7 +473,7 @@ const char * const lookupTableLedstripColors[COLOR_COUNT] = {
     "DEEP_PINK"
 };
 
-static const char * const lookupTableGyroFilterDebug[] = {
+const char * const lookupTableAxisNames[] = {
     "ROLL", "PITCH", "YAW"
 };
 
@@ -626,7 +626,7 @@ const lookupTableEntry_t lookupTables[] = {
     LOOKUP_TABLE_ENTRY(lookupTableLedstripColors),
 #endif
 
-    LOOKUP_TABLE_ENTRY(lookupTableGyroFilterDebug),
+    LOOKUP_TABLE_ENTRY(lookupTableAxisNames),
 
     LOOKUP_TABLE_ENTRY(lookupTablePositionAltSource),
     LOOKUP_TABLE_ENTRY(lookupTableOffOnAuto),

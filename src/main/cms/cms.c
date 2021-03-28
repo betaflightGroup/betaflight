@@ -46,6 +46,7 @@
 #include "cms/cms_types.h"
 
 #include "common/maths.h"
+#include "common/printf.h"
 #include "common/typeconversion.h"
 
 #include "config/config.h"
@@ -308,6 +309,25 @@ static void cmsFormatFloat(int32_t value, char *floatString)
     }
 }
 
+static void cmsFormatUint8Scaled(uint8_t value, int8_t exponent, char *outputString)
+{
+    const bool fractional = (exponent < 0);
+    const int exp = ABS(constrain(exponent, -3, 2));
+
+    int multiplier = 1;
+    for (int i = 0; i < exp; i++) {
+        multiplier *= 10;
+    }
+
+    if (fractional) {
+        char mask[] = "%d.%00d";
+        mask[5] = exp + '0';  // set the 0-padding size in the mask
+        tfp_sprintf(outputString, mask, value / multiplier, value % multiplier);
+    } else {
+        itoa(value * multiplier, outputString, 10);
+    }
+}
+
 // CMS on OSD legacy was to use LEFT aligned values, not the RIGHT way ;-)
 #define CMS_OSD_RIGHT_ALIGNED_VALUES
 
@@ -524,6 +544,15 @@ static int cmsDrawMenuEntry(displayPort_t *pDisplay, const OSD_Entry *p, uint8_t
         if (IS_PRINTVALUE(*flags) && p->data) {
             OSD_UINT8_t *ptr = p->data;
             itoa(*ptr->val, buff, 10);
+            cnt = cmsDrawMenuItemValue(pDisplay, buff, row, CMS_NUM_FIELD_LEN);
+            CLR_PRINTVALUE(*flags);
+        }
+        break;
+
+    case OME_UINT8_SCALED:
+        if (IS_PRINTVALUE(*flags) && p->data) {
+            OSD_UINT8_SCALED_t *ptr = p->data;
+            cmsFormatUint8Scaled(*ptr->val, ptr->exponent, buff);
             cnt = cmsDrawMenuItemValue(pDisplay, buff, row, CMS_NUM_FIELD_LEN);
             CLR_PRINTVALUE(*flags);
         }
@@ -1133,6 +1162,7 @@ STATIC_UNIT_TESTED uint16_t cmsHandleKey(displayPort_t *pDisplay, cms_key_e key)
 #endif
 
         case OME_UINT8:
+        case OME_UINT8_SCALED:
         case OME_FLOAT:
             if (p->data) {
                 OSD_UINT8_t *ptr = p->data;
