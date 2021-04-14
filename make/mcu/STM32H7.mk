@@ -230,7 +230,7 @@ MCU_FLASH_SIZE := $(DEFAULT_TARGET_FLASH)
 endif
 
 ifeq ($(EXST),yes)
-FIRMWARE_SIZE      := 2048
+FIRMWARE_SIZE      := 1024
 # TARGET_FLASH now becomes the amount of MEMORY-MAPPED address space that is occupied by the firmware
 # and the maximum size of the data stored on the external flash device.
 MCU_FLASH_SIZE     := FIRMWARE_SIZE

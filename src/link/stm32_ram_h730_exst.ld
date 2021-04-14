@@ -39,7 +39,7 @@ the external flash device.
 The bootloader then executes code at the CODE_RAM address. The address of CODE_RAM is fixed to 0x90010000
 and must not be changed.
 
-The initial CODE_RAM is sized at 2MB.
+The initial CODE_RAM is sized at 1MB.
 
 */
 
@@ -62,7 +62,7 @@ MEMORY
 
     OCTOSPI2 (rx)     : ORIGIN = 0x70000000, LENGTH = 256M
     OCTOSPI1 (rx)     : ORIGIN = 0x90000000, LENGTH = 256M 
-    OCTOSPI1_CODE (rx): ORIGIN = ORIGIN(OCTOSPI1) + 1M, LENGTH = 2048K - _exst_hash_size /* hard coded start address, as required by SPRACINGH7 boot loader, don't change! */
+    OCTOSPI1_CODE (rx): ORIGIN = ORIGIN(OCTOSPI1) + 1M, LENGTH = 1M - _exst_hash_size /* hard coded start address, as required by SPRACINGH7 boot loader, don't change! */
     EXST_HASH (rx)    : ORIGIN = ORIGIN(OCTOSPI1_CODE) + LENGTH(OCTOSPI1_CODE), LENGTH = _exst_hash_size
 }
 
