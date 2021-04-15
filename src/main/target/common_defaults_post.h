@@ -556,6 +556,22 @@
 #define SPI4_RX_DMA_OPT (DMA_OPT_UNUSED)
 #endif
 #endif
+#ifdef USE_SPI_DEVICE_5
+#ifndef SPI5_TX_DMA_OPT
+#define SPI5_TX_DMA_OPT (DMA_OPT_UNUSED)
+#endif
+#ifndef SPI5_RX_DMA_OPT
+#define SPI5_RX_DMA_OPT (DMA_OPT_UNUSED)
+#endif
+#endif
+#ifdef USE_SPI_DEVICE_6
+#ifndef SPI6_TX_DMA_OPT
+#define SPI6_TX_DMA_OPT (DMA_OPT_UNUSED)
+#endif
+#ifndef SPI6_RX_DMA_OPT
+#define SPI6_RX_DMA_OPT (DMA_OPT_UNUSED)
+#endif
+#endif
 #endif
 
 #ifdef USE_UART1
