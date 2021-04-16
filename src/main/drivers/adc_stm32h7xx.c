@@ -110,6 +110,7 @@ const adcTagMap_t adcTagMap[] = {
     // Keep these at the beginning for easy indexing by ADC_TAG_MAP_{VREFINT,TEMPSENSOR}
 #define ADC_TAG_MAP_VREFINT    0
 #define ADC_TAG_MAP_TEMPSENSOR 1
+#define ADC_TAG_MAP_VBAT4      2
 
 #if defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx) // RM0468 Rev 2 Table 240. ADC interconnection
     { DEFIO_TAG_E__NONE, ADC_DEVICE_FOR_INTERNAL,   ADC_CHANNEL_VREFINT,    18 }, // 18 VREFINT
@@ -319,6 +320,9 @@ void adcInit(const adcConfig_t *config)
             dev = ffs(adcTagMap[map].devices) - 1;
         } else if (i == ADC_VREFINT) {
             map = ADC_TAG_MAP_VREFINT;
+            dev = ffs(adcTagMap[map].devices) - 1;
+        } else if (i == ADC_VBAT4) {
+            map = ADC_TAG_MAP_VBAT4;
             dev = ffs(adcTagMap[map].devices) - 1;
         } else {
 #else
@@ -530,7 +534,7 @@ void adcGetChannelValues(void)
     // Transfer values in conversion buffer into adcValues[]
     // Cache coherency should be maintained by MPU facility
 
-    for (int i = 0; i < ADC_CHANNEL_INTERNAL; i++) {
+    for (int i = 0; i < ADC_CHANNEL_INTERNAL_FIRST_ID; i++) {
         if (adcOperatingConfig[i].enabled) {
             adcValues[adcOperatingConfig[i].dmaIndex] = adcConversionBuffer[adcOperatingConfig[i].dmaIndex];
         }
