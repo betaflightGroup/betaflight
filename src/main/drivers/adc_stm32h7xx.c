@@ -126,7 +126,9 @@ const adcTagMap_t adcTagMap[] = {
 #elif
 #error MCU not defined
 #endif
-#endif
+
+#endif // USE_ADC_INTERNAL
+
 #if defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
     // See DS13195 Rev 6 Page 51/52
     { DEFIO_TAG_E__PC0,  ADC_DEVICES_12,  ADC_CHANNEL_10, 10 },
@@ -311,6 +313,7 @@ void adcInit(const adcConfig_t *config)
         int map;
         int dev;
 
+#ifdef USE_ADC_INTERNAL
         if (i == ADC_TEMPSENSOR) {
             map = ADC_TAG_MAP_TEMPSENSOR;
             dev = ffs(adcTagMap[map].devices) - 1;
@@ -318,6 +321,11 @@ void adcInit(const adcConfig_t *config)
             map = ADC_TAG_MAP_VREFINT;
             dev = ffs(adcTagMap[map].devices) - 1;
         } else {
+#else
+        {
+#endif
+            dev = ADC_CFG_TO_DEV(adcOperatingConfig[i].adcDevice);
+
             if (!adcOperatingConfig[i].tag) {
                 continue;
             }
