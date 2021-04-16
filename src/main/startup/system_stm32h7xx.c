@@ -649,6 +649,10 @@ void SystemClock_Config(void)
 
 #endif
 
+    RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+    RCC_PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_CLKP;
+    HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
+
     // TODO H730 OCTOSPI clock for 100Mhz flash chips should use PLL2R at 200Mhz
 
     // Configure MCO clocks for clock test/verification
