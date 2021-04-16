@@ -111,7 +111,7 @@ const adcTagMap_t adcTagMap[] = {
 #define ADC_TAG_MAP_VREFINT    0
 #define ADC_TAG_MAP_TEMPSENSOR 1
 
-#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H730xx)
     { DEFIO_TAG_E__NONE, ADC_DEVICE_FOR_INTERNAL,   ADC_CHANNEL_VREFINT,    18 },
     { DEFIO_TAG_E__NONE, ADC_DEVICE_FOR_INTERNAL,   ADC_CHANNEL_TEMPSENSOR, 17 },
 #elif defined(STM32H723xx) || defined(STM32H725xx)
