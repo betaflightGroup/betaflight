@@ -33,7 +33,7 @@ SECTIONS
 
   .ram_isr_vector (NOLOAD) :
   {
-    . = ALIGN(4);
+    . = ALIGN(512); /* Vector table offset must be multiple of 0x200 */
     PROVIDE (ram_isr_vector_table_base = .);
     . += (isr_vector_table_end - isr_vector_table_base);
     . = ALIGN(4);    
