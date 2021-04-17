@@ -16,14 +16,29 @@ _Min_Stack_Size = 0x800; /* required amount of stack */
 /* Define output sections */
 SECTIONS
 {
-  /* The startup code goes first into MAIN */
+  _isr_vector_table_flash_base = LOADADDR(.isr_vector);
+  PROVIDE (isr_vector_table_flash_base = _isr_vector_table_flash_base);
+
   .isr_vector :
   {
     . = ALIGN(512);
     PROVIDE (isr_vector_table_base = .);
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
-  } >MAIN
+    PROVIDE (isr_vector_table_end = .);
+  } >VECTAB AT> MAIN
+
+  _ram_isr_vector_table_base = LOADADDR(.ram_isr_vector);
+  PROVIDE (ram_isr_vector_table_base = _ram_isr_vector_table_base);
+
+  .ram_isr_vector (NOLOAD) :
+  {
+    . = ALIGN(4);
+    PROVIDE (ram_isr_vector_table_base = .);
+    . += (isr_vector_table_end - isr_vector_table_base);
+    . = ALIGN(4);    
+    PROVIDE (ram_isr_vector_table_end = .);
+  } >DTCM_RAM
 
   /* The program code and other data goes into MAIN */
   .text :
