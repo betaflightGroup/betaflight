@@ -41,6 +41,7 @@
 
 #include "build/build_config.h"
 #include "build/version.h"
+#include "build/debug.h"
 
 #include "cms/cms.h"
 
@@ -52,6 +53,8 @@
 #include "common/unit.h"
 
 #include "config/feature.h"
+
+#include "drivers/spracingpixelosd/framebuffer.h"
 
 #include "drivers/display.h"
 #include "drivers/dshot.h"
@@ -147,6 +150,8 @@ static bool canvasSupported = false;
 #ifdef USE_ESC_SENSOR
 escSensorData_t *osdEscDataCombined;
 #endif
+
+#define DEBUG_FRAMEBUFFER_ERASE_WAIT
 
 STATIC_ASSERT(OSD_POS_MAX == OSD_POS(31,31), OSD_POS_MAX_incorrect);
 
@@ -1069,6 +1074,13 @@ void osdUpdate(timeUs_t currentTimeUs)
     }
 
 #if defined(USE_SPRACING_PIXEL_OSD)
+    if (frameBuffer_eraseInProgress()) {
+#ifdef DEBUG_FRAMEBUFFER_ERASE_WAIT
+        debug[1]++;
+#endif
+        return;
+    }
+
     // don't touch buffers while we're waiting for the framebuffer to be committed
     if (displayIsTransferInProgress(osdDisplayPort)) {
         return;

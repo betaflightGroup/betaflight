@@ -24,13 +24,17 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "platform.h"
+
+#include "build/debug.h"
 
 #include "common/maths.h"
 
 #include "drivers/osd/font_max7456_12x18.h"
 #include "drivers/osd/fonts.h"
+#include "drivers/time.h"
 
 #include "configuration.h"
 
@@ -77,13 +81,54 @@ uint8_t frameBuffer_getBufferIndex(uint8_t *frameBuffer)
 }
 
 DMA_RAM uint32_t fillColor __attribute__((aligned(32)));
-static MDMA_HandleTypeDef     frameBuffer_MDMA_Handle_Erase = { 0 };
+
+// there is a tradeoff between the overhead of setting up streams and the time it takes for a stream to complete
+
+// Examples for framebuffer size (((360 / 8) * 2) * 288) = 25920 bytes
+// 25920 bytes / 4096 / 4 = 2 streams (using maximum block count, longest transfer smallest ram use)
+// 25920 bytes / 2048 / 4 = 4 streams
+// 25920 bytes / 1024 / 4 = 7 streams (using smaller block count, higher overhead and ram use)
+
+#define MDMA_MAXIMUM_BLOCK_COUNT 4096
+#define MDMA_BLOCK_COUNT 4096
+#define PARALLEL_STREAM_COUNT (int)((FRAME_BUFFER_SIZE / MDMA_BLOCK_COUNT / sizeof(uint32_t)) + 1) // + 1 to avoid integer rounding
+static MDMA_HandleTypeDef     frameBuffer_MDMA_Handle_Erase_Parallel[PARALLEL_STREAM_COUNT] = { 0 };
+volatile bool streamActive[PARALLEL_STREAM_COUNT] = {0}; // updated by ISR callbacks
+
+FAST_CODE void MDMA_IRQHandler(void)
+{
+    for (int i = 0; i < PARALLEL_STREAM_COUNT; i ++) {
+        if (!streamActive[i]) {
+          continue;
+        }
+
+        MDMA_HandleTypeDef *handle = &frameBuffer_MDMA_Handle_Erase_Parallel[i];
+        HAL_MDMA_IRQHandler(handle);
+    }
+}
+
+void frameBuffer_xferBlockCpltHandler( struct __MDMA_HandleTypeDef * hmdma)
+{
+    for (int i = 0; i < PARALLEL_STREAM_COUNT; i ++) {
+        if (!streamActive[i]) {
+          continue;
+        }
+
+        MDMA_HandleTypeDef *handle = &frameBuffer_MDMA_Handle_Erase_Parallel[i];
+        bool handleIsForThisStream = (hmdma == handle);
+        if (!handleIsForThisStream) {
+            continue;
+        }
+        streamActive[i] = false;
+    }
+}
 
 void frameBuffer_eraseInit(void)
 {
     __HAL_RCC_MDMA_CLK_ENABLE();
 
-    frameBuffer_MDMA_Handle_Erase.Instance = MDMA_Channel0;
+    static MDMA_HandleTypeDef     frameBuffer_MDMA_Handle_Erase = { 0 };
+
     frameBuffer_MDMA_Handle_Erase.Init.Request              = MDMA_REQUEST_SW;
     frameBuffer_MDMA_Handle_Erase.Init.TransferTriggerMode  = MDMA_REPEAT_BLOCK_TRANSFER;
     frameBuffer_MDMA_Handle_Erase.Init.Priority             = MDMA_PRIORITY_HIGH;
@@ -102,32 +147,67 @@ void frameBuffer_eraseInit(void)
     frameBuffer_MDMA_Handle_Erase.Init.SourceBurst          = MDMA_SOURCE_BURST_SINGLE;
     frameBuffer_MDMA_Handle_Erase.Init.SourceBlockAddressOffset  = 0;
 
-    if (HAL_MDMA_Init(&frameBuffer_MDMA_Handle_Erase) != HAL_OK) {
-      Error_Handler();
+    static const MDMA_Channel_TypeDef *mdmaChannelInstances[] = {
+        MDMA_Channel0, MDMA_Channel1, MDMA_Channel2, MDMA_Channel3,
+        MDMA_Channel4, MDMA_Channel5, MDMA_Channel6, MDMA_Channel7,
+        MDMA_Channel8, MDMA_Channel9, MDMA_Channel10, MDMA_Channel11,
+        MDMA_Channel12, MDMA_Channel13, MDMA_Channel14, MDMA_Channel15
+    };
+
+    for (int i = 0; i < PARALLEL_STREAM_COUNT; i ++) {
+      MDMA_HandleTypeDef *handle = &frameBuffer_MDMA_Handle_Erase_Parallel[i];
+
+      memcpy(handle, &frameBuffer_MDMA_Handle_Erase, sizeof(MDMA_HandleTypeDef));
+
+      handle->Instance = (MDMA_Channel_TypeDef *)mdmaChannelInstances[i];
+      handle->XferCpltCallback = frameBuffer_xferBlockCpltHandler;
+
+      if (HAL_MDMA_Init(handle) != HAL_OK) {
+          Error_Handler();
+      }
     }
+
+    HAL_NVIC_SetPriority(MDMA_IRQn, 0, 0);
+
+    /* Enable the MDMA channel global Interrupt */
+    HAL_NVIC_EnableIRQ(MDMA_IRQn);
 
     fillColor = BLOCK_FILL << 24 | BLOCK_FILL << 16 | BLOCK_FILL << 8 | BLOCK_FILL;
 }
 
-void frameBuffer_erase(uint8_t *frameBuffer)
+void frameBuffer_eraseBegin(uint8_t *frameBuffer)
 {
-#if 0
-    memset(frameBuffer, BLOCK_TRANSPARENT, FRAME_BUFFER_SIZE);
-#else
+    TIME_SECTION_BEGIN(0);
+
     uint32_t hal_status;
 
     uint32_t bytesRemaining = FRAME_BUFFER_SIZE;
 
+    MDMA_HandleTypeDef *handle;
+
+    int streamIndex = 0;
     while (bytesRemaining > 0) {
 
-        uint32_t bytesToFill = 4096 * sizeof(fillColor); // 4096 is maximum block count.
+        handle = &frameBuffer_MDMA_Handle_Erase_Parallel[streamIndex];
+
+
+        uint32_t bytesToFill = MDMA_BLOCK_COUNT * sizeof(fillColor);
         if (bytesRemaining < bytesToFill) {
             bytesToFill = bytesRemaining;
         }
 
         uint32_t offset = FRAME_BUFFER_SIZE - bytesRemaining;
 
-        hal_status = HAL_MDMA_Start(&frameBuffer_MDMA_Handle_Erase, (uint32_t)&fillColor,
+        if (streamActive[streamIndex]) {
+            // if a stream is active the previous caller didn't wait for completion.
+
+            // reset HAL state so a new transfer can be started.
+            hal_status = HAL_MDMA_Abort(handle);
+        }
+
+        streamActive[streamIndex] = true; // must be set *before* the ISR handler can be called.
+
+        hal_status = HAL_MDMA_Start_IT(handle, (uint32_t)&fillColor,
                                                   (uint32_t)frameBuffer + offset,
                                                   sizeof(fillColor),
                                                   bytesToFill / sizeof(fillColor));
@@ -137,17 +217,30 @@ void frameBuffer_erase(uint8_t *frameBuffer)
           Error_Handler();
         }
 
-        const uint32_t eraseTimeoutTicks = 1000;
-        hal_status = HAL_MDMA_PollForTransfer(&frameBuffer_MDMA_Handle_Erase, HAL_MDMA_FULL_TRANSFER, eraseTimeoutTicks);
-        if(hal_status != HAL_OK)
-        {
-          /* Transfer Error */
-          Error_Handler();
-        }
 
         bytesRemaining -= bytesToFill;
+        streamIndex++;
     }
-#endif
+    TIME_SECTION_END(0);
+}
+
+bool frameBuffer_eraseInProgress(void)
+{
+    for (int i = 0; i < PARALLEL_STREAM_COUNT; i ++) {
+        if (!streamActive[i]) {
+            continue;
+        }
+
+        return true;
+    }
+    return false;
+}
+
+void frameBuffer_eraseWaitForComplete(void)
+{
+    while (frameBuffer_eraseInProgress()) {
+        NOOP;
+    }
 }
 
 //

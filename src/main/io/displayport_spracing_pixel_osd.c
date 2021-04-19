@@ -95,7 +95,11 @@ static int clearScreen(displayPort_t *displayPort)
     // so the current frame buffer pointer must always be obtained.
     // see displayInit().
     frameBuffer = spracingPixelOSDGetActiveFrameBuffer();
-    frameBuffer_erase(frameBuffer);
+
+    // clearing the framebuffer is an expensive operation and handled in hardware asynchronously, see the framebuffer API.
+    // scheduling the clearing of the screen prior to needing to actually render to the screen is recommended.
+
+    frameBuffer_eraseBegin(frameBuffer);
 
     return 0;
 }

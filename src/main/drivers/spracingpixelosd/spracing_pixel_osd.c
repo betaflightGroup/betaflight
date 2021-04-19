@@ -173,8 +173,10 @@ void frameBufferInit(void)
     uint8_t * fb0 = frameBuffer_getBuffer(0);
     uint8_t * fb1 = frameBuffer_getBuffer(1);
 
-    frameBuffer_erase(fb0);
-    frameBuffer_erase(fb1);
+    frameBuffer_eraseBegin(fb0);
+    frameBuffer_eraseWaitForComplete();
+    frameBuffer_eraseBegin(fb1);
+    frameBuffer_eraseWaitForComplete();
 
     //frameBuffer_createTestPattern1(fb0);
     //frameBuffer_createTestPattern1(fb1);
