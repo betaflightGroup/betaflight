@@ -22,6 +22,9 @@
 
 #include "drivers/resource.h"
 
+#define CACHE_LINE_SIZE 32
+#define CACHE_LINE_MASK (CACHE_LINE_SIZE - 1)
+
 // dmaResource_t is a opaque data type which represents a single DMA engine,
 // called and implemented differently in different families of STM32s.
 // The opaque data type provides uniform handling of the engine in source code.

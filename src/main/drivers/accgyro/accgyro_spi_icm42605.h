@@ -28,7 +28,7 @@ bool icm42605GyroDetect(gyroDev_t *gyro);
 void icm42605AccInit(accDev_t *acc);
 void icm42605GyroInit(gyroDev_t *gyro);
 
-uint8_t icm42605SpiDetect(const busDevice_t *bus);
+uint8_t icm42605SpiDetect(const extDevice_t *dev);
 
 bool icm42605SpiAccDetect(accDev_t *acc);
 bool icm42605SpiGyroDetect(gyroDev_t *gyro);

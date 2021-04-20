@@ -44,8 +44,8 @@
 // 5 MHz max SPI init frequency
 #define FLASH_MAX_SPI_INIT_CLK 5000000
 
-static busDevice_t busInstance;
-static busDevice_t *busdev;
+static extDevice_t devInstance;
+static extDevice_t *dev;
 
 static flashDevice_t flashDevice;
 static flashPartitionTable_t flashPartitionTable;
@@ -135,44 +135,34 @@ void flashPreInit(const flashConfig_t *flashConfig)
 static bool flashSpiInit(const flashConfig_t *flashConfig)
 {
     // Read chip identification and send it to device detect
-
-    busdev = &busInstance;
+    dev = &devInstance;
 
     if (flashConfig->csTag) {
-        busdev->busdev_u.spi.csnPin = IOGetByTag(flashConfig->csTag);
+        dev->busType_u.spi.csnPin = IOGetByTag(flashConfig->csTag);
     } else {
         return false;
     }
 
-    if (!IOIsFreeOrPreinit(busdev->busdev_u.spi.csnPin)) {
+    if (!IOIsFreeOrPreinit(dev->busType_u.spi.csnPin)) {
         return false;
     }
 
-    busdev->bustype = BUSTYPE_SPI;
-
-    SPI_TypeDef *instance = spiInstanceByDevice(SPI_CFG_TO_DEV(flashConfig->spiDevice));
-    if (!instance) {
+    if (!spiSetBusInstance(dev, flashConfig->spiDevice, OWNER_FLASH_CS)) {
         return false;
     }
 
-    spiBusSetInstance(busdev, instance);
+    // Set the callback argument when calling back to this driver for DMA completion
+    dev->callbackArg = (uint32_t)&flashDevice;
 
-    IOInit(busdev->busdev_u.spi.csnPin, OWNER_FLASH_CS, 0);
-    IOConfigGPIO(busdev->busdev_u.spi.csnPin, SPI_IO_CS_CFG);
-    IOHi(busdev->busdev_u.spi.csnPin);
+    IOInit(dev->busType_u.spi.csnPin, OWNER_FLASH_CS, 0);
+    IOConfigGPIO(dev->busType_u.spi.csnPin, SPI_IO_CS_CFG);
+    IOHi(dev->busType_u.spi.csnPin);
 
-#ifdef USE_SPI_TRANSACTION
-    spiBusTransactionInit(busdev, SPI_MODE3_POL_HIGH_EDGE_2ND, spiCalculateDivider(FLASH_MAX_SPI_INIT_CLK));
-#else
-#ifndef FLASH_SPI_SHARED
-    spiSetDivisor(busdev->busdev_u.spi.instance, spiCalculateDivider(FLASH_MAX_SPI_INIT_CLK));
-#endif
-#endif
+    //Maximum speed for standard READ command is 20mHz, other commands tolerate 25mHz
+    spiSetClkDivisor(dev, spiCalculateDivider(FLASH_MAX_SPI_INIT_CLK));
 
     flashDevice.io.mode = FLASHIO_SPI;
-    flashDevice.io.handle.busdev = busdev;
-
-    const uint8_t out[] = { FLASH_INSTRUCTION_RDID, 0, 0, 0, 0 };
+    flashDevice.io.handle.dev = dev;
 
     delay(50); // short delay required after initialisation of SPI device instance.
 
@@ -180,18 +170,12 @@ static bool flashSpiInit(const flashConfig_t *flashConfig)
      * Some newer chips require one dummy byte to be read; we can read
      * 4 bytes for these chips while retaining backward compatibility.
      */
-    uint8_t readIdResponse[5];
-    readIdResponse[1] = readIdResponse[2] = 0;
+    uint8_t readIdResponse[4] = { 0 };
 
-    // Clearing the CS bit terminates the command early so we don't have to read the chip UID:
-#ifdef USE_SPI_TRANSACTION
-    spiBusTransactionTransfer(busdev, out, readIdResponse, sizeof(out));
-#else
-    spiBusTransfer(busdev, out, readIdResponse, sizeof(out));
-#endif
+    spiReadRegBuf(dev, FLASH_INSTRUCTION_RDID, readIdResponse, sizeof (readIdResponse));
 
     // Manufacturer, memory type, and capacity
-    uint32_t chipID = (readIdResponse[1] << 16) | (readIdResponse[2] << 8) | (readIdResponse[3]);
+    uint32_t chipID = (readIdResponse[0] << 16) | (readIdResponse[1] << 8) | (readIdResponse[2]);
 
 #ifdef USE_FLASH_M25P16
     if (m25p16_detect(&flashDevice, chipID)) {
@@ -258,36 +242,43 @@ bool flashWaitForReady(void)
 
 void flashEraseSector(uint32_t address)
 {
+    flashDevice.callback = NULL;
     flashDevice.vTable->eraseSector(&flashDevice, address);
 }
 
 void flashEraseCompletely(void)
 {
+    flashDevice.callback = NULL;
     flashDevice.vTable->eraseCompletely(&flashDevice);
 }
 
 void flashPageProgramBegin(uint32_t address)
 {
+    flashDevice.callback = NULL;
     flashDevice.vTable->pageProgramBegin(&flashDevice, address);
 }
 
 void flashPageProgramContinue(const uint8_t *data, int length)
 {
+    flashDevice.callback = NULL;
     flashDevice.vTable->pageProgramContinue(&flashDevice, data, length);
 }
 
 void flashPageProgramFinish(void)
 {
+    flashDevice.callback = NULL;
     flashDevice.vTable->pageProgramFinish(&flashDevice);
 }
 
 void flashPageProgram(uint32_t address, const uint8_t *data, int length)
 {
+    flashDevice.callback = NULL;
     flashDevice.vTable->pageProgram(&flashDevice, address, data, length);
 }
 
 int flashReadBytes(uint32_t address, uint8_t *buffer, int length)
 {
+    flashDevice.callback = NULL;
     return flashDevice.vTable->readBytes(&flashDevice, address, buffer, length);
 }
 

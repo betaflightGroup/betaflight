@@ -65,6 +65,7 @@
 #define NVIC_PRIO_MAG_DATA_READY           NVIC_BUILD_PRIORITY(0x0f, 0x0f)
 #define NVIC_PRIO_CALLBACK                 NVIC_BUILD_PRIORITY(0x0f, 0x0f)
 #define NVIC_PRIO_MAX7456_DMA              NVIC_BUILD_PRIORITY(3, 0)
+#define NVIC_PRIO_SPI_DMA                  NVIC_BUILD_PRIORITY(0, 0)
 #define NVIC_PRIO_SDIO_DMA                 NVIC_BUILD_PRIORITY(0, 0)
 
 #ifdef USE_HAL_DRIVER

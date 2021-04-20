@@ -56,7 +56,7 @@ typedef enum {
 } lsm6dsoRegister_e;
 
 // Contained in accgyro_spi_lsm6dso_init.c which is size-optimized
-uint8_t lsm6dsoDetect(const busDevice_t *bus);
+uint8_t lsm6dsoDetect(const extDevice_t *dev);
 bool lsm6dsoSpiAccDetect(accDev_t *acc);
 bool lsm6dsoSpiGyroDetect(gyroDev_t *gyro);
 

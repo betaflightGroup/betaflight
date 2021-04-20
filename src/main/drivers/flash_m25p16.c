@@ -113,106 +113,46 @@ struct {
     { 0x000000, 0, 0, 0, 0 }
 };
 
-// IMPORTANT: Timeout values are currently required to be set to the highest value required by any of the supported flash chips by this driver.
-
-// The timeout we expect between being able to issue page program instructions
-#define DEFAULT_TIMEOUT_MILLIS       6
-#define SECTOR_ERASE_TIMEOUT_MILLIS  5000
-
-// etracer65 notes: For bulk erase The 25Q16 takes about 3 seconds and the 25Q128 takes about 49
-#define BULK_ERASE_TIMEOUT_MILLIS    50000
-
 #define M25P16_PAGESIZE 256
 
 STATIC_ASSERT(M25P16_PAGESIZE < FLASH_MAX_PAGE_SIZE, M25P16_PAGESIZE_too_small);
 
 const flashVTable_t m25p16_vTable;
 
-#ifndef USE_SPI_TRANSACTION
-static void m25p16_disable(busDevice_t *bus)
+
+static uint8_t m25p16_readStatus(flashDevice_t *fdevice)
 {
-    IOHi(bus->busdev_u.spi.csnPin);
-    __NOP();
+    DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
+    DMA_DATA_AUTO uint8_t readyStatus[2];
+
+    spiReadWriteBuf(fdevice->io.handle.dev, readStatus, readyStatus, sizeof (readStatus));
+
+    return readyStatus[1];
 }
 
-static void m25p16_enable(busDevice_t *bus)
-{
-    __NOP();
-    IOLo(bus->busdev_u.spi.csnPin);
-}
-#endif
-
-static void m25p16_transfer(busDevice_t *bus, const uint8_t *txData, uint8_t *rxData, int len)
-{
-#ifdef USE_SPI_TRANSACTION
-    spiBusTransactionTransfer(bus, txData, rxData, len);
-#else
-    m25p16_enable(bus);
-    spiTransfer(bus->busdev_u.spi.instance, txData, rxData, len);
-    m25p16_disable(bus);
-#endif
-}
-
-/**
- * Send the given command byte to the device.
- */
-static void m25p16_performOneByteCommand(busDevice_t *bus, uint8_t command)
-{
-#ifdef USE_SPI_TRANSACTION
-    m25p16_transfer(bus, &command, NULL, 1);
-#else
-    m25p16_enable(bus);
-    spiTransferByte(bus->busdev_u.spi.instance, command);
-    m25p16_disable(bus);
-#endif
-}
-
-/**
- * The flash requires this write enable command to be sent before commands that would cause
- * a write like program and erase.
- */
-static void m25p16_writeEnable(flashDevice_t *fdevice)
-{
-    m25p16_performOneByteCommand(fdevice->io.handle.busdev, M25P16_INSTRUCTION_WRITE_ENABLE);
-
-    // Assume that we're about to do some writing, so the device is just about to become busy
-    fdevice->couldBeBusy = true;
-}
-
-static uint8_t m25p16_readStatus(busDevice_t *bus)
-{
-    const uint8_t command[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
-    uint8_t in[2];
-
-    m25p16_transfer(bus, command, in, sizeof(command));
-
-    return in[1];
-}
 
 static bool m25p16_isReady(flashDevice_t *fdevice)
 {
+    // If we're waiting on DMA completion, then SPI is busy
+    if (fdevice->io.handle.dev->bus->useDMA && spiIsBusy(fdevice->io.handle.dev)) {
+        return false;
+    }
+
     // If couldBeBusy is false, don't bother to poll the flash chip for its status
-    fdevice->couldBeBusy = fdevice->couldBeBusy && ((m25p16_readStatus(fdevice->io.handle.busdev) & M25P16_STATUS_FLAG_WRITE_IN_PROGRESS) != 0);
+    if (!fdevice->couldBeBusy) {
+        return true;
+    }
+
+    // Poll the FLASH device to see if it's busy
+    fdevice->couldBeBusy = ((m25p16_readStatus(fdevice) & M25P16_STATUS_FLAG_WRITE_IN_PROGRESS) != 0);
 
     return !fdevice->couldBeBusy;
 }
 
-static void m25p16_setTimeout(flashDevice_t *fdevice, uint32_t timeoutMillis)
-{
-    uint32_t now = millis();
-    fdevice->timeoutAt = now + timeoutMillis;
-}
-
 static bool m25p16_waitForReady(flashDevice_t *fdevice)
 {
-    while (!m25p16_isReady(fdevice)) {
-        uint32_t now = millis();
-        if (cmp32(now, fdevice->timeoutAt) >= 0) {
-            return false;
-        }
-    }
+    while (!m25p16_isReady(fdevice));
 
-    fdevice->timeoutAt = 0;
     return true;
 }
 
@@ -252,13 +192,15 @@ bool m25p16_detect(flashDevice_t *fdevice, uint32_t chipID)
     geometry->totalSize = geometry->sectorSize * geometry->sectors;
 
     // Adjust the SPI bus clock frequency
-#ifndef FLASH_SPI_SHARED
-    spiSetDivisor(fdevice->io.handle.busdev->busdev_u.spi.instance, spiCalculateDivider(maxReadClkSPIHz));
-#endif
+    spiSetClkDivisor(fdevice->io.handle.dev, spiCalculateDivider(maxReadClkSPIHz));
 
-    if (fdevice->geometry.totalSize > 16 * 1024 * 1024) {
+    if (geometry->totalSize > 16 * 1024 * 1024) {
         fdevice->isLargeFlash = true;
-        m25p16_performOneByteCommand(fdevice->io.handle.busdev, W25Q256_INSTRUCTION_ENTER_4BYTE_ADDRESS_MODE);
+
+        // This routine blocks so no need to use static data
+        uint8_t modeSet[] = { W25Q256_INSTRUCTION_ENTER_4BYTE_ADDRESS_MODE };
+
+        spiReadWriteBuf(fdevice->io.handle.dev, modeSet, NULL, sizeof (modeSet));
     }
 
     fdevice->couldBeBusy = true; // Just for luck we'll assume the chip could be busy even though it isn't specced to be
@@ -276,70 +218,130 @@ static void m25p16_setCommandAddress(uint8_t *buf, uint32_t address, bool useLon
     *buf = address & 0xff;
 }
 
+
+// Called in ISR context
+// A write enable has just been issued
+busStatus_e m25p16_callbackWriteEnable(uint32_t arg)
+{
+    flashDevice_t *fdevice = (flashDevice_t *)arg;
+
+    // As a write has just occurred, the device could be busy
+    fdevice->couldBeBusy = true;
+
+    return BUS_READY;
+}
+
+// Called in ISR context
+// Check if the status was busy and if so repeat the poll
+busStatus_e m25p16_callbackReady(uint32_t arg)
+{
+    flashDevice_t *fdevice = (flashDevice_t *)arg;
+    extDevice_t *dev = fdevice->io.handle.dev;
+
+    uint8_t readyPoll = dev->bus->curSegment->rxData[1];
+
+    if (readyPoll & M25P16_STATUS_FLAG_WRITE_IN_PROGRESS) {
+        return BUS_BUSY;
+    }
+
+    // Bus is now known not to be busy
+    fdevice->couldBeBusy = false;
+
+    return BUS_READY;
+}
+
+
 /**
  * Erase a sector full of bytes to all 1's at the given byte offset in the flash chip.
  */
 static void m25p16_eraseSector(flashDevice_t *fdevice, uint32_t address)
 {
-    uint8_t out[5] = { M25P16_INSTRUCTION_SECTOR_ERASE };
+    DMA_DATA_AUTO uint8_t sectorErase[5] = { M25P16_INSTRUCTION_SECTOR_ERASE };
+    DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
+    DMA_DATA_AUTO uint8_t readyStatus[2];
+    DMA_DATA_AUTO uint8_t writeEnable[] = { M25P16_INSTRUCTION_WRITE_ENABLE };
+    busSegment_t segments[] = {
+            {readStatus, readyStatus, sizeof (readStatus), true, m25p16_callbackReady},
+            {writeEnable, NULL, sizeof (writeEnable), true, m25p16_callbackWriteEnable},
+            {sectorErase, NULL, fdevice->isLargeFlash ? 5 : 4, true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
 
-    m25p16_setCommandAddress(&out[1], address, fdevice->isLargeFlash);
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(fdevice->io.handle.dev);
 
-    m25p16_waitForReady(fdevice);
+    m25p16_setCommandAddress(&sectorErase[1], address, fdevice->isLargeFlash);
 
-    m25p16_writeEnable(fdevice);
+    spiSequence(fdevice->io.handle.dev, &segments[0]);
 
-    m25p16_transfer(fdevice->io.handle.busdev, out, NULL, fdevice->isLargeFlash ? 5 : 4);
-
-    m25p16_setTimeout(fdevice, SECTOR_ERASE_TIMEOUT_MILLIS);
+    // Block pending completion of SPI access, but the erase will be ongoing
+    spiWait(fdevice->io.handle.dev);
 }
 
 static void m25p16_eraseCompletely(flashDevice_t *fdevice)
 {
-    m25p16_waitForReady(fdevice);
+    DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
+    DMA_DATA_AUTO uint8_t readyStatus[2];
+    DMA_DATA_AUTO uint8_t writeEnable[] = { M25P16_INSTRUCTION_WRITE_ENABLE };
+    DMA_DATA_AUTO uint8_t bulkErase[] = { M25P16_INSTRUCTION_BULK_ERASE };
+    busSegment_t segments[] = {
+            {readStatus, readyStatus, sizeof (readStatus), true, m25p16_callbackReady},
+            {writeEnable, NULL, sizeof (writeEnable), true, m25p16_callbackWriteEnable},
+            {bulkErase, NULL, sizeof (bulkErase), true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
 
-    m25p16_writeEnable(fdevice);
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(fdevice->io.handle.dev);
 
-    m25p16_performOneByteCommand(fdevice->io.handle.busdev, M25P16_INSTRUCTION_BULK_ERASE);
+    spiSequence(fdevice->io.handle.dev, &segments[0]);
 
-    m25p16_setTimeout(fdevice, BULK_ERASE_TIMEOUT_MILLIS);
+    // Block pending completion of SPI access, but the erase will be ongoing
+    spiWait(fdevice->io.handle.dev);
 }
+
 
 static void m25p16_pageProgramBegin(flashDevice_t *fdevice, uint32_t address)
 {
-    UNUSED(fdevice);
-
     fdevice->currentWriteAddress = address;
 }
 
+
 static void m25p16_pageProgramContinue(flashDevice_t *fdevice, const uint8_t *data, int length)
 {
-    uint8_t command[5] = { M25P16_INSTRUCTION_PAGE_PROGRAM };
+    // The segment list cannot be in automatic storage as this routine is non-blocking
+    DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
+    DMA_DATA_AUTO uint8_t readyStatus[2];
+    DMA_DATA_AUTO uint8_t writeEnable[] = { M25P16_INSTRUCTION_WRITE_ENABLE };
+    DMA_DATA_AUTO uint8_t pageProgram[5] = { M25P16_INSTRUCTION_PAGE_PROGRAM };
 
-    m25p16_setCommandAddress(&command[1], fdevice->currentWriteAddress, fdevice->isLargeFlash);
+    static busSegment_t segments[] = {
+            {readStatus, readyStatus, sizeof (readStatus), true, m25p16_callbackReady},
+            {writeEnable, NULL, sizeof (writeEnable), true, m25p16_callbackWriteEnable},
+            {pageProgram, NULL, 0, false, NULL},
+            {NULL, NULL, 0, true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
 
-    m25p16_waitForReady(fdevice);
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(fdevice->io.handle.dev);
 
-    m25p16_writeEnable(fdevice);
+    // Patch the pageProgram segment
+    segments[2].len = fdevice->isLargeFlash ? 5 : 4;
+    m25p16_setCommandAddress(&pageProgram[1], fdevice->currentWriteAddress, fdevice->isLargeFlash);
 
-#ifdef USE_SPI_TRANSACTION
-    spiBusTransactionBegin(fdevice->io.handle.busdev);
-#else
-    m25p16_enable(fdevice->io.handle.busdev);
-#endif
+    // Patch the data segment
+    segments[3].txData = (uint8_t *)data;
+    segments[3].len = length;
 
-    spiTransfer(fdevice->io.handle.busdev->busdev_u.spi.instance, command, NULL, fdevice->isLargeFlash ? 5 : 4);
-    spiTransfer(fdevice->io.handle.busdev->busdev_u.spi.instance, data, NULL, length);
+    spiSequence(fdevice->io.handle.dev, fdevice->couldBeBusy ? &segments[0] : &segments[1]);
 
-#ifdef USE_SPI_TRANSACTION
-    spiBusTransactionEnd(fdevice->io.handle.busdev);
-#else
-    m25p16_disable(fdevice->io.handle.busdev);
-#endif
+    if (fdevice->callback == NULL) {
+        // No callback was provided so block
+        spiWait(fdevice->io.handle.dev);
+    }
 
     fdevice->currentWriteAddress += length;
-
-    m25p16_setTimeout(fdevice, DEFAULT_TIMEOUT_MILLIS);
 }
 
 static void m25p16_pageProgramFinish(flashDevice_t *fdevice)
@@ -379,38 +381,31 @@ static void m25p16_pageProgram(flashDevice_t *fdevice, uint32_t address, const u
  */
 static int m25p16_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, int length)
 {
-    uint8_t command[5] = { M25P16_INSTRUCTION_READ_BYTES };
+    DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
+    DMA_DATA_AUTO uint8_t readyStatus[2];
+    DMA_DATA_AUTO uint8_t readBytes[5] = { M25P16_INSTRUCTION_READ_BYTES };
 
-    m25p16_setCommandAddress(&command[1], address, fdevice->isLargeFlash);
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(fdevice->io.handle.dev);
 
-    if (!m25p16_waitForReady(fdevice)) {
-        return 0;
-    }
+    busSegment_t segments[] = {
+            {readStatus, readyStatus, sizeof (readStatus), true, m25p16_callbackReady},
+            {readBytes, NULL, fdevice->isLargeFlash ? 5 : 4, false, NULL},
+            {NULL, buffer, length, true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
 
-#ifndef FLASH_SPI_SHARED
-    spiSetDivisor(fdevice->io.handle.busdev->busdev_u.spi.instance, spiCalculateDivider(maxReadClkSPIHz));
-#endif
+    // Patch the readBytes command
+    m25p16_setCommandAddress(&readBytes[1], address, fdevice->isLargeFlash);
 
-#ifdef USE_SPI_TRANSACTION
-    spiBusTransactionBegin(fdevice->io.handle.busdev);
-#else
-    m25p16_enable(fdevice->io.handle.busdev);
-#endif
+    spiSetClkDivisor(fdevice->io.handle.dev, spiCalculateDivider(maxReadClkSPIHz));
 
-    spiTransfer(fdevice->io.handle.busdev->busdev_u.spi.instance, command, NULL, fdevice->isLargeFlash ? 5 : 4);
-    spiTransfer(fdevice->io.handle.busdev->busdev_u.spi.instance, NULL, buffer, length);
+    spiSequence(fdevice->io.handle.dev, fdevice->couldBeBusy ? &segments[0] : &segments[1]);
 
-#ifdef USE_SPI_TRANSACTION
-    spiBusTransactionEnd(fdevice->io.handle.busdev);
-#else
-    m25p16_disable(fdevice->io.handle.busdev);
-#endif
+    // Block until code is re-factored to exploit non-blocking
+    spiWait(fdevice->io.handle.dev);
 
-#ifndef FLASH_SPI_SHARED
-    spiSetDivisor(fdevice->io.handle.busdev->busdev_u.spi.instance, spiCalculateDivider(maxClkSPIHz));
-#endif
-
-    m25p16_setTimeout(fdevice, DEFAULT_TIMEOUT_MILLIS);
+    spiSetClkDivisor(fdevice->io.handle.dev, spiCalculateDivider(maxClkSPIHz));
 
     return length;
 }

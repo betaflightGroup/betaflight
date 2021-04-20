@@ -47,7 +47,7 @@ static const flashPartition_t *flashPartition = NULL;
 static const flashGeometry_t *flashGeometry = NULL;
 static uint32_t flashfsSize = 0;
 
-static uint8_t flashWriteBuffer[FLASHFS_WRITE_BUFFER_SIZE];
+static DMA_DATA_ZERO_INIT uint8_t flashWriteBuffer[FLASHFS_WRITE_BUFFER_SIZE];
 
 /* The position of our head and tail in the circular flash write buffer.
  *
@@ -538,7 +538,7 @@ int flashfsIdentifyStartOfFreeSpace(void)
 
     STATIC_ASSERT(FREE_BLOCK_SIZE >= FLASH_MAX_PAGE_SIZE, FREE_BLOCK_SIZE_too_small);
 
-    union {
+    DMA_DATA_AUTO union {
         uint8_t bytes[FREE_BLOCK_TEST_SIZE_BYTES];
         uint32_t ints[FREE_BLOCK_TEST_SIZE_INTS];
     } testBuffer;

@@ -352,7 +352,7 @@ bool accInit(uint16_t accSampleRateHz)
 {
     memset(&acc, 0, sizeof(acc));
     // copy over the common gyro mpu settings
-    acc.dev.bus = *gyroSensorBus();
+    acc.dev.gyro = gyroActiveDev();
     acc.dev.mpuDetectionResult = *gyroMpuDetectionResult();
     acc.dev.acc_high_fsr = accelerometerConfig()->acc_high_fsr;
 

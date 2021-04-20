@@ -44,17 +44,17 @@
 
 #define BIT_SLEEP                   0x40
 
-static void mpu6500SpiInit(const busDevice_t *bus)
+static void mpu6500SpiInit(const extDevice_t *dev)
 {
 
-    spiSetDivisor(bus->busdev_u.spi.instance, spiCalculateDivider(MPU6500_MAX_SPI_CLK_HZ));
+    spiSetClkDivisor(dev, spiCalculateDivider(MPU6500_MAX_SPI_CLK_HZ));
 }
 
-uint8_t mpu6500SpiDetect(const busDevice_t *bus)
+uint8_t mpu6500SpiDetect(const extDevice_t *dev)
 {
-    mpu6500SpiInit(bus);
+    mpu6500SpiInit(dev);
 
-    const uint8_t whoAmI = spiBusReadRegister(bus, MPU_RA_WHO_AM_I);
+    const uint8_t whoAmI = spiReadRegMsk(dev, MPU_RA_WHO_AM_I);
 
     uint8_t mpuDetected = MPU_NONE;
     switch (whoAmI) {
@@ -90,16 +90,16 @@ void mpu6500SpiAccInit(accDev_t *acc)
 
 void mpu6500SpiGyroInit(gyroDev_t *gyro)
 {
-    spiSetDivisor(gyro->bus.busdev_u.spi.instance, spiCalculateDivider(MPU6500_MAX_SPI_INIT_CLK_HZ));
+    spiSetClkDivisor(&gyro->dev, spiCalculateDivider(MPU6500_MAX_SPI_INIT_CLK_HZ));
     delayMicroseconds(1);
 
     mpu6500GyroInit(gyro);
 
     // Disable Primary I2C Interface
-    spiBusWriteRegister(&gyro->bus, MPU_RA_USER_CTRL, MPU6500_BIT_I2C_IF_DIS);
+    spiWriteReg(&gyro->dev, MPU_RA_USER_CTRL, MPU6500_BIT_I2C_IF_DIS);
     delay(100);
 
-    spiSetDivisor(gyro->bus.busdev_u.spi.instance, spiCalculateDivider(MPU6500_MAX_SPI_CLK_HZ));
+    spiSetClkDivisor(&gyro->dev, spiCalculateDivider(MPU6500_MAX_SPI_CLK_HZ));
     delayMicroseconds(1);
 }
 
@@ -118,7 +118,7 @@ bool mpu6500SpiAccDetect(accDev_t *acc)
     }
 
     acc->initFn = mpu6500SpiAccInit;
-    acc->readFn = mpuAccRead;
+    acc->readFn = mpuAccReadSPI;
 
     return true;
 }

@@ -125,20 +125,20 @@ typedef enum {
 
 // BMI270 register reads are 16bits with the first byte a "dummy" value 0
 // that must be ignored. The result is in the second byte.
-static uint8_t bmi270RegisterRead(const busDevice_t *bus, bmi270Register_e registerId)
+static uint8_t bmi270RegisterRead(const extDevice_t *dev, bmi270Register_e registerId)
 {
     uint8_t data[2] = { 0, 0 };
 
-    if (spiBusReadRegisterBuffer(bus, registerId, data, 2)) {
+    if (spiReadRegMskBufRB(dev, registerId, data, 2)) {
         return data[1];
     } else {
         return 0;
     }
 }
 
-static void bmi270RegisterWrite(const busDevice_t *bus, bmi270Register_e registerId, uint8_t value, unsigned delayMs)
+static void bmi270RegisterWrite(const extDevice_t *dev, bmi270Register_e registerId, uint8_t value, unsigned delayMs)
 {
-    spiBusWriteRegister(bus, registerId, value);
+    spiWriteReg(dev, registerId, value);
     if (delayMs) {
         delay(delayMs);
     }
@@ -146,44 +146,41 @@ static void bmi270RegisterWrite(const busDevice_t *bus, bmi270Register_e registe
 
 // Toggle the CS to switch the device into SPI mode.
 // Device switches initializes as I2C and switches to SPI on a low to high CS transition
-static void bmi270EnableSPI(const busDevice_t *bus)
+static void bmi270EnableSPI(const extDevice_t *dev)
 {
-    IOLo(bus->busdev_u.spi.csnPin);
+    IOLo(dev->busType_u.spi.csnPin);
     delay(1);
-    IOHi(bus->busdev_u.spi.csnPin);
+    IOHi(dev->busType_u.spi.csnPin);
     delay(10);
 }
 
-uint8_t bmi270Detect(const busDevice_t *bus)
+uint8_t bmi270Detect(const extDevice_t *dev)
 {
-    spiSetDivisor(bus->busdev_u.spi.instance, spiCalculateDivider(BMI270_MAX_SPI_CLK_HZ));
-    bmi270EnableSPI(bus);
+    spiSetClkDivisor(dev, spiCalculateDivider(BMI270_MAX_SPI_CLK_HZ));
+    bmi270EnableSPI(dev);
 
-    if (bmi270RegisterRead(bus, BMI270_REG_CHIP_ID) == BMI270_CHIP_ID) {
+    if (bmi270RegisterRead(dev, BMI270_REG_CHIP_ID) == BMI270_CHIP_ID) {
         return BMI_270_SPI;
     }
 
     return MPU_NONE;
 }
 
-static void bmi270UploadConfig(const busDevice_t *bus)
+static void bmi270UploadConfig(const extDevice_t *dev)
 {
-    bmi270RegisterWrite(bus, BMI270_REG_PWR_CONF, 0, 1);
-    bmi270RegisterWrite(bus, BMI270_REG_INIT_CTRL, 0, 1);
+    bmi270RegisterWrite(dev, BMI270_REG_PWR_CONF, 0, 1);
+    bmi270RegisterWrite(dev, BMI270_REG_INIT_CTRL, 0, 1);
 
     // Transfer the config file
-    IOLo(bus->busdev_u.spi.csnPin);
-    spiTransferByte(bus->busdev_u.spi.instance, BMI270_REG_INIT_DATA);
-    spiTransfer(bus->busdev_u.spi.instance, bmi270_maximum_fifo_config_file, NULL, sizeof(bmi270_maximum_fifo_config_file));
-    IOHi(bus->busdev_u.spi.csnPin);
+    spiWriteRegBuf(dev, BMI270_REG_INIT_DATA, (uint8_t *)bmi270_maximum_fifo_config_file, sizeof(bmi270_maximum_fifo_config_file));
 
     delay(10);
-    bmi270RegisterWrite(bus, BMI270_REG_INIT_CTRL, 1, 1);
+    bmi270RegisterWrite(dev, BMI270_REG_INIT_CTRL, 1, 1);
 }
 
-static void bmi270Config(const gyroDev_t *gyro)
+static void bmi270Config(gyroDev_t *gyro)
 {
-    const busDevice_t *bus = &gyro->bus;
+    extDevice_t *dev = &gyro->dev;
 
     // If running in hardware_lpf experimental mode then switch to FIFO-based,
     // 6.4KHz sampling, unfiltered data vs. the default 3.2KHz with hardware filtering
@@ -195,55 +192,55 @@ static void bmi270Config(const gyroDev_t *gyro)
 
     // Perform a soft reset to set all configuration to default
     // Delay 100ms before continuing configuration
-    bmi270RegisterWrite(bus, BMI270_REG_CMD, BMI270_VAL_CMD_SOFTRESET, 100);
+    bmi270RegisterWrite(dev, BMI270_REG_CMD, BMI270_VAL_CMD_SOFTRESET, 100);
 
     // Toggle the chip into SPI mode
-    bmi270EnableSPI(bus);
+    bmi270EnableSPI(dev);
 
-    bmi270UploadConfig(bus);
+    bmi270UploadConfig(dev);
 
     // Configure the FIFO
     if (fifoMode) {
-        bmi270RegisterWrite(bus, BMI270_REG_FIFO_CONFIG_0, BMI270_VAL_FIFO_CONFIG_0, 1);
-        bmi270RegisterWrite(bus, BMI270_REG_FIFO_CONFIG_1, BMI270_VAL_FIFO_CONFIG_1, 1);
-        bmi270RegisterWrite(bus, BMI270_REG_FIFO_DOWNS, BMI270_VAL_FIFO_DOWNS, 1);
-        bmi270RegisterWrite(bus, BMI270_REG_FIFO_WTM_0, BMI270_VAL_FIFO_WTM_0, 1);
-        bmi270RegisterWrite(bus, BMI270_REG_FIFO_WTM_1, BMI270_VAL_FIFO_WTM_1, 1);
+        bmi270RegisterWrite(dev, BMI270_REG_FIFO_CONFIG_0, BMI270_VAL_FIFO_CONFIG_0, 1);
+        bmi270RegisterWrite(dev, BMI270_REG_FIFO_CONFIG_1, BMI270_VAL_FIFO_CONFIG_1, 1);
+        bmi270RegisterWrite(dev, BMI270_REG_FIFO_DOWNS, BMI270_VAL_FIFO_DOWNS, 1);
+        bmi270RegisterWrite(dev, BMI270_REG_FIFO_WTM_0, BMI270_VAL_FIFO_WTM_0, 1);
+        bmi270RegisterWrite(dev, BMI270_REG_FIFO_WTM_1, BMI270_VAL_FIFO_WTM_1, 1);
     }
 
     // Configure the accelerometer
-    bmi270RegisterWrite(bus, BMI270_REG_ACC_CONF, (BMI270_VAL_ACC_CONF_HP << 7) | (BMI270_VAL_ACC_CONF_BWP << 4) | BMI270_VAL_ACC_CONF_ODR800, 1);
+    bmi270RegisterWrite(dev, BMI270_REG_ACC_CONF, (BMI270_VAL_ACC_CONF_HP << 7) | (BMI270_VAL_ACC_CONF_BWP << 4) | BMI270_VAL_ACC_CONF_ODR800, 1);
 
     // Configure the accelerometer full-scale range
-    bmi270RegisterWrite(bus, BMI270_REG_ACC_RANGE, BMI270_VAL_ACC_RANGE_16G, 1);
+    bmi270RegisterWrite(dev, BMI270_REG_ACC_RANGE, BMI270_VAL_ACC_RANGE_16G, 1);
 
     // Configure the gyro
-    bmi270RegisterWrite(bus, BMI270_REG_GYRO_CONF, (BMI270_VAL_GYRO_CONF_FILTER_PERF << 7) | (BMI270_VAL_GYRO_CONF_NOISE_PERF << 6) | (BMI270_VAL_GYRO_CONF_BWP << 4) | BMI270_VAL_GYRO_CONF_ODR3200, 1);
+    bmi270RegisterWrite(dev, BMI270_REG_GYRO_CONF, (BMI270_VAL_GYRO_CONF_FILTER_PERF << 7) | (BMI270_VAL_GYRO_CONF_NOISE_PERF << 6) | (BMI270_VAL_GYRO_CONF_BWP << 4) | BMI270_VAL_GYRO_CONF_ODR3200, 1);
 
     // Configure the gyro full-range scale
-    bmi270RegisterWrite(bus, BMI270_REG_GYRO_RANGE, BMI270_VAL_GYRO_RANGE_2000DPS, 1);
+    bmi270RegisterWrite(dev, BMI270_REG_GYRO_RANGE, BMI270_VAL_GYRO_RANGE_2000DPS, 1);
 
     // Configure the gyro data ready interrupt
     if (fifoMode) {
         // Interrupt driven by FIFO watermark level
-        bmi270RegisterWrite(bus, BMI270_REG_INT_MAP_DATA, BMI270_VAL_INT_MAP_FIFO_WM_INT1, 1);
+        bmi270RegisterWrite(dev, BMI270_REG_INT_MAP_DATA, BMI270_VAL_INT_MAP_FIFO_WM_INT1, 1);
     } else {
         // Interrupt driven by data ready
-        bmi270RegisterWrite(bus, BMI270_REG_INT_MAP_DATA, BMI270_VAL_INT_MAP_DATA_DRDY_INT1, 1);
+        bmi270RegisterWrite(dev, BMI270_REG_INT_MAP_DATA, BMI270_VAL_INT_MAP_DATA_DRDY_INT1, 1);
     }
 
     // Configure the behavior of the INT1 pin
-    bmi270RegisterWrite(bus, BMI270_REG_INT1_IO_CTRL, BMI270_VAL_INT1_IO_CTRL_PINMODE, 1);
+    bmi270RegisterWrite(dev, BMI270_REG_INT1_IO_CTRL, BMI270_VAL_INT1_IO_CTRL_PINMODE, 1);
 
     // Configure the device for  performance mode
-    bmi270RegisterWrite(bus, BMI270_REG_PWR_CONF, BMI270_VAL_PWR_CONF, 1);
+    bmi270RegisterWrite(dev, BMI270_REG_PWR_CONF, BMI270_VAL_PWR_CONF, 1);
 
     // Enable the gyro, accelerometer and temperature sensor - disable aux interface
-    bmi270RegisterWrite(bus, BMI270_REG_PWR_CTRL, BMI270_VAL_PWR_CTRL, 1);
+    bmi270RegisterWrite(dev, BMI270_REG_PWR_CTRL, BMI270_VAL_PWR_CTRL, 1);
 
     // Flush the FIFO
     if (fifoMode) {
-        bmi270RegisterWrite(bus, BMI270_REG_CMD, BMI270_VAL_CMD_FIFOFLUSH, 1);
+        bmi270RegisterWrite(dev, BMI270_REG_CMD, BMI270_VAL_CMD_FIFOFLUSH, 1);
     }
 }
 
@@ -288,9 +285,7 @@ static bool bmi270AccRead(accDev_t *acc)
     uint8_t bmi270_rx_buf[BUFFER_SIZE];
     static const uint8_t bmi270_tx_buf[BUFFER_SIZE] = {BMI270_REG_ACC_DATA_X_LSB | 0x80, 0, 0, 0, 0, 0, 0, 0};
 
-    IOLo(acc->bus.busdev_u.spi.csnPin);
-    spiTransfer(acc->bus.busdev_u.spi.instance, bmi270_tx_buf, bmi270_rx_buf, BUFFER_SIZE);   // receive response
-    IOHi(acc->bus.busdev_u.spi.csnPin);
+    spiReadWriteBuf(&acc->gyro->dev, (uint8_t *)bmi270_tx_buf, bmi270_rx_buf, BUFFER_SIZE);   // receive response
 
     acc->ADCRaw[X] = (int16_t)((bmi270_rx_buf[IDX_ACCEL_XOUT_H] << 8) | bmi270_rx_buf[IDX_ACCEL_XOUT_L]);
     acc->ADCRaw[Y] = (int16_t)((bmi270_rx_buf[IDX_ACCEL_YOUT_H] << 8) | bmi270_rx_buf[IDX_ACCEL_YOUT_L]);
@@ -316,9 +311,7 @@ static bool bmi270GyroReadRegister(gyroDev_t *gyro)
     uint8_t bmi270_rx_buf[BUFFER_SIZE];
     static const uint8_t bmi270_tx_buf[BUFFER_SIZE] = {BMI270_REG_GYR_DATA_X_LSB | 0x80, 0, 0, 0, 0, 0, 0, 0};
 
-    IOLo(gyro->bus.busdev_u.spi.csnPin);
-    spiTransfer(gyro->bus.busdev_u.spi.instance, bmi270_tx_buf, bmi270_rx_buf, BUFFER_SIZE);   // receive response
-    IOHi(gyro->bus.busdev_u.spi.csnPin);
+    spiReadWriteBuf(&gyro->dev, (uint8_t *)bmi270_tx_buf, bmi270_rx_buf, BUFFER_SIZE);   // receive response
 
     gyro->gyroADCRaw[X] = (int16_t)((bmi270_rx_buf[IDX_GYRO_XOUT_H] << 8) | bmi270_rx_buf[IDX_GYRO_XOUT_L]);
     gyro->gyroADCRaw[Y] = (int16_t)((bmi270_rx_buf[IDX_GYRO_YOUT_H] << 8) | bmi270_rx_buf[IDX_GYRO_YOUT_L]);
@@ -351,9 +344,7 @@ static bool bmi270GyroReadFifo(gyroDev_t *gyro)
     // Burst read the FIFO length followed by the next 6 bytes containing the gyro axis data for
     // the first sample in the queue. It's possible for the FIFO to be empty so we need to check the
     // length before using the sample.
-    IOLo(gyro->bus.busdev_u.spi.csnPin);
-    spiTransfer(gyro->bus.busdev_u.spi.instance, bmi270_tx_buf, bmi270_rx_buf, BUFFER_SIZE);   // receive response
-    IOHi(gyro->bus.busdev_u.spi.csnPin);
+    spiReadWriteBuf(&gyro->dev, (uint8_t *)bmi270_tx_buf, bmi270_rx_buf, BUFFER_SIZE);   // receive response
 
     int fifoLength = (uint16_t)((bmi270_rx_buf[IDX_FIFO_LENGTH_H] << 8) | bmi270_rx_buf[IDX_FIFO_LENGTH_L]);
 
@@ -385,7 +376,7 @@ static bool bmi270GyroReadFifo(gyroDev_t *gyro)
     // would end up in a lock state of always re-reading the same partial or invalid sample.
     if (fifoLength > 0) {
         // Partial or additional frames left - flush the FIFO
-        bmi270RegisterWrite(&gyro->bus, BMI270_REG_CMD, BMI270_VAL_CMD_FIFOFLUSH, 0);
+        bmi270RegisterWrite(&gyro->dev, BMI270_REG_CMD, BMI270_VAL_CMD_FIFOFLUSH, 0);
     }
 
     return dataRead;
@@ -456,6 +447,6 @@ bool bmi270SpiGyroDetect(gyroDev_t *gyro)
 // watermark reason as an idication of gyro data ready.
 uint8_t bmi270InterruptStatus(gyroDev_t *gyro)
 {
-    return bmi270RegisterRead(&gyro->bus, BMI270_REG_INT_STATUS_1);
+    return bmi270RegisterRead(&gyro->dev, BMI270_REG_INT_STATUS_1);
 }
 #endif // USE_ACCGYRO_BMI270

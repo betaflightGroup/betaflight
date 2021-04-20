@@ -36,7 +36,7 @@ typedef enum {
 
 typedef struct flashDeviceIO_s {
     union {
-        busDevice_t *busdev; // Device interface dependent handle (spi/i2c)
+        extDevice_t *dev; // Device interface dependent handle (spi/i2c)
     #ifdef USE_QUADSPI
         QUADSPI_TypeDef *quadSpi;
     #endif
@@ -55,6 +55,8 @@ typedef struct flashDevice_s {
     bool couldBeBusy;
     uint32_t timeoutAt;
     flashDeviceIO_t io;
+    void (*callback)(uint32_t arg);
+    uint32_t callbackArg;
 } flashDevice_t;
 
 typedef struct flashVTable_s {

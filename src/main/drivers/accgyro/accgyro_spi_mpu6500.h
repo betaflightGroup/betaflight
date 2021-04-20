@@ -22,7 +22,7 @@
 
 #include "drivers/bus.h"
 
-uint8_t mpu6500SpiDetect(const busDevice_t *bus);
+uint8_t mpu6500SpiDetect(const extDevice_t *dev);
 
 bool mpu6500SpiAccDetect(accDev_t *acc);
 bool mpu6500SpiGyroDetect(gyroDev_t *gyro);

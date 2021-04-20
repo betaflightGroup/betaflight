@@ -15,7 +15,7 @@ _Min_Stack_Size = 0x800; /* required amount of stack */
 /* Define output sections */
 SECTIONS
 {
-  /* The startup code goes first into MAIN */
+  /* The vector table goes first into MAIN */
   .isr_vector :
   {
     . = ALIGN(512);
@@ -111,7 +111,7 @@ SECTIONS
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >D2_RAM
+  } >DTCM_RAM
 
   /* Uninitialized data section */
   . = ALIGN(4);

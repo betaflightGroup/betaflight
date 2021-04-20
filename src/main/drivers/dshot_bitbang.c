@@ -70,8 +70,8 @@ dshotBitbangStatus_e bbStatus;
 // as the buffer region is attributed as not cachable.
 // If this is not desirable, we should use manual cache invalidation.
 #ifdef USE_DSHOT_CACHE_MGMT
-#define BB_OUTPUT_BUFFER_ATTRIBUTE __attribute__((aligned(32)))
-#define BB_INPUT_BUFFER_ATTRIBUTE  __attribute__((aligned(32)))
+#define BB_OUTPUT_BUFFER_ATTRIBUTE DMA_RW_AXI __attribute__((aligned(32)))
+#define BB_INPUT_BUFFER_ATTRIBUTE  DMA_RW_AXI __attribute__((aligned(32)))
 #else
 #if defined(STM32F4)
 #define BB_OUTPUT_BUFFER_ATTRIBUTE
