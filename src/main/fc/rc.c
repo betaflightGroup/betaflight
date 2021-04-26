@@ -84,14 +84,14 @@ enum {
 #ifdef USE_RC_SMOOTHING_FILTER
 #define RC_SMOOTHING_IDENTITY_FREQUENCY         80    // Used in the formula to convert a BIQUAD cutoff frequency to PT1
 #define RC_SMOOTHING_FILTER_STARTUP_DELAY_MS    5000  // Time to wait after power to let the PID loop stabilize before starting average frame rate calculation
-#define RC_SMOOTHING_FILTER_TRAINING_SAMPLES    50    // Number of rx frame rate samples to average during initial training
-#define RC_SMOOTHING_FILTER_RETRAINING_SAMPLES  20    // Number of rx frame rate samples to average during frame rate changes
+#define RC_SMOOTHING_FILTER_TRAINING_SAMPLES    50    // Number of rx rate samples to average during initial training
+#define RC_SMOOTHING_FILTER_RETRAINING_SAMPLES  5    // Number of rx rate samples to average to measure new frame rate after training complete
 #define RC_SMOOTHING_FILTER_TRAINING_DELAY_MS   1000  // Additional time to wait after receiving first valid rx frame before initial training starts
 #define RC_SMOOTHING_FILTER_RETRAINING_DELAY_MS 2000  // Guard time to wait after retraining to prevent retraining again too quickly
 #define RC_SMOOTHING_RX_RATE_CHANGE_PERCENT     20    // Look for samples varying this much from the current detected frame rate to initiate retraining
 #define RC_SMOOTHING_RX_RATE_MIN_US             1000  // 1ms
-#define RC_SMOOTHING_RX_RATE_MAX_US             50000 // 50ms or 20hz
-#define RC_SMOOTHING_INTERPOLATED_FEEDFORWARD_DERIVATIVE_PT1_HZ 100 // The value to use for "auto" when interpolated feedforward is enabled
+#define RC_SMOOTHING_RX_RATE_MAX_US             30000 // prevents retraining to intervals greater than 30ms / 33hz
+#define RC_SMOOTHING_INTERPOLATED_FEEDFORWARD_DERIVATIVE_PT1_HZ 100 // Initial value to use for "auto" when interpolated feedforward is enabled
 
 static FAST_DATA_ZERO_INIT rcSmoothingFilter_t rcSmoothingData;
 #endif // USE_RC_SMOOTHING_FILTER
@@ -384,7 +384,8 @@ void updateRcRefreshRate(timeUs_t currentTimeUs)
         refreshRateUs = cmpTimeUs(currentTimeUs, lastRxTimeUs); // calculate a delta here if not supplied by the protocol
     }
     lastRxTimeUs = currentTimeUs;
-    currentRxRefreshRate = constrain(refreshRateUs, 1000, 30000);
+    // max possible packet interval is 100ms before rxIsReceivingSignal says we have no valid signals
+    currentRxRefreshRate = constrain(refreshRateUs, 1000, 90000);
 }
 
 uint16_t getCurrentRxRefreshRate(void)
@@ -633,6 +634,7 @@ static FAST_CODE uint8_t processRcSmoothingFilter(void)
                     }
                 } else {
                     // we have either stopped receiving rx samples (failsafe?) or the sample time is unreasonable so reset the accumulation
+                    // and hold the previous rxRate estimate
                     rcSmoothingResetAccumulation(&rcSmoothingData);
                 }
             }
