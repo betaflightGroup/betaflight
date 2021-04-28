@@ -237,7 +237,7 @@ static uint8_t jetiExBusFrameStatus(rxRuntimeState_t *rxRuntimeState)
     return frameStatus;
 }
 
-static uint16_t jetiExBusReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+static float jetiExBusReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
     if (chan >= rxRuntimeState->channelCount)
         return 0;

@@ -175,6 +175,16 @@ amperage_meter_scale = (Imax - Imin) * 100000 / (Tmax + (Tmax * Tmax / 50))
                     = 205
 amperage_meter_offset = Imin * 100 = 280
 ```
+Measuring Imax requires a battery and an ESC that can both deliver and support max current for the duration of the measurement, so it's prone to big inaccuracies. Alternatively, current can be measured at a much lower throttle position and be taken into account in the calculations.
+
+Following the previous example, if we measured an Ibench current of 6A at 30% of throttle (1255 in the motors tab because (0.3*(max_throttle-1000))+1000))
+```
+Tbench = Tmax * bench_throttle = 850 * 0.3 = 255
+amperage_meter_scale = (Ibench - Imin) * 100000 / (Tbench + (Tbench * Tbench / 50))
+                    = (6 - 2.8) * 100000 / (255 + (255 * 255 / 50))
+                    = 205
+amperage_meter_offset = Imin * 100 = 280
+```
 #### Tuning Using Battery Charger Measurement
 If you cannot measure current draw directly, you can approximate it indirectly using your battery charger.  
 However, note it may be difficult to adjust `amperage_meter_offset` using this method unless you can 

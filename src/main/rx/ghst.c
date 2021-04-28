@@ -289,7 +289,7 @@ static bool ghstProcessFrame(const rxRuntimeState_t *rxRuntimeState)
     return true;
 }
 
-STATIC_UNIT_TESTED uint16_t ghstReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+STATIC_UNIT_TESTED float ghstReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
     UNUSED(rxRuntimeState);
 
@@ -302,7 +302,7 @@ STATIC_UNIT_TESTED uint16_t ghstReadRawRC(const rxRuntimeState_t *rxRuntimeState
     // max  1024     1811   2012us
     //
 
-    return (5 * (ghstChannelData[chan]+1) / 8) + 880;
+    return (5 * ((float)ghstChannelData[chan] + 1) / 8) + 880;
 }
 
 static timeUs_t ghstFrameTimeUs(void)

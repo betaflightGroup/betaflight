@@ -44,7 +44,7 @@ boxBitmask_t rcModeActivationMask;
 int16_t debug[DEBUG16_VALUE_COUNT];
 uint8_t debugMode = 0;
 
-extern uint16_t applyRxChannelRangeConfiguraton(int sample, const rxChannelRangeConfig_t *range);
+extern float applyRxChannelRangeConfiguraton(float sample, const rxChannelRangeConfig_t *range);
 }
 
 #define RANGE_CONFIGURATION(min, max) new (rxChannelRangeConfig_t) {min, max}

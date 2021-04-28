@@ -201,7 +201,7 @@ static uint8_t frameStatus(rxRuntimeState_t *rxRuntimeState)
     return RX_FRAME_COMPLETE;
 }
 
-static uint16_t readRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+static float readRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
     if (chan >= rxRuntimeState->channelCount) {
         return 0;

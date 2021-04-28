@@ -65,6 +65,71 @@ FAST_CODE float pt1FilterApply(pt1Filter_t *filter, float input)
     return filter->state;
 }
 
+// PT2 Low Pass filter
+
+float pt2FilterGain(float f_cut, float dT)
+{
+    const float order = 2.0f;
+    const float orderCutoffCorrection = (1 / sqrtf(powf(2, 1.0f / (order)) - 1));
+    float RC = 1 / ( 2 * orderCutoffCorrection * M_PIf * f_cut);
+    //float RC = 1 / ( 2 * 1.553773974f * M_PIf * f_cut);
+    // where 1.553773974 = 1 / sqrt( (2^(1 / order) - 1) ) and order is 2
+    return dT / (RC + dT);
+}
+
+void pt2FilterInit(pt2Filter_t *filter, float k)
+{
+    filter->state = 0.0f;
+    filter->state1 = 0.0f;
+    filter->k = k;
+}
+
+void pt2FilterUpdateCutoff(pt2Filter_t *filter, float k)
+{
+    filter->k = k;
+}
+
+FAST_CODE float pt2FilterApply(pt2Filter_t *filter, float input)
+{
+    filter->state1 = filter->state1 + filter->k * (input - filter->state1);
+    filter->state = filter->state + filter->k * (filter->state1 - filter->state);
+    return filter->state;
+}
+
+// PT3 Low Pass filter
+
+float pt3FilterGain(float f_cut, float dT)
+{
+    const float order = 3.0f;
+    const float orderCutoffCorrection = (1 / sqrtf(powf(2, 1.0f / (order)) - 1));
+    float RC = 1 / ( 2 * orderCutoffCorrection * M_PIf * f_cut);
+    // float RC = 1 / ( 2 * 1.961459177f * M_PIf * f_cut);
+    // where 1.961459177 = 1 / sqrt( (2^(1 / order) - 1) ) and order is 3
+    return dT / (RC + dT);
+}
+
+void pt3FilterInit(pt3Filter_t *filter, float k)
+{
+    filter->state = 0.0f;
+    filter->state1 = 0.0f;
+    filter->state2 = 0.0f;
+    filter->k = k;
+}
+
+void pt3FilterUpdateCutoff(pt3Filter_t *filter, float k)
+{
+    filter->k = k;
+}
+
+FAST_CODE float pt3FilterApply(pt3Filter_t *filter, float input)
+{
+    filter->state1 = filter->state1 + filter->k * (input - filter->state1);
+    filter->state2 = filter->state2 + filter->k * (filter->state1 - filter->state2);
+    filter->state = filter->state + filter->k * (filter->state2 - filter->state);
+    return filter->state;
+}
+
+
 // Slew filter with limit
 
 void slewFilterInit(slewFilter_t *filter, float slewLimit, float threshold)

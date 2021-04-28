@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "platform.h"
 
@@ -79,6 +80,20 @@ static const void *cmsx_menuRcConfirmBack(displayPort_t *pDisp, const OSD_Entry 
     }
 }
 
+static int16_t rcDataInt[AUX4 + 1];
+
+static const void *cmsx_menuRcOnDisplayUpdate(displayPort_t *pDisp, const OSD_Entry *selected)
+{
+    UNUSED(pDisp);
+    UNUSED(selected);
+
+    for (int i = 0; i <= AUX4; i++) {
+        rcDataInt[i] = lroundf(rcData[i]);
+    }
+
+    return NULL;
+}
+
 //
 // RC preview
 //
@@ -86,15 +101,15 @@ static const OSD_Entry cmsx_menuRcEntries[] =
 {
     { "-- RC PREV --", OME_Label, NULL, NULL, 0},
 
-    { "ROLL",  OME_INT16, NULL, &(OSD_INT16_t){ &rcData[ROLL],     1, 2500, 0 }, DYNAMIC },
-    { "PITCH", OME_INT16, NULL, &(OSD_INT16_t){ &rcData[PITCH],    1, 2500, 0 }, DYNAMIC },
-    { "THR",   OME_INT16, NULL, &(OSD_INT16_t){ &rcData[THROTTLE], 1, 2500, 0 }, DYNAMIC },
-    { "YAW",   OME_INT16, NULL, &(OSD_INT16_t){ &rcData[YAW],      1, 2500, 0 }, DYNAMIC },
+    { "ROLL",  OME_INT16, NULL, &(OSD_INT16_t){ &rcDataInt[ROLL],     1, 2500, 0 }, DYNAMIC },
+    { "PITCH", OME_INT16, NULL, &(OSD_INT16_t){ &rcDataInt[PITCH],    1, 2500, 0 }, DYNAMIC },
+    { "THR",   OME_INT16, NULL, &(OSD_INT16_t){ &rcDataInt[THROTTLE], 1, 2500, 0 }, DYNAMIC },
+    { "YAW",   OME_INT16, NULL, &(OSD_INT16_t){ &rcDataInt[YAW],      1, 2500, 0 }, DYNAMIC },
 
-    { "AUX1",  OME_INT16, NULL, &(OSD_INT16_t){ &rcData[AUX1],     1, 2500, 0 }, DYNAMIC },
-    { "AUX2",  OME_INT16, NULL, &(OSD_INT16_t){ &rcData[AUX2],     1, 2500, 0 }, DYNAMIC },
-    { "AUX3",  OME_INT16, NULL, &(OSD_INT16_t){ &rcData[AUX3],     1, 2500, 0 }, DYNAMIC },
-    { "AUX4",  OME_INT16, NULL, &(OSD_INT16_t){ &rcData[AUX4],     1, 2500, 0 }, DYNAMIC },
+    { "AUX1",  OME_INT16, NULL, &(OSD_INT16_t){ &rcDataInt[AUX1],     1, 2500, 0 }, DYNAMIC },
+    { "AUX2",  OME_INT16, NULL, &(OSD_INT16_t){ &rcDataInt[AUX2],     1, 2500, 0 }, DYNAMIC },
+    { "AUX3",  OME_INT16, NULL, &(OSD_INT16_t){ &rcDataInt[AUX3],     1, 2500, 0 }, DYNAMIC },
+    { "AUX4",  OME_INT16, NULL, &(OSD_INT16_t){ &rcDataInt[AUX4],     1, 2500, 0 }, DYNAMIC },
 
     { "BACK",  OME_Back, NULL, NULL, 0},
     {NULL, OME_END, NULL, NULL, 0}
@@ -107,7 +122,7 @@ CMS_Menu cmsx_menuRcPreview = {
 #endif
     .onEnter = cmsx_menuRcOnEnter,
     .onExit = cmsx_menuRcConfirmBack,
-    .onDisplayUpdate = NULL,
+    .onDisplayUpdate = cmsx_menuRcOnDisplayUpdate,
     .entries = cmsx_menuRcEntries
 };
 

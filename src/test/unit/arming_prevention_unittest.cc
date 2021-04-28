@@ -59,7 +59,7 @@ extern "C" {
     PG_REGISTER(motorConfig_t, motorConfig, PG_MOTOR_CONFIG, 0);
 
     float rcCommand[4];
-    int16_t rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    float rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
     uint16_t averageSystemLoadPercent = 0;
     uint8_t cliMode = 0;
     uint8_t debugMode = 0;

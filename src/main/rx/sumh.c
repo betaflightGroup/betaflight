@@ -108,7 +108,7 @@ static uint8_t sumhFrameStatus(rxRuntimeState_t *rxRuntimeState)
     return RX_FRAME_COMPLETE;
 }
 
-static uint16_t sumhReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+static float sumhReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
     UNUSED(rxRuntimeState);
 

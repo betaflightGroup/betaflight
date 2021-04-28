@@ -87,11 +87,11 @@ uint8_t sbusChannelsDecode(rxRuntimeState_t *rxRuntimeState, const sbusChannels_
     return RX_FRAME_COMPLETE;
 }
 
-static uint16_t sbusChannelsReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+static float sbusChannelsReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
     // Linear fitting values read from OpenTX-ppmus and comparing with values received by X4R
     // http://www.wolframalpha.com/input/?i=linear+fit+%7B173%2C+988%7D%2C+%7B1812%2C+2012%7D%2C+%7B993%2C+1500%7D
-    return (5 * rxRuntimeState->channelData[chan] / 8) + 880;
+    return (5 * (float)rxRuntimeState->channelData[chan] / 8) + 880;
 }
 
 void sbusChannelsInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)

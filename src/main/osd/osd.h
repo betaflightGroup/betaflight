@@ -160,6 +160,7 @@ typedef enum {
     OSD_EFFICIENCY,
     OSD_TOTAL_FLIGHTS,
     OSD_UP_DOWN_REFERENCE,
+    OSD_TX_UPLINK_POWER,
     OSD_ITEM_COUNT // MUST BE LAST
 } osd_items_e;
 

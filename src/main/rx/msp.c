@@ -36,7 +36,7 @@
 static uint16_t mspFrame[MAX_SUPPORTED_RC_CHANNEL_COUNT];
 static bool rxMspFrameDone = false;
 
-uint16_t rxMspReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+float rxMspReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
     UNUSED(rxRuntimeState);
     return mspFrame[chan];

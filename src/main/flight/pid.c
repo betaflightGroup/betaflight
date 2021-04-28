@@ -30,7 +30,6 @@
 
 #include "common/axis.h"
 #include "common/filter.h"
-#include "common/maths.h"
 
 #include "config/config_reset.h"
 #include "config/simplified_tuning.h"
@@ -206,6 +205,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .ff_interpolate_sp = FF_INTERPOLATE_ON,
         .ff_max_rate_limit = 100,
         .ff_smooth_factor = 37,
+        .ff_jitter_factor = 7,
         .ff_boost = 15,
         .dyn_lpf_curve_expo = 5,
         .level_race_mode = false,
@@ -266,6 +266,11 @@ float pidGetFfSmoothFactor()
 {
     return pidRuntime.ffSmoothFactor;
 }
+
+float pidGetFfJitterFactor()
+{
+    return pidRuntime.ffJitterFactor;
+}
 #endif
 
 void pidResetIterm(void)
@@ -315,7 +320,7 @@ float pidCompensateThrustLinearization(float throttle)
     if (pidRuntime.thrustLinearization != 0.0f) {
         // for whoops where a lot of TL is needed, allow more throttle boost
         const float throttleReversed = (1.0f - throttle);
-        throttle /= 1.0f + pidRuntime.throttleCompensateAmount * powerf(throttleReversed, 2);
+        throttle /= 1.0f + pidRuntime.throttleCompensateAmount * powf(throttleReversed, 2);
     }
     return throttle;
 }
@@ -325,7 +330,7 @@ float pidApplyThrustLinearization(float motorOutput)
     if (pidRuntime.thrustLinearization != 0.0f) {
         if (motorOutput > 0.0f) {
             const float motorOutputReversed = (1.0f - motorOutput);
-            motorOutput *= 1.0f + powerf(motorOutputReversed, 2) * pidRuntime.thrustLinearization;
+            motorOutput *= 1.0f + powf(motorOutputReversed, 2) * pidRuntime.thrustLinearization;
         }
     }
     return motorOutput;
@@ -638,14 +643,7 @@ float FAST_CODE applyRcSmoothingDerivativeFilter(int axis, float pidSetpointDelt
         DEBUG_SET(DEBUG_RC_SMOOTHING, 1, lrintf(pidSetpointDelta * 100.0f));
     }
     if (pidRuntime.setpointDerivativeLpfInitialized) {
-        switch (pidRuntime.rcSmoothingFilterType) {
-            case RC_SMOOTHING_DERIVATIVE_PT1:
-                ret = pt1FilterApply(&pidRuntime.setpointDerivativePt1[axis], pidSetpointDelta);
-                break;
-            case RC_SMOOTHING_DERIVATIVE_BIQUAD:
-                ret = biquadFilterApplyDF1(&pidRuntime.setpointDerivativeBiquad[axis], pidSetpointDelta);
-                break;
-        }
+        ret = pt3FilterApply(&pidRuntime.setpointDerivativePt3[axis], pidSetpointDelta);
         if (axis == pidRuntime.rcSmoothingDebugAxis) {
             DEBUG_SET(DEBUG_RC_SMOOTHING, 2, lrintf(ret * 100.0f));
         }

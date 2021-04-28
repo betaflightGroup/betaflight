@@ -174,18 +174,19 @@ static uint8_t spektrumFrameStatus(rxRuntimeState_t *rxRuntimeState)
     return result;
 }
 
-static uint16_t spektrumReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+static float spektrumReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
-    uint16_t data;
+    float data;
 
     if (chan >= rxRuntimeState->channelCount) {
         return 0;
     }
 
-    if (spekHiRes)
-        data = 988 + (spekChannelData[chan] >> 1);   // 2048 mode
-    else
-        data = 988 + spekChannelData[chan];          // 1024 mode
+    if (spekHiRes) {
+        data = 0.5f * (float)spekChannelData[chan] + 988; // 2048 mode
+    } else {
+        data = spekChannelData[chan] + 988;               // 1024 mode
+    }
 
     return data;
 }

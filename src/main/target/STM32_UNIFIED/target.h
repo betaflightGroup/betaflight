@@ -94,7 +94,7 @@
 #define USE_UART5
 #define USE_UART6
 
-#define SERIAL_PORT_COUNT       (UNIFIED_SERIAL_PORT_COUNT + 6) 
+#define SERIAL_PORT_COUNT       (UNIFIED_SERIAL_PORT_COUNT + 6)
 
 #define USE_SPI_DEVICE_1
 #define USE_SPI_DEVICE_2
@@ -139,6 +139,42 @@
 #define TARGET_IO_PORTD 0xffff
 #define TARGET_IO_PORTE 0xffff
 #define TARGET_IO_PORTF 0xffff
+
+#elif defined(STM32G47X)
+#define TARGET_BOARD_IDENTIFIER "SG47"
+
+#define USBD_PRODUCT_STRING     "Betaflight STM32G47x"
+
+#define USE_I2C_DEVICE_1
+#define USE_I2C_DEVICE_2
+#define USE_I2C_DEVICE_3
+#define USE_I2C_DEVICE_4
+
+#define USE_UART1
+#define USE_UART2
+#define USE_UART3
+#define USE_UART4
+#define USE_UART5
+#define USE_UART9
+
+#define SERIAL_PORT_COUNT       (UNIFIED_SERIAL_PORT_COUNT + 6)
+
+#define USE_SPI_DEVICE_1
+#define USE_SPI_DEVICE_2
+#define USE_SPI_DEVICE_3
+#define USE_SPI_DEVICE_4
+
+#define TARGET_IO_PORTA 0xffff
+#define TARGET_IO_PORTB 0xffff
+#define TARGET_IO_PORTC 0xffff
+#define TARGET_IO_PORTD 0xffff
+#define TARGET_IO_PORTE 0xffff
+#define TARGET_IO_PORTF 0xffff
+
+#elif !defined(UNIT_TEST)
+
+#error "No resources defined for this Unified Target."
+
 #endif
 
 // Treat the target as unified, and expect manufacturer id / board name
@@ -190,9 +226,12 @@
 #define USE_BARO_DPS310
 #define USE_BARO_SPI_DPS310
 
+#if !defined(STM32G4)
+// G4 support needs fixing
 #define USE_SDCARD
 #define USE_SDCARD_SPI
 #define USE_SDCARD_SDIO
+#endif
 
 #define USE_FLASHFS
 #define USE_FLASH_TOOLS
@@ -207,11 +246,14 @@
 #define USE_VTX_RTC6705
 #define USE_VTX_RTC6705_SOFTSPI
 
+#if !defined(STM32G4)
+// To make it fit RAM
 #define USE_TRANSPONDER
 
 #define USE_RANGEFINDER
 #define USE_RANGEFINDER_HCSR04
 #define USE_RANGEFINDER_TF
+#endif
 
 #define USE_SPI
 #define SPI_FULL_RECONFIGURABILITY

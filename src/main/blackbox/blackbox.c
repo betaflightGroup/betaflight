@@ -1035,15 +1035,15 @@ static void writeGPSFrame(timeUs_t currentTimeUs)
     }
 
     blackboxWriteUnsignedVB(gpsSol.numSat);
-    blackboxWriteSignedVB(gpsSol.llh.lat - gpsHistory.GPS_home[LAT]);
-    blackboxWriteSignedVB(gpsSol.llh.lon - gpsHistory.GPS_home[LON]);
+    blackboxWriteSignedVB(gpsSol.llh.lat - gpsHistory.GPS_home[GPS_LATITUDE]);
+    blackboxWriteSignedVB(gpsSol.llh.lon - gpsHistory.GPS_home[GPS_LONGITUDE]);
     blackboxWriteUnsignedVB(gpsSol.llh.altCm / 10); // was originally designed to transport meters in int16, but +-3276.7m is a good compromise
     blackboxWriteUnsignedVB(gpsSol.groundSpeed);
     blackboxWriteUnsignedVB(gpsSol.groundCourse);
 
     gpsHistory.GPS_numSat = gpsSol.numSat;
-    gpsHistory.GPS_coord[LAT] = gpsSol.llh.lat;
-    gpsHistory.GPS_coord[LON] = gpsSol.llh.lon;
+    gpsHistory.GPS_coord[GPS_LATITUDE] = gpsSol.llh.lat;
+    gpsHistory.GPS_coord[GPS_LONGITUDE] = gpsSol.llh.lon;
 }
 #endif
 
@@ -1461,8 +1461,6 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE("rc_smoothing_cutoffs", "%d, %d",        rcSmoothingData->inputCutoffSetting,
                                                                             rcSmoothingData->derivativeCutoffSetting);
         BLACKBOX_PRINT_HEADER_LINE("rc_smoothing_auto_factor", "%d",        rcSmoothingData->autoSmoothnessFactor);
-        BLACKBOX_PRINT_HEADER_LINE("rc_smoothing_filter_type", "%d, %d",    rcSmoothingData->inputFilterType,
-                                                                            rcSmoothingData->derivativeFilterType);
         BLACKBOX_PRINT_HEADER_LINE("rc_smoothing_active_cutoffs", "%d, %d", rcSmoothingData->inputCutoffFrequency,
                                                                             rcSmoothingData->derivativeCutoffFrequency);
         BLACKBOX_PRINT_HEADER_LINE("rc_smoothing_rx_average", "%d",         rcSmoothingData->averageFrameTimeUs);
@@ -1639,8 +1637,8 @@ STATIC_UNIT_TESTED void blackboxLogIteration(timeUs_t currentTimeUs)
                 writeGPSHomeFrame();
                 writeGPSFrame(currentTimeUs);
             } else if (gpsSol.numSat != gpsHistory.GPS_numSat
-                    || gpsSol.llh.lat != gpsHistory.GPS_coord[LAT]
-                    || gpsSol.llh.lon != gpsHistory.GPS_coord[LON]) {
+                    || gpsSol.llh.lat != gpsHistory.GPS_coord[GPS_LATITUDE]
+                    || gpsSol.llh.lon != gpsHistory.GPS_coord[GPS_LONGITUDE]) {
                 //We could check for velocity changes as well but I doubt it changes independent of position
                 writeGPSFrame(currentTimeUs);
             }

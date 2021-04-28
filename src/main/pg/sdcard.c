@@ -45,7 +45,17 @@ void pgResetFn_sdcardConfig(sdcardConfig_t *config)
     // On generic targets, SPI has precedence over SDIO; SDIO must be post-flash configured.
     config->useDma = false;
     config->device = SPI_DEV_TO_CFG(SPIINVALID);
+
+#ifdef CONFIG_IN_SDCARD
+    // CONFIG_ID_SDDCARD requires a default mode.
+#if defined(USE_SDCARD_SDIO)
+    config->mode = SDCARD_MODE_SDIO;
+#elif defined(USE_SDCARD_SPI)
+    config->mode = SDCARD_MODE_SPI;
+#endif
+#else
     config->mode = SDCARD_MODE_NONE;
+#endif
 
 #if defined(STM32H7) && defined(USE_SDCARD_SDIO) // H7 only for now, likely should be applied to F4/F7 too
     config->mode = SDCARD_MODE_SDIO;

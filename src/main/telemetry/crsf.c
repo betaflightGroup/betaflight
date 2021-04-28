@@ -30,21 +30,19 @@
 #include "build/build_config.h"
 #include "build/version.h"
 
-#include "config/feature.h"
-#include "pg/pg.h"
-#include "pg/pg_ids.h"
+#include "cms/cms.h"
 
+#include "config/feature.h"
+
+#include "config/config.h"
 #include "common/crc.h"
 #include "common/maths.h"
 #include "common/printf.h"
 #include "common/streambuf.h"
 #include "common/utils.h"
 
-#include "cms/cms.h"
-
 #include "drivers/nvic.h"
 
-#include "config/config.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
 
@@ -55,6 +53,9 @@
 #include "io/gps.h"
 #include "io/serial.h"
 
+#include "pg/pg.h"
+#include "pg/pg_ids.h"
+
 #include "rx/crsf.h"
 #include "rx/crsf_protocol.h"
 
@@ -64,7 +65,7 @@
 #include "telemetry/telemetry.h"
 #include "telemetry/msp_shared.h"
 
-#include "telemetry/crsf.h"
+#include "crsf.h"
 
 
 #define CRSF_CYCLETIME_US                   100000 // 100ms, 10 Hz
@@ -525,7 +526,11 @@ void initCrsfTelemetry(void)
     }
 #endif
     crsfScheduleCount = (uint8_t)index;
- }
+
+#if defined(USE_CRSF_CMS_TELEMETRY)
+    crsfDisplayportRegister();
+#endif
+}
 
 bool checkCrsfTelemetryState(void)
 {

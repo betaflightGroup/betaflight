@@ -20,6 +20,6 @@
 
 #pragma once
 
-displayPort_t *displayPortSrxlInit();
-
 extern displayPort_t srxlDisplayPort;
+
+void srxlDisplayportRegister(void);

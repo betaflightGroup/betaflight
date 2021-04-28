@@ -447,3 +447,12 @@ endif
 
 # Search path and source files for the ST stdperiph library
 VPATH        := $(VPATH):$(STDPERIPH_DIR)/src
+
+# Search path and source files for the Open Location Code library
+OLC_DIR = $(ROOT)/lib/main/google/olc
+
+ifneq ($(OLC_DIR),)
+INCLUDE_DIRS += $(OLC_DIR)
+SRC += $(OLC_DIR)/olc.c
+SIZE_OPTIMISED_SRC += $(OLC_DIR)/olc.c
+endif

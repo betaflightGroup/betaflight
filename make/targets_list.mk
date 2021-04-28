@@ -82,7 +82,8 @@ UNSUPPORTED_TARGETS := \
 UNIFIED_TARGETS := STM32F405 \
 	STM32F411 \
 	STM32F7X2 \
-	STM32F745
+	STM32F745 \
+	STM32G47X
 
 # Legacy targets are targets that have been replaced by Unified Target configurations
 LEGACY_TARGETS := MATEKF405 \

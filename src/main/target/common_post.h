@@ -90,7 +90,6 @@
 #endif
 
 #if !defined(USE_TELEMETRY)
-#undef USE_CRSF_CMS_TELEMETRY
 #undef USE_TELEMETRY_CRSF
 #undef USE_TELEMETRY_GHST
 #undef USE_TELEMETRY_FRSKY_HUB
@@ -136,8 +135,11 @@
 #undef USE_SPEKTRUM_RSSI_PERCENT_CONVERSION
 #undef USE_SPEKTRUM_VTX_CONTROL
 #undef USE_SPEKTRUM_VTX_TELEMETRY
-#undef USE_SPEKTRUM_CMS_TELEMETRY
 #undef USE_TELEMETRY_SRXL
+#endif
+
+#if !defined(USE_CMS) || !defined(USE_TELEMETRY_SRXL)
+#undef USE_SPEKTRUM_CMS_TELEMETRY
 #endif
 
 #if defined(USE_SERIALRX_SBUS) || defined(USE_SERIALRX_FPORT)
@@ -229,6 +231,7 @@
 #undef USE_RX_LINK_QUALITY_INFO
 #undef USE_OSD_PROFILES
 #undef USE_OSD_STICK_OVERLAY
+#undef USE_RX_LINK_UPLINK_POWER
 #endif
 
 #if defined(USE_GPS_RESCUE)
@@ -240,7 +243,7 @@
 #define USE_I2C_GYRO
 #endif
 
-#if defined(USE_GYRO_SPI_ICM20689) || defined(USE_GYRO_SPI_MPU6000) || defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250) || defined(USE_GYRO_L3GD20)
+#if defined(USE_GYRO_SPI_ICM20689) || defined(USE_GYRO_SPI_MPU6000) || defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250) || defined(USE_GYRO_L3GD20) || defined(USE_GYRO_SPI_ICM42605)
 #define USE_SPI_GYRO
 #endif
 
@@ -405,4 +408,8 @@ extern uint8_t __config_end;
 
 #if defined(USE_RX_SPI) || defined (USE_SERIALRX_SRXL2)
 #define USE_RX_BIND
+#endif
+
+#ifndef USE_GPS
+#undef USE_GPS_PLUS_CODES
 #endif

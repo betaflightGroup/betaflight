@@ -69,7 +69,7 @@ extern "C" {
     float rMat[3][3];
 
     pidProfile_t *currentPidProfile;
-    int16_t rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    float rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
     uint8_t GPS_numSat;
     uint16_t GPS_distanceToHome;
     int16_t GPS_directionToHome;

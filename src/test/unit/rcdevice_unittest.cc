@@ -53,7 +53,7 @@ extern "C" {
 
     #include "rx/rx.h"
 
-    int16_t rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];     // interval [1000;2000]
+    float rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];     // interval [1000;2000]
 
     extern rcdeviceSwitchState_t switchStates[BOXCAMERA3 - BOXCAMERA1 + 1];
     extern runcamDevice_t *camDevice;

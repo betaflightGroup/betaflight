@@ -640,7 +640,7 @@ uint8_t armingFlags = 0;
 uint16_t flightModeFlags = 0;
 int16_t heading;
 uint8_t stateFlags = 0;
-int16_t rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+float rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
 pidProfile_t *currentPidProfile;
 rxRuntimeState_t rxRuntimeState;
 PG_REGISTER(blackboxConfig_t, blackboxConfig, PG_BLACKBOX_CONFIG, 0);

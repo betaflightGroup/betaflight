@@ -85,6 +85,10 @@ static uint16_t linkQuality = 0;
 static uint8_t rfMode = 0;
 #endif
 
+#ifdef USE_RX_LINK_UPLINK_POWER
+static uint16_t uplinkTxPwrMw = 0;  //Uplink Tx power in mW
+#endif
+
 #define MSP_RSSI_TIMEOUT_US 1500000   // 1.5 sec
 
 #define RSSI_ADC_DIVISOR (4096 / 1024)
@@ -107,8 +111,8 @@ static uint32_t needRxSignalMaxDelayUs;
 static uint32_t suspendRxSignalUntil = 0;
 static uint8_t  skipRxSamples = 0;
 
-static int16_t rcRaw[MAX_SUPPORTED_RC_CHANNEL_COUNT];     // interval [1000;2000]
-int16_t rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];     // interval [1000;2000]
+static float rcRaw[MAX_SUPPORTED_RC_CHANNEL_COUNT];     // interval [1000;2000]
+float rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];           // interval [1000;2000]
 uint32_t rcInvalidPulsPeriod[MAX_SUPPORTED_RC_CHANNEL_COUNT];
 
 #define MAX_INVALID_PULS_TIME    300
@@ -156,7 +160,7 @@ void resetAllRxChannelRangeConfigurations(rxChannelRangeConfig_t *rxChannelRange
     }
 }
 
-static uint16_t nullReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t channel)
+static float nullReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t channel)
 {
     UNUSED(rxRuntimeState);
     UNUSED(channel);
@@ -462,6 +466,13 @@ void rxProcessPending(bool state)
     processPending = state;
 }
 
+#ifdef USE_RX_LINK_UPLINK_POWER
+void rxSetUplinkTxPwrMw(uint16_t uplinkTxPwrMwValue)
+{
+    uplinkTxPwrMw = uplinkTxPwrMwValue;
+}
+#endif
+
 bool rxUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
 {
     bool signalReceived = false;
@@ -591,15 +602,15 @@ static uint16_t getRxfailValue(uint8_t channel)
     }
 }
 
-STATIC_UNIT_TESTED uint16_t applyRxChannelRangeConfiguraton(int sample, const rxChannelRangeConfig_t *range)
+STATIC_UNIT_TESTED float applyRxChannelRangeConfiguraton(float sample, const rxChannelRangeConfig_t *range)
 {
     // Avoid corruption of channel with a value of PPM_RCVR_TIMEOUT
     if (sample == PPM_RCVR_TIMEOUT) {
         return PPM_RCVR_TIMEOUT;
     }
 
-    sample = scaleRange(sample, range->min, range->max, PWM_RANGE_MIN, PWM_RANGE_MAX);
-    sample = constrain(sample, PWM_PULSE_MIN, PWM_PULSE_MAX);
+    sample = scaleRangef(sample, range->min, range->max, PWM_RANGE_MIN, PWM_RANGE_MAX);
+    sample = constrainf(sample, PWM_PULSE_MIN, PWM_PULSE_MAX);
 
     return sample;
 }
@@ -611,7 +622,7 @@ static void readRxChannelsApplyRanges(void)
         const uint8_t rawChannel = channel < RX_MAPPABLE_CHANNEL_COUNT ? rxConfig()->rcmap[channel] : channel;
 
         // sample the channel
-        uint16_t sample;
+        float sample;
 #if defined(USE_RX_MSP_OVERRIDE)
         if (rxConfig()->msp_override_channels_mask) {
             sample = rxMspOverrideReadRawRc(&rxRuntimeState, rxConfig(), rawChannel);
@@ -641,7 +652,7 @@ static void detectAndApplySignalLossBehaviour(void)
 
     rxFlightChannelsValid = true;
     for (int channel = 0; channel < rxChannelCount; channel++) {
-        uint16_t sample = rcRaw[channel];
+        float sample = rcRaw[channel];
 
         const bool validPulse = useValueFromRx && isPulseValid(sample);
 
@@ -885,6 +896,13 @@ uint8_t rxGetRfMode(void)
 uint16_t rxGetLinkQualityPercent(void)
 {
     return (linkQualitySource == LQ_SOURCE_NONE) ? scaleRange(linkQuality, 0, LINK_QUALITY_MAX_VALUE, 0, 100) : linkQuality;
+}
+#endif
+
+#ifdef USE_RX_LINK_UPLINK_POWER
+uint16_t rxGetUplinkTxPwrMw(void)
+{
+    return uplinkTxPwrMw;
 }
 #endif
 

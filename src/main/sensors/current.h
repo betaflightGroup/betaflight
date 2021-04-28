@@ -82,12 +82,12 @@ PG_DECLARE(currentSensorADCConfig_t, currentSensorADCConfig);
 
 typedef struct currentMeterVirtualState_s {
     currentMeterMAhDrawnState_t mahDrawnState;
-    int32_t amperage;           // current read by current sensor in centiampere (1/100th A)
+    int32_t amperage;           // current read by current sensor in centiamperes (1/100th A)
 } currentSensorVirtualState_t;
 
 typedef struct currentSensorVirtualConfig_s {
-    int16_t scale;              // scale the current sensor output voltage to milliamps. Value in 1/10th mV/A
-    uint16_t offset;            // offset of the current sensor in millivolt steps
+    int16_t scale;              // scale the throttle to centiamperes, using a hardcoded thrust linearization function (see Battery.md)
+    uint16_t offset;            // offset of the current sensor in centiamperes (1/100th A)
 } currentSensorVirtualConfig_t;
 
 PG_DECLARE(currentSensorVirtualConfig_t, currentSensorVirtualConfig);

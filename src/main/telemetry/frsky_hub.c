@@ -257,15 +257,15 @@ static void GPStoDDDMM_MMMM(int32_t mwiigps, gpsCoordinateDDDMMmmmm_t *result)
 static void sendLatLong(int32_t coord[2])
 {
     gpsCoordinateDDDMMmmmm_t coordinate;
-    GPStoDDDMM_MMMM(coord[LAT], &coordinate);
+    GPStoDDDMM_MMMM(coord[GPS_LATITUDE], &coordinate);
     frSkyHubWriteFrame(ID_LATITUDE_BP, coordinate.dddmm);
     frSkyHubWriteFrame(ID_LATITUDE_AP, coordinate.mmmm);
-    frSkyHubWriteFrame(ID_N_S, coord[LAT] < 0 ? 'S' : 'N');
+    frSkyHubWriteFrame(ID_N_S, coord[GPS_LATITUDE] < 0 ? 'S' : 'N');
 
-    GPStoDDDMM_MMMM(coord[LON], &coordinate);
+    GPStoDDDMM_MMMM(coord[GPS_LONGITUDE], &coordinate);
     frSkyHubWriteFrame(ID_LONGITUDE_BP, coordinate.dddmm);
     frSkyHubWriteFrame(ID_LONGITUDE_AP, coordinate.mmmm);
-    frSkyHubWriteFrame(ID_E_W, coord[LON] < 0 ? 'W' : 'E');
+    frSkyHubWriteFrame(ID_E_W, coord[GPS_LONGITUDE] < 0 ? 'W' : 'E');
 }
 
 #if defined(USE_GPS)
@@ -316,8 +316,8 @@ static void sendFakeLatLong(void)
     // Heading is only displayed on OpenTX if non-zero lat/long is also sent
     int32_t coord[2] = {0,0};
 
-    coord[LAT] = ((0.01f * telemetryConfig()->gpsNoFixLatitude) * GPS_DEGREES_DIVIDER);
-    coord[LON] = ((0.01f * telemetryConfig()->gpsNoFixLongitude) * GPS_DEGREES_DIVIDER);
+    coord[GPS_LATITUDE] = ((0.01f * telemetryConfig()->gpsNoFixLatitude) * GPS_DEGREES_DIVIDER);
+    coord[GPS_LONGITUDE] = ((0.01f * telemetryConfig()->gpsNoFixLongitude) * GPS_DEGREES_DIVIDER);
 
     sendLatLong(coord);
 }
@@ -330,8 +330,8 @@ static void sendGPSLatLong(void)
     if (STATE(GPS_FIX) || gpsFixOccured == 1) {
         // If we have ever had a fix, send the last known lat/long
         gpsFixOccured = 1;
-        coord[LAT] = gpsSol.llh.lat;
-        coord[LON] = gpsSol.llh.lon;
+        coord[GPS_LATITUDE] = gpsSol.llh.lat;
+        coord[GPS_LONGITUDE] = gpsSol.llh.lon;
         sendLatLong(coord);
     } else {
         // otherwise send fake lat/long in order to display compass value

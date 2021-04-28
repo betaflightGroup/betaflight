@@ -248,7 +248,7 @@ static uint8_t xBusFrameStatus(rxRuntimeState_t *rxRuntimeState)
     return RX_FRAME_COMPLETE;
 }
 
-static uint16_t xBusReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+static float xBusReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
     uint16_t data;
 

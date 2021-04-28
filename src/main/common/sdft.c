@@ -38,7 +38,7 @@ static void applySqrt(const sdft_t *sdft, float *data);
 void sdftInit(sdft_t *sdft, const uint8_t startBin, const uint8_t endBin, const uint8_t numBatches)
 {
     if (!isInitialized) {
-        rPowerN = powerf(SDFT_R, SDFT_SAMPLE_SIZE);
+        rPowerN = powf(SDFT_R, SDFT_SAMPLE_SIZE);
         const float c = 2.0f * M_PIf / (float)SDFT_SAMPLE_SIZE;
         float phi = 0.0f;
         for (uint8_t i = 0; i < SDFT_BIN_COUNT; i++) {

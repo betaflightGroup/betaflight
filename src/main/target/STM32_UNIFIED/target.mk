@@ -9,9 +9,14 @@ else
 ifeq ($(TARGET), STM32F7X2)
 F7X2RE_TARGETS += $(TARGET)
 
+else
+ifeq ($(TARGET), STM32G47X)
+G47X_TARGETS += $(TARGET)
+
 else # STM32F745
 F7X5XG_TARGETS += $(TARGET)
 
+endif
 endif
 endif
 endif
@@ -22,8 +27,11 @@ ifeq ($(TARGET), $(filter $(TARGET), STM32F405 STM32F745))
 CUSTOM_DEFAULTS_EXTENDED = yes
 endif
 
-
+ifeq ($(TARGET), STM32G47X)
+FEATURES       += VCP ONBOARDFLASH
+else
 FEATURES       += VCP SDCARD_SPI SDCARD_SDIO ONBOARDFLASH
+endif
 
 TARGET_SRC = \
     $(addprefix drivers/accgyro/,$(notdir $(wildcard $(SRC_DIR)/drivers/accgyro/*.c))) \

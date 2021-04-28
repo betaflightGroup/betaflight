@@ -31,14 +31,10 @@
 #include "common/printf.h"
 #include "common/time.h"
 
-#include "config/feature.h"
-
 #include "drivers/display.h"
 #include "drivers/time.h"
 
-#include "io/displayport_crsf.h"
-
-#include "rx/rx.h"
+#include "displayport_crsf.h"
 
 #define CRSF_DISPLAY_PORT_OPEN_DELAY_MS     400
 #define CRSF_DISPLAY_PORT_CLEAR_DELAY_MS    45
@@ -203,18 +199,16 @@ bool crsfDisplayPortIsReady(void)
     return (bool)(delayExpired && cmsReady);
 }
 
-displayPort_t *displayPortCrsfInit()
+static displayPort_t *displayPortCrsfInit()
 {
-    if (featureIsEnabled(FEATURE_TELEMETRY)
-        && featureIsEnabled(FEATURE_RX_SERIAL)
-        && (rxConfig()->serialrx_provider == SERIALRX_CRSF)) {
+    crsfDisplayPortSetDimensions(CRSF_DISPLAY_PORT_ROWS_MAX, CRSF_DISPLAY_PORT_COLS_MAX);
+    displayInit(&crsfDisplayPort, &crsfDisplayPortVTable, DISPLAYPORT_DEVICE_TYPE_CRSF);
 
-        crsfDisplayPortSetDimensions(CRSF_DISPLAY_PORT_ROWS_MAX, CRSF_DISPLAY_PORT_COLS_MAX);
-        displayInit(&crsfDisplayPort, &crsfDisplayPortVTable, DISPLAYPORT_DEVICE_TYPE_CRSF);
-        return &crsfDisplayPort;
-    } else {
-        return NULL;
-    }
+    return &crsfDisplayPort;
 }
 
+void crsfDisplayportRegister(void)
+{
+    cmsDisplayPortRegister(displayPortCrsfInit());
+}
 #endif

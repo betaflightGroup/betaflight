@@ -55,7 +55,7 @@
 
 #define SRXL2_MAX_CHANNELS             32
 #define SRXL2_FRAME_PERIOD_US   11000 // 5500 for DSMR
-#define SRXL2_CHANNEL_SHIFT            5
+#define SRXL2_CHANNEL_SHIFT            2
 #define SRXL2_CHANNEL_CENTER           0x8000
 
 #define SRXL2_PORT_BAUDRATE_DEFAULT    115200
@@ -458,13 +458,13 @@ static bool srxl2ProcessFrame(const rxRuntimeState_t *rxRuntimeState)
     return true;
 }
 
-static uint16_t srxl2ReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t channelIdx)
+static float srxl2ReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t channelIdx)
 {
     if (channelIdx >= rxRuntimeState->channelCount) {
         return 0;
     }
 
-    return SPEKTRUM_PULSE_OFFSET + ((rxRuntimeState->channelData[channelIdx] >> SRXL2_CHANNEL_SHIFT) >> 1);
+    return ((float)(rxRuntimeState->channelData[channelIdx] >> SRXL2_CHANNEL_SHIFT) / 16) + SPEKTRUM_PULSE_OFFSET;
 }
 
 void srxl2RxWriteData(const void *data, int len)

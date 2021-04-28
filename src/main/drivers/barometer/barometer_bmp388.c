@@ -20,28 +20,26 @@
  * BMP388 Driver author: Dominic Clifton
  */
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 #include "platform.h"
 
-#include "build/build_config.h"
-
 #if defined(USE_BARO) && (defined(USE_BARO_BMP388) || defined(USE_BARO_SPI_BMP388))
+
+#include "build/build_config.h"
 
 #include "build/debug.h"
 
-#include "common/maths.h"
-
-#include "barometer.h"
-
+#include "drivers/barometer/barometer.h"
 #include "drivers/bus.h"
 #include "drivers/bus_i2c.h"
 #include "drivers/bus_i2c_busdev.h"
 #include "drivers/bus_spi.h"
 #include "drivers/io.h"
-#include "drivers/time.h"
 #include "drivers/nvic.h"
+#include "drivers/time.h"
 
 #include "barometer_bmp388.h"
 
@@ -303,8 +301,8 @@ bool bmp388Detect(const bmp388Config_t *config, baroDev_t *baro)
 
     // See datasheet 3.9.2 "Measurement rate in forced mode and normal mode"
     baro->up_delay = 234 +
-        (392 + (powerf(2, BMP388_PRESSURE_OSR + 1) * 2000)) +
-        (313 + (powerf(2, BMP388_TEMPERATURE_OSR + 1) * 2000));
+        (392 + (powf(2, BMP388_PRESSURE_OSR + 1) * 2000)) +
+        (313 + (powf(2, BMP388_TEMPERATURE_OSR + 1) * 2000));
 
     baro->calculate = bmp388Calculate;
 

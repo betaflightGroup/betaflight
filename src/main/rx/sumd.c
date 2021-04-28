@@ -162,10 +162,10 @@ static uint8_t sumdFrameStatus(rxRuntimeState_t *rxRuntimeState)
     return frameStatus;
 }
 
-static uint16_t sumdReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+static float sumdReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
     UNUSED(rxRuntimeState);
-    return sumdChannels[chan] / 8;
+    return (float)sumdChannels[chan] / 8;
 }
 
 static timeUs_t sumdFrameTimeUsFn(void)

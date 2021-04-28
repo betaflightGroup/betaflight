@@ -183,7 +183,7 @@ typedef struct odrEntry_s {
     uint8_t odr; // See GYRO_ODR in datasheet.
 } odrEntry_t;
 
-odrEntry_t khzToSupportedODRMap[] = {
+static odrEntry_t icm42605PkhzToSupportedODRMap[] = {
     { 8, 3 },
     { 4, 4 },
     { 2, 5 },
@@ -205,9 +205,9 @@ void icm42605GyroInit(gyroDev_t *gyro)
     if (gyro->gyroRateKHz) {
         uint8_t gyroSyncDenominator = gyro->mpuDividerDrops + 1; // rebuild it in here, see gyro_sync.c
         uint8_t desiredODRKhz = 8 / gyroSyncDenominator;
-        for (uint32_t i = 0; i < ARRAYLEN(khzToSupportedODRMap); i++) {
-            if (khzToSupportedODRMap[i].khz == desiredODRKhz) {
-                outputDataRate = khzToSupportedODRMap[i].odr;
+        for (uint32_t i = 0; i < ARRAYLEN(icm42605PkhzToSupportedODRMap); i++) {
+            if (icm42605PkhzToSupportedODRMap[i].khz == desiredODRKhz) {
+                outputDataRate = icm42605PkhzToSupportedODRMap[i].odr;
                 supportedODRFound = true;
                 break;
             }
@@ -219,21 +219,13 @@ void icm42605GyroInit(gyroDev_t *gyro)
         gyro->gyroRateKHz = GYRO_RATE_1_kHz;
     }
 
-    uint8_t value;
-
     STATIC_ASSERT(INV_FSR_2000DPS == 3, "INV_FSR_2000DPS must be 3 to generate correct value");
     spiWriteReg(&gyro->dev, ICM42605_RA_GYRO_CONFIG0, (3 - INV_FSR_2000DPS) << 5 | (outputDataRate & 0x0F));
     delay(15);
 
-    value = spiReadRegMsk(&gyro->dev, ICM42605_RA_GYRO_CONFIG0);
-    debug[1] = value;
-
     STATIC_ASSERT(INV_FSR_16G == 3, "INV_FSR_16G must be 3 to generate correct value");
     spiWriteReg(&gyro->dev, ICM42605_RA_ACCEL_CONFIG0, (3 - INV_FSR_16G) << 5 | (outputDataRate & 0x0F));
     delay(15);
-
-    value = spiReadRegMsk(&gyro->dev, ICM42605_RA_ACCEL_CONFIG0);
-    debug[2] = value;
 
     spiWriteReg(&gyro->dev, ICM42605_RA_GYRO_ACCEL_CONFIG0, ICM42605_ACCEL_UI_FILT_BW_LOW_LATENCY | ICM42605_GYRO_UI_FILT_BW_LOW_LATENCY);
 

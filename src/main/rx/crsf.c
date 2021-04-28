@@ -70,6 +70,12 @@ static uint8_t telemetryBufLen = 0;
 
 static timeUs_t lastRcFrameTimeUs = 0;
 
+#ifdef USE_RX_LINK_UPLINK_POWER
+#define CRSF_UPLINK_POWER_LEVEL_MW_ITEMS_COUNT 8
+// Uplink power levels by uplinkTXPower expressed in mW (250 mW is from ver >=4.00)
+const uint16_t uplinkTXPowerStatesMw[CRSF_UPLINK_POWER_LEVEL_MW_ITEMS_COUNT] = {0, 10, 25, 100, 500, 1000, 2000, 250};
+#endif
+
 /*
  * CRSF protocol
  *
@@ -130,7 +136,7 @@ typedef struct crsfPayloadRcChannelsPacked_s crsfPayloadRcChannelsPacked_t;
  * int8_t Uplink SNR ( db )
  * uint8_t Diversity active antenna ( enum ant. 1 = 0, ant. 2 )
  * uint8_t RF Mode ( enum 4fps = 0 , 50fps, 150hz)
- * uint8_t Uplink TX Power ( enum 0mW = 0, 10mW, 25 mW, 100 mW, 500 mW, 1000 mW, 2000mW )
+ * uint8_t Uplink TX Power ( enum 0mW = 0, 10mW, 25 mW, 100 mW, 500 mW, 1000 mW, 2000mW, 250mW )
  * uint8_t Downlink RSSI ( dBm * -1 )
  * uint8_t Downlink package success rate / Link quality ( % )
  * int8_t Downlink SNR ( db )
@@ -173,6 +179,11 @@ static void handleCrsfLinkStatisticsFrame(const crsfLinkStatistics_t* statsPtr, 
         setLinkQualityDirect(stats.uplink_Link_quality);
         rxSetRfMode(stats.rf_Mode);
     }
+#endif
+
+#ifdef USE_RX_LINK_UPLINK_POWER
+    const uint8_t crsfUplinkPowerStatesItemIndex = (stats.uplink_TX_Power < CRSF_UPLINK_POWER_LEVEL_MW_ITEMS_COUNT) ? stats.uplink_TX_Power : 0;
+    rxSetUplinkTxPwrMw(uplinkTXPowerStatesMw[crsfUplinkPowerStatesItemIndex]);
 #endif
 
     switch (debugMode) {
@@ -345,7 +356,7 @@ STATIC_UNIT_TESTED uint8_t crsfFrameStatus(rxRuntimeState_t *rxRuntimeState)
     return RX_FRAME_PENDING;
 }
 
-STATIC_UNIT_TESTED uint16_t crsfReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+STATIC_UNIT_TESTED float crsfReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
     UNUSED(rxRuntimeState);
     /* conversion from RC value to PWM
@@ -356,7 +367,7 @@ STATIC_UNIT_TESTED uint16_t crsfReadRawRC(const rxRuntimeState_t *rxRuntimeState
      * scale factor = (2012-988) / (1811-172) = 0.62477120195241
      * offset = 988 - 172 * 0.62477120195241 = 880.53935326418548
      */
-    return (0.62477120195241f * crsfChannelData[chan]) + 881;
+    return (0.62477120195241f * (float)crsfChannelData[chan]) + 881;
 }
 
 void crsfRxWriteTelemetryData(const void *data, int len)

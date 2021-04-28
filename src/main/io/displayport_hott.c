@@ -128,7 +128,7 @@ static const displayPortVTable_t hottVTable = {
     .layerCopy = NULL,
 };
 
-displayPort_t *displayPortHottInit()
+static displayPort_t *displayPortHottInit()
 {
     hottDisplayPort.device = NULL;
     displayInit(&hottDisplayPort, &hottVTable, DISPLAYPORT_DEVICE_TYPE_HOTT);

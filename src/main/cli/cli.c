@@ -4983,28 +4983,17 @@ static void cliRcSmoothing(const char *cmdName, char *cmdline)
                 cliPrintLinef("%d.%03dms", avgRxFrameUs / 1000, avgRxFrameUs % 1000);
             }
         }
-        cliPrintLinef("# Input filter type: %s", lookupTables[TABLE_RC_SMOOTHING_INPUT_TYPE].values[rcSmoothingData->inputFilterType]);
         cliPrintf("# Active input cutoff: %dhz ", rcSmoothingData->inputCutoffFrequency);
         if (rcSmoothingData->inputCutoffSetting == 0) {
             cliPrintLine("(auto)");
         } else {
             cliPrintLine("(manual)");
         }
-        cliPrintf("# Derivative filter type: %s", lookupTables[TABLE_RC_SMOOTHING_DERIVATIVE_TYPE].values[rcSmoothingData->derivativeFilterType]);
-        if (rcSmoothingData->derivativeFilterTypeSetting == RC_SMOOTHING_DERIVATIVE_AUTO) {
-            cliPrintLine(" (auto)");
-        } else {
-            cliPrintLinefeed();
-        }
         cliPrintf("# Active derivative cutoff: %dhz (", rcSmoothingData->derivativeCutoffFrequency);
-        if (rcSmoothingData->derivativeFilterType == RC_SMOOTHING_DERIVATIVE_OFF) {
-            cliPrintLine("off)");
+        if (rcSmoothingData->derivativeCutoffSetting == 0) {
+            cliPrintLine("auto)");
         } else {
-            if (rcSmoothingData->derivativeCutoffSetting == 0) {
-                cliPrintLine("auto)");
-            } else {
-                cliPrintLine("manual)");
-            }
+            cliPrintLine("manual)");
         }
     } else {
         cliPrintLine("INTERPOLATION");

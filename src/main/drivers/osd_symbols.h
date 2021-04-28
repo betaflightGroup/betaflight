@@ -156,3 +156,8 @@
 #define SYM_STICK_OVERLAY_CENTER      0x0B
 #define SYM_STICK_OVERLAY_VERTICAL    0x16
 #define SYM_STICK_OVERLAY_HORIZONTAL  0x17
+
+// GPS degree/minute/second symbols
+#define SYM_GPS_DEGREE              SYM_STICK_OVERLAY_SPRITE_HIGH  // kind of looks like the degree symbol
+#define SYM_GPS_MINUTE              0x27 // '
+#define SYM_GPS_SECOND              0x22 // "

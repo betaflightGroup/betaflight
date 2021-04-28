@@ -21,10 +21,6 @@
 #pragma once
 #include "drivers/display.h"
 
-displayPort_t *displayPortHottInit();
-
-extern displayPort_t hottDisplayPort;
-
 void hottDisplayportRegister();
 void hottCmsOpen();
 void hottSetCmsKey(uint8_t hottKey, bool esc);

@@ -59,6 +59,45 @@
     CLI parameters should be added before line #endif // end of #ifdef USE_OSD
 */
 
+/*
+    *********************
+    OSD element variants:
+    *********************
+
+    Each element can have up to 4 display variants. "Type 1" is always the default and every
+    every element has an implicit type 1 variant even if no additional options exist. The
+    purpose is to allow the user to choose a different element display or rendering style to
+    fit their needs. Like displaying GPS coordinates in a different format, displaying a voltage
+    with a different number of decimal places, etc. The purpose is NOT to display unrelated
+    information in different variants of the element. For example it would be inappropriate
+    to use variants to display RSSI for one type and link quality for another. In this case
+    they should be separate elements. Remember that element variants are mutually exclusive
+    and only one type can be displayed at a time. So they shouldn't be used in cases where
+    the user would want to display different types at the same time - like in the above example
+    where the user might want to display both RSSI and link quality at the same time.
+
+    As variants are added to the firmware, support must also be included in the Configurator.
+
+    The following lists the variants implemented so far (please update this as variants are added):
+
+    OSD_ALTITUDE
+        type 1: Altitude with one decimal place
+        type 2: Altitude with no decimal (whole number only)
+
+    OSD_GPS_LON
+    OSD_GPS_LAT
+        type 1: Decimal representation with 7 digits
+        type 2: Decimal representation with 4 digits
+        type 3: Degrees, minutes, seconds
+        type 4: Open location code (Google Plus Code)
+
+    OSD_MAIN_BATT_USAGE
+        type 1: Graphical bar showing remaining battery (shrinks as used)
+        type 2: Graphical bar showing battery used (grows as used)
+        type 3: Numeric % of remaining battery
+        type 4: Numeric % or used battery
+*/
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -122,7 +161,10 @@
 #include "sensors/esc_sensor.h"
 #include "sensors/sensors.h"
 
-#include "common/maths.h"
+#ifdef USE_GPS_PLUS_CODES
+// located in lib/main/google/olc
+#include "olc.h"
+#endif
 
 #define AH_SYMBOL_COUNT 9
 #define AH_SIDEBAR_WIDTH_POS 7
@@ -273,22 +315,71 @@ static void osdFormatAltitudeString(char * buff, int32_t altitudeCm, osdElementT
 }
 
 #ifdef USE_GPS
-static void osdFormatCoordinate(char *buff, char sym, int32_t val)
+static void osdFormatCoordinate(char *buff, gpsCoordinateType_e coordinateType, osdElementType_e variantType)
 {
-    // latitude maximum integer width is 3 (-90).
-    // longitude maximum integer width is 4 (-180).
-    // We show 7 decimals, so we need to use 12 characters:
-    // eg: s-180.1234567z   s=symbol, z=zero terminator, decimal separator  between 0 and 1
+    int32_t gpsValue = 0;
+    const char leadingSymbol = (coordinateType == GPS_LONGITUDE) ? SYM_LON : SYM_LAT;
 
-    // NOTE: Don't use osdPrintFloat() for this. There are too many decimal places and float math doesn't have enough precision
-
-    int pos = 0;
-    buff[pos++] = sym;
-    if (val < 0) {
-        buff[pos++] = '-';
-        val = -val;
+    if (STATE(GPS_FIX_EVER)) {  // don't display interim coordinates until we get the first position fix
+        gpsValue = (coordinateType == GPS_LONGITUDE) ? gpsSol.llh.lon : gpsSol.llh.lat;
     }
-    tfp_sprintf(buff + pos, "%d.%07d", val / GPS_DEGREES_DIVIDER, val % GPS_DEGREES_DIVIDER);
+
+    const int degreesPart = ABS(gpsValue) / GPS_DEGREES_DIVIDER;
+    int fractionalPart = ABS(gpsValue) % GPS_DEGREES_DIVIDER;
+
+    switch (variantType) {
+#ifdef USE_GPS_PLUS_CODES
+#define PLUS_CODE_DIGITS 11
+    case OSD_ELEMENT_TYPE_4: // Open Location Code
+        {
+            *buff++ = SYM_SAT_L;
+            *buff++ = SYM_SAT_R;
+            if (STATE(GPS_FIX_EVER)) {
+                OLC_LatLon location;
+                location.lat = (double)gpsSol.llh.lat / GPS_DEGREES_DIVIDER;
+                location.lon = (double)gpsSol.llh.lon / GPS_DEGREES_DIVIDER;
+                OLC_Encode(&location, PLUS_CODE_DIGITS, buff, OSD_ELEMENT_BUFFER_LENGTH - 3);
+            } else {
+                memset(buff, SYM_HYPHEN, PLUS_CODE_DIGITS + 1);
+                buff[8] = '+';
+                buff[PLUS_CODE_DIGITS + 1] = '\0';
+            }
+            break;
+        }
+#endif // USE_GPS_PLUS_CODES
+
+    case OSD_ELEMENT_TYPE_3: // degree, minutes, seconds style. ddd^mm'ss.00"W
+        {
+            char trailingSymbol;
+            *buff++ = leadingSymbol;
+
+            const int minutes = fractionalPart * 60 / GPS_DEGREES_DIVIDER;
+            const int fractionalMinutes =  fractionalPart * 60 % GPS_DEGREES_DIVIDER;
+            const int seconds = fractionalMinutes * 60 / GPS_DEGREES_DIVIDER;
+            const int tenthSeconds = (fractionalMinutes * 60 % GPS_DEGREES_DIVIDER) * 10 / GPS_DEGREES_DIVIDER;
+
+            if (coordinateType == GPS_LONGITUDE) {
+                trailingSymbol = (gpsValue < 0) ? 'W' : 'E';
+            } else {
+                trailingSymbol = (gpsValue < 0) ? 'S' : 'N';
+            }
+            tfp_sprintf(buff, "%u%c%02u%c%02u.%u%c%c", degreesPart, SYM_GPS_DEGREE, minutes, SYM_GPS_MINUTE, seconds, tenthSeconds, SYM_GPS_SECOND, trailingSymbol);
+            break;
+        }
+
+    case OSD_ELEMENT_TYPE_2:
+        fractionalPart /= 1000;
+        FALLTHROUGH;
+
+    case OSD_ELEMENT_TYPE_1:
+    default:
+        *buff++ = leadingSymbol;
+        if (gpsValue < 0) {
+            *buff++ = SYM_HYPHEN;
+        }
+        tfp_sprintf(buff, (variantType == OSD_ELEMENT_TYPE_1 ? "%u.%07u" : "%u.%04u"), degreesPart, fractionalPart);
+        break;
+    }
 }
 #endif // USE_GPS
 
@@ -953,14 +1044,15 @@ static void osdElementGpsHomeDistance(osdElementParms_t *element)
     }
 }
 
-static void osdElementGpsLatitude(osdElementParms_t *element)
+static void osdElementGpsCoordinate(osdElementParms_t *element)
 {
-    osdFormatCoordinate(element->buff, SYM_LAT, gpsSol.llh.lat);
-}
-
-static void osdElementGpsLongitude(osdElementParms_t *element)
-{
-    osdFormatCoordinate(element->buff, SYM_LON, gpsSol.llh.lon);
+    const gpsCoordinateType_e coordinateType = (element->item == OSD_GPS_LON) ? GPS_LONGITUDE : GPS_LATITUDE;
+    osdFormatCoordinate(element->buff, coordinateType, element->type);
+    if (STATE(GPS_FIX_EVER) && !STATE(GPS_FIX)) {
+        SET_BLINK(element->item); // blink if we had a fix but have since lost it
+    } else {
+        CLR_BLINK(element->item);
+    }
 }
 
 static void osdElementGpsSats(osdElementParms_t *element)
@@ -1035,6 +1127,18 @@ static void osdElementLinkQuality(osdElementParms_t *element)
     }
 }
 #endif // USE_RX_LINK_QUALITY_INFO
+
+#ifdef USE_RX_LINK_UPLINK_POWER
+static void osdElementTxUplinkPower(osdElementParms_t *element)
+{
+    const uint16_t osdUplinkTxPowerMw = rxGetUplinkTxPwrMw();
+    if (osdUplinkTxPowerMw < 1000) {
+        tfp_sprintf(element->buff, "%c%3dMW", SYM_RSSI, osdUplinkTxPowerMw);
+    } else {
+        osdPrintFloat(element->buff, SYM_RSSI, osdUplinkTxPowerMw / 1000.0f, "", 1, false, 'W');
+    }
+}
+#endif // USE_RX_LINK_UPLINK_POWER
 
 #ifdef USE_BLACKBOX
 static void osdElementLogStatus(osdElementParms_t *element)
@@ -1422,6 +1526,9 @@ static const uint8_t osdElementDisplayOrder[] = {
 #ifdef USE_RX_LINK_QUALITY_INFO
     OSD_LINK_QUALITY,
 #endif
+#ifdef USE_RX_LINK_UPLINK_POWER
+    OSD_TX_UPLINK_POWER,
+#endif
 #ifdef USE_RX_RSSI_DBM
     OSD_RSSI_DBM_VALUE,
 #endif
@@ -1478,8 +1585,8 @@ const osdElementDrawFn osdElementDrawFunction[OSD_ITEM_COUNT] = {
     [OSD_WARNINGS]                = osdElementWarnings,
     [OSD_AVG_CELL_VOLTAGE]        = osdElementAverageCellVoltage,
 #ifdef USE_GPS
-    [OSD_GPS_LON]                 = osdElementGpsLongitude,
-    [OSD_GPS_LAT]                 = osdElementGpsLatitude,
+    [OSD_GPS_LON]                 = osdElementGpsCoordinate,
+    [OSD_GPS_LAT]                 = osdElementGpsCoordinate,
 #endif
     [OSD_DEBUG]                   = osdElementDebug,
 #ifdef USE_ACC
@@ -1526,6 +1633,9 @@ const osdElementDrawFn osdElementDrawFunction[OSD_ITEM_COUNT] = {
 #endif
 #ifdef USE_RX_LINK_QUALITY_INFO
     [OSD_LINK_QUALITY]            = osdElementLinkQuality,
+#endif
+#ifdef USE_RX_LINK_UPLINK_POWER
+    [OSD_TX_UPLINK_POWER]         = osdElementTxUplinkPower,
 #endif
 #ifdef USE_GPS
     [OSD_FLIGHT_DIST]             = osdElementGpsFlightDistance,

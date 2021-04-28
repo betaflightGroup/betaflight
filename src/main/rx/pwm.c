@@ -41,13 +41,13 @@
 #include "rx/rx.h"
 #include "rx/pwm.h"
 
-static uint16_t pwmReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t channel)
+static float pwmReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t channel)
 {
     UNUSED(rxRuntimeState);
     return pwmRead(channel);
 }
 
-static uint16_t ppmReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t channel)
+static float ppmReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t channel)
 {
     UNUSED(rxRuntimeState);
     return ppmRead(channel);

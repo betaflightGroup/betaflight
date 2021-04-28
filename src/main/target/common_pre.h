@@ -414,4 +414,6 @@ extern uint8_t _dmaram_end__;
 #define USE_BATTERY_VOLTAGE_SAG_COMPENSATION
 #define USE_RX_MSP_OVERRIDE
 #define USE_SIMPLIFIED_TUNING
+#define USE_RX_LINK_UPLINK_POWER
+#define USE_GPS_PLUS_CODES
 #endif

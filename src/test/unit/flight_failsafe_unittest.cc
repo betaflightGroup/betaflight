@@ -543,7 +543,7 @@ TEST(FlightFailsafeTest, TestFailsafeNotActivatedWhenDisarmedAndRXLossIsDetected
 // STUBS
 
 extern "C" {
-int16_t rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+float rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
 float rcCommand[4];
 int16_t debug[DEBUG16_VALUE_COUNT];
 bool isUsingSticksToArm = true;

@@ -52,9 +52,9 @@ stages:
     - script: make  EXTRA_FLAGS=-Werror test-all
       displayName: 'Run all unit tests'
     - script: make  EXTRA_FLAGS=-Werror all
-      displayName: 'Build all oficial targets'
+      displayName: 'Build all official targets'
     - script: mkdir release; cp obj/*.hex release/
-      displayName: 'Copy artefacts'
+      displayName: 'Copy artifacts'
     - task: PublishPipelineArtifact@1
       displayName: 'Publish Linux release'
       inputs: 

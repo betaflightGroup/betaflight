@@ -1452,6 +1452,8 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
         sbufWriteU16(dst, gpsRescueConfig()->descendRate);
         sbufWriteU8(dst, gpsRescueConfig()->allowArmingWithoutFix);
         sbufWriteU8(dst, gpsRescueConfig()->altitudeMode);
+        // Added in API version 1.44
+        sbufWriteU16(dst, gpsRescueConfig()->minRescueDth);
         break;
 
     case MSP_GPS_RESCUE_PIDS:
@@ -2452,6 +2454,10 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             gpsRescueConfigMutable()->allowArmingWithoutFix = sbufReadU8(src);
             gpsRescueConfigMutable()->altitudeMode = sbufReadU8(src);
         }
+        if (sbufBytesRemaining(src) >= 2) {
+            // Added in API version 1.44
+            gpsRescueConfigMutable()->minRescueDth = sbufReadU16(src);
+        }
         break;
 
     case MSP_SET_GPS_RESCUE_PIDS:
@@ -2661,7 +2667,7 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             sbufReadU8(src);
 #endif
         }
-        if (sbufBytesRemaining(src) >= 1) {
+        if (sbufBytesRemaining(src) >= 2) {
 #if defined(USE_GYRO_DATA_ANALYSE)
             // Added in MSP API 1.43
             gyroConfigMutable()->dyn_notch_max_hz = sbufReadU16(src);
@@ -3176,11 +3182,7 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
 
 #ifdef USE_GPS
     case MSP_SET_RAW_GPS:
-        if (sbufReadU8(src)) {
-            ENABLE_STATE(GPS_FIX);
-        } else {
-            DISABLE_STATE(GPS_FIX);
-        }
+        gpsSetFixState(sbufReadU8(src));
         gpsSol.numSat = sbufReadU8(src);
         gpsSol.llh.lat = sbufReadU32(src);
         gpsSol.llh.lon = sbufReadU32(src);

@@ -519,6 +519,7 @@ static uint8_t cmsx_iterm_relax_cutoff;
 #ifdef USE_INTERPOLATED_SP
 static uint8_t cmsx_ff_interpolate_sp;
 static uint8_t cmsx_ff_smooth_factor;
+static uint8_t cmsx_ff_jitter_factor;
 #endif
 
 static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
@@ -561,6 +562,7 @@ static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
 #ifdef USE_INTERPOLATED_SP
     cmsx_ff_interpolate_sp = pidProfile->ff_interpolate_sp;
     cmsx_ff_smooth_factor = pidProfile->ff_smooth_factor;
+    cmsx_ff_jitter_factor = pidProfile->ff_jitter_factor;
 #endif
 
 #ifdef USE_BATTERY_VOLTAGE_SAG_COMPENSATION
@@ -608,6 +610,7 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
 #ifdef USE_INTERPOLATED_SP
     pidProfile->ff_interpolate_sp = cmsx_ff_interpolate_sp;
     pidProfile->ff_smooth_factor = cmsx_ff_smooth_factor;
+    pidProfile->ff_jitter_factor = cmsx_ff_jitter_factor;
 #endif
 
 #ifdef USE_BATTERY_VOLTAGE_SAG_COMPENSATION
@@ -625,6 +628,7 @@ static const OSD_Entry cmsx_menuProfileOtherEntries[] = {
 #ifdef USE_INTERPOLATED_SP
     { "FF MODE",       OME_TAB,    NULL, &(OSD_TAB_t)    { &cmsx_ff_interpolate_sp,  4, lookupTableInterpolatedSetpoint}, 0 },
     { "FF SMOOTHNESS", OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_ff_smooth_factor,     0,     75,   1  }   , 0 },
+    { "FF JITTER",     OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_ff_jitter_factor,     0,     20,   1  }   , 0 },
 #endif
     { "FF BOOST",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_ff_boost,               0,     50,   1  }   , 0 },
     { "ANGLE STR",   OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_angleStrength,          0,    200,   1  }   , 0 },
