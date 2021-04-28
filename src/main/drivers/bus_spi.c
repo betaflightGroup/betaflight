@@ -40,33 +40,39 @@ spiDevice_t spiDevice[SPIDEV_COUNT];
 SPIDevice spiDeviceByInstance(SPI_TypeDef *instance)
 {
 #ifdef USE_SPI_DEVICE_1
-    if (instance == SPI1)
+    if (instance == SPI1) {
         return SPIDEV_1;
+    }
 #endif
 
 #ifdef USE_SPI_DEVICE_2
-    if (instance == SPI2)
+    if (instance == SPI2) {
         return SPIDEV_2;
+    }
 #endif
 
 #ifdef USE_SPI_DEVICE_3
-    if (instance == SPI3)
+    if (instance == SPI3) {
         return SPIDEV_3;
+    }
 #endif
 
 #ifdef USE_SPI_DEVICE_4
-    if (instance == SPI4)
+    if (instance == SPI4) {
         return SPIDEV_4;
+    }
 #endif
 
 #ifdef USE_SPI_DEVICE_5
-    if (instance == SPI5)
+    if (instance == SPI5) {
         return SPIDEV_5;
+    }
 #endif
 
 #ifdef USE_SPI_DEVICE_6
-    if (instance == SPI6)
+    if (instance == SPI6) {
         return SPIDEV_6;
+    }
 #endif
 
     return SPIINVALID;
