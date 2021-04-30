@@ -1829,9 +1829,10 @@ static void osdDrawSingleElementBackground(displayPort_t *osdDisplayPort, uint8_
 
 #define OSD_BLINK_FREQUENCY_HZ 2.5f
 
-void osdDrawActiveElements(displayPort_t *osdDisplayPort)
+bool osdDrawActiveElements(displayPort_t *osdDisplayPort)
 {
     static unsigned blinkLoopCounter = 0;
+    static unsigned elementIndex = 0;
 
 #ifdef USE_GPS
     static bool lastGpsSensorState;
@@ -1844,24 +1845,31 @@ void osdDrawActiveElements(displayPort_t *osdDisplayPort)
     }
 #endif // USE_GPS
 
-    // synchronize the blinking with the OSD task loop
-    uint32_t frequency = lrintf(osdConfig()->task_frequency / (OSD_BLINK_FREQUENCY_HZ * 2));
-#if (OSD_DRAW_FREQ_DENOM > 0)
-    frequency /= OSD_DRAW_FREQ_DENOM;
-#endif
-    if (++blinkLoopCounter >= frequency) {
-        blinkState = !blinkState;
-        blinkLoopCounter = 0;
+    if (elementIndex == 0) {
+        // synchronize the blinking with the OSD task loop
+        uint32_t frequency = lrintf(osdConfig()->task_frequency / (OSD_BLINK_FREQUENCY_HZ * 2));
+    #if (OSD_DRAW_FREQ_DENOM > 0)
+        frequency /= OSD_DRAW_FREQ_DENOM;
+    #endif
+        if (++blinkLoopCounter >= frequency) {
+            blinkState = !blinkState;
+            blinkLoopCounter = 0;
+        }
     }
 
-    for (unsigned i = 0; i < activeOsdElementCount; i++) {
-        if (!backgroundLayerSupported) {
-            // If the background layer isn't supported then we
-            // have to draw the element's static layer as well.
-            osdDrawSingleElementBackground(osdDisplayPort, activeOsdElementArray[i]);
-        }
-        osdDrawSingleElement(osdDisplayPort, activeOsdElementArray[i]);
+    if (!backgroundLayerSupported) {
+        // If the background layer isn't supported then we
+        // have to draw the element's static layer as well.
+        osdDrawSingleElementBackground(osdDisplayPort, activeOsdElementArray[elementIndex]);
     }
+    osdDrawSingleElement(osdDisplayPort, activeOsdElementArray[elementIndex]);
+
+    elementIndex++;
+    if (elementIndex >= activeOsdElementCount) {
+        elementIndex = 0;
+    }
+
+    return elementIndex == 0;
 }
 
 void osdDrawActiveElementsBackground(displayPort_t *osdDisplayPort)

@@ -342,6 +342,7 @@ extern escSensorData_t *osdEscDataCombined;
 #endif
 
 void osdInit(displayPort_t *osdDisplayPort, osdDisplayPortDevice_e displayPortDevice);
+bool osdUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs);
 void osdUpdate(timeUs_t currentTimeUs);
 
 void osdStatSetState(uint8_t statIndex, bool enabled);
