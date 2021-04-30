@@ -20,9 +20,13 @@ MEMORY
 
 
     SYSTEM_MEMORY (r) : ORIGIN = 0x1FFF0000, LENGTH = 64K
-
-    RAM (xrw)         : ORIGIN = 0x20000000, LENGTH = 96K
-    CCM (xrw)         : ORIGIN = 0x20018000, LENGTH = 32K
+/* Below are the true lengths for normal and close coupled RAM
+ *    RAM (xrw)         : ORIGIN = 0x20000000, LENGTH = 96K
+ *    CCM (xrw)         : ORIGIN = 0x20018000, LENGTH = 32K
+ * Allow normal RAM overflow to occupy first 24K of CCM, and only reserve 8K for explicit requested CCM
+ */
+    RAM (xrw)         : ORIGIN = 0x20000000, LENGTH = 120K
+    CCM (xrw)         : ORIGIN = 0x2001E000, LENGTH = 8K
     MEMORY_B1 (rx)    : ORIGIN = 0x60000000, LENGTH = 0K
 }
 
