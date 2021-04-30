@@ -38,6 +38,8 @@
 #include "nvic.h"
 #include "rcc.h"
 
+#define SPI_TIMEOUT_SYS_TICKS   (SPI_TIMEOUT_US / 1000)
+
 // Position of Prescaler bits are different from MCU to MCU
 
 static uint32_t baudRatePrescaler[8] = {
@@ -66,10 +68,7 @@ static void spiDivisorToBRbits(SPI_TypeDef *instance, uint16_t divisor)
     if (spi->hspi.Init.BaudRatePrescaler != baudRatePrescaler[prescalerIndex]) {
         spi->hspi.Init.BaudRatePrescaler = baudRatePrescaler[prescalerIndex];
 
-        WRITE_REG(spi->hspi.Instance->CFG1, spi->hspi.Init.BaudRatePrescaler |
-                                            SPI_CRCCALCULATION_DISABLE |
-                                            spi->hspi.Init.FifoThreshold     |
-                                            SPI_DATASIZE_8BIT);
+        MODIFY_REG(spi->hspi.Instance->CR1, SPI_CR1_BR_Msk, spi->hspi.Init.BaudRatePrescaler);
     }
 }
 
@@ -78,15 +77,13 @@ static void spiSetDivisor(SPI_TypeDef *instance, uint16_t divisor)
     spiDivisorToBRbits(instance, divisor);
 }
 
-void spiInitDevice(SPIDevice device, bool leadingEdge)
+void spiInitDevice(SPIDevice device)
 {
     spiDevice_t *spi = &(spiDevice[device]);
 
     if (!spi->dev) {
         return;
     }
-
-    spi->leadingEdge = leadingEdge;
 
     // Enable SPI clock
     RCC_ClockCmd(spi->rcc, ENABLE);
@@ -131,15 +128,8 @@ void spiInitDevice(SPIDevice device, bool leadingEdge)
     spi->hspi.Init.FifoThreshold = SPI_FIFO_THRESHOLD_01DATA;
     spi->hspi.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_ENABLE;  /* Recommanded setting to avoid glitches */
 #endif
-
-    if (spi->leadingEdge) {
-        spi->hspi.Init.CLKPolarity = SPI_POLARITY_LOW;
-        spi->hspi.Init.CLKPhase = SPI_PHASE_1EDGE;
-    }
-    else {
-        spi->hspi.Init.CLKPolarity = SPI_POLARITY_HIGH;
-        spi->hspi.Init.CLKPhase = SPI_PHASE_2EDGE;
-    }
+    spi->hspi.Init.CLKPolarity = SPI_POLARITY_LOW;
+    spi->hspi.Init.CLKPhase = SPI_PHASE_1EDGE;
 
     // Init SPI hardware
     HAL_SPI_Init(&spi->hspi);
@@ -150,17 +140,15 @@ static bool spiPrivReadWriteBufPolled(SPI_TypeDef *instance, const uint8_t *txDa
     SPIDevice device = spiDeviceByInstance(instance);
     HAL_StatusTypeDef status;
 
-#define SPI_DEFAULT_TIMEOUT 10
-
     if (!rxData) {
         // Tx only
-        status = HAL_SPI_Transmit(&spiDevice[device].hspi, txData, len, SPI_DEFAULT_TIMEOUT);
+        status = HAL_SPI_Transmit(&spiDevice[device].hspi, txData, len, SPI_TIMEOUT_SYS_TICKS);
     } else if(!txData) {
         // Rx only
-        status = HAL_SPI_Receive(&spiDevice[device].hspi, rxData, len, SPI_DEFAULT_TIMEOUT);
+        status = HAL_SPI_Receive(&spiDevice[device].hspi, rxData, len, SPI_TIMEOUT_SYS_TICKS);
     } else {
         // Tx and Rx
-        status = HAL_SPI_TransmitReceive(&spiDevice[device].hspi, txData, rxData, len, SPI_DEFAULT_TIMEOUT);
+        status = HAL_SPI_TransmitReceive(&spiDevice[device].hspi, txData, rxData, len, SPI_TIMEOUT_SYS_TICKS);
     }
 
     return (status == HAL_OK);
@@ -196,7 +184,6 @@ void spiResetStream(dmaChannelDescriptor_t *descriptor)
 void spiSequence(extDevice_t *dev, busSegment_t *segments)
 {
     busDevice_t *bus = dev->bus;
-    bool readSafe = true;
 
     bus->initSegment = true;
     bus->curSegment = segments;

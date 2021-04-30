@@ -66,6 +66,9 @@ typedef struct SPIDevice_s {
 #else
     uint8_t af;
 #endif
+#if defined(HAL_SPI_MODULE_ENABLED)
+    SPI_HandleTypeDef hspi;
+#endif
     rccPeriphTag_t rcc;
     volatile uint16_t errorCount;
     bool leadingEdge;

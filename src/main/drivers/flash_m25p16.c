@@ -119,7 +119,6 @@ STATIC_ASSERT(M25P16_PAGESIZE < FLASH_MAX_PAGE_SIZE, M25P16_PAGESIZE_too_small);
 
 const flashVTable_t m25p16_vTable;
 
-
 static uint8_t m25p16_readStatus(flashDevice_t *fdevice)
 {
     DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
@@ -129,7 +128,6 @@ static uint8_t m25p16_readStatus(flashDevice_t *fdevice)
 
     return readyStatus[1];
 }
-
 
 static bool m25p16_isReady(flashDevice_t *fdevice)
 {
@@ -217,7 +215,6 @@ static void m25p16_setCommandAddress(uint8_t *buf, uint32_t address, bool useLon
     *buf++ = (address >> 8) & 0xff;
     *buf = address & 0xff;
 }
-
 
 // Called in ISR context
 // A write enable has just been issued
@@ -313,7 +310,6 @@ static void m25p16_eraseCompletely(flashDevice_t *fdevice)
     // Block pending completion of SPI access, but the erase will be ongoing
     spiWait(fdevice->io.handle.dev);
 }
-
 
 static void m25p16_pageProgramBegin(flashDevice_t *fdevice, uint32_t address, void (*callback)(uint32_t length))
 {

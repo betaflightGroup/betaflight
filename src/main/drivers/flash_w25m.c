@@ -78,7 +78,7 @@ static void w25m_dieSelect(extDevice_t *dev, int die)
     };
 
     // Ensure any prior DMA has completed before continuing
-    spiWaitClaim(dev);
+    spiWait(dev);
 
     spiSequence(dev, &segments[0]);
 
@@ -192,8 +192,6 @@ static int currentWriteDie;
 
 void w25m_pageProgramBegin(flashDevice_t *fdevice, uint32_t address, void (*callback)(uint32_t length))
 {
-    UNUSED(fdevice);
-
     currentWriteDie = address / dieSize;
     w25m_dieSelect(fdevice->io.handle.dev, currentWriteDie);
     currentWriteAddress = address % dieSize;

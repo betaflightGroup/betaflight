@@ -461,17 +461,17 @@ void setLinkQualityDirect(uint16_t linkqualityValue)
 #endif
 }
 
-void rxProcessPending(bool state)
-{
-    processPending = state;
-}
-
 #ifdef USE_RX_LINK_UPLINK_POWER
 void rxSetUplinkTxPwrMw(uint16_t uplinkTxPwrMwValue)
 {
     uplinkTxPwrMw = uplinkTxPwrMwValue;
 }
 #endif
+
+void rxProcessPending(bool state)
+{
+    processPending = state;
+}
 
 bool rxUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
 {

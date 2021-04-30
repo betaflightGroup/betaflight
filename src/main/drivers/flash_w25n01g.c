@@ -133,11 +133,6 @@ typedef struct bblut_s {
     uint16_t lba;
 } bblut_t;
 
-// These will be gone
-
-#define DISABLE(dev)       IOHi((dev)->busType_u.spi.csnPin); __NOP()
-#define ENABLE(dev)        __NOP(); IOLo((dev)->busType_u.spi.csnPin)
-
 static bool w25n01g_waitForReady(flashDevice_t *fdevice);
 
 static void w25n01g_setTimeout(flashDevice_t *fdevice, uint32_t timeoutMillis)
@@ -218,7 +213,7 @@ static uint8_t w25n01g_readRegister(flashDeviceIO_t *io, uint8_t reg)
         };
 
         // Ensure any prior DMA has completed before continuing
-        spiWaitClaim(dev);
+        spiWait(dev);
 
         spiSequence(dev, &segments[0]);
 
@@ -253,7 +248,7 @@ static void w25n01g_writeRegister(flashDeviceIO_t *io, uint8_t reg, uint8_t data
         };
 
         // Ensure any prior DMA has completed before continuing
-        spiWaitClaim(dev);
+        spiWait(dev);
 
         spiSequence(dev, &segments[0]);
 
@@ -773,7 +768,7 @@ int w25n01g_readExtensionBytes(flashDevice_t *fdevice, uint32_t address, uint8_t
         };
 
         // Ensure any prior DMA has completed before continuing
-        spiWaitClaim(dev);
+        spiWait(dev);
 
         spiSequence(dev, &segments[0]);
 
@@ -915,7 +910,7 @@ void w25n01g_writeBBLUT(flashDevice_t *fdevice, uint16_t lba, uint16_t pba)
         };
 
         // Ensure any prior DMA has completed before continuing
-        spiWaitClaim(dev);
+        spiWait(dev);
 
         spiSequence(dev, &segments[0]);
 
