@@ -599,13 +599,14 @@ void SystemClock_Config(void)
 
 #if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H725xx)
     RCC_PeriphClkInit.PLL2.PLL2M = 5;
-    RCC_PeriphClkInit.PLL2.PLL2N = 500;
-    RCC_PeriphClkInit.PLL2.PLL2P = 2; // 500Mhz
-    RCC_PeriphClkInit.PLL2.PLL2Q = 3; // 266Mhz - 133Mhz can be derived from this for for QSPI if flash chip supports the speed.
-    RCC_PeriphClkInit.PLL2.PLL2R = 4; // 200Mhz HAL LIBS REQUIRE 200MHZ SDMMC CLOCK, see HAL_SD_ConfigWideBusOperation, SDMMC_HSpeed_CLK_DIV, SDMMC_NSpeed_CLK_DIV
-    RCC_PeriphClkInit.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0;
-    RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+    RCC_PeriphClkInit.PLL2.PLL2N = 500; // 8Mhz (Oscillator Frequency) / 5 (PLL2M) = 1.6 * 500 (PLL2N) = 800Mhz.
+    RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE; // Wide VCO range:192 to 836 MHz
+    RCC_PeriphClkInit.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0; // PLL2 input between 1 and 2Mhz (1.6)
     RCC_PeriphClkInit.PLL2.PLL2FRACN = 0;
+
+    RCC_PeriphClkInit.PLL2.PLL2P = 2; // 800Mhz / 2 = 400Mhz
+    RCC_PeriphClkInit.PLL2.PLL2Q = 3; // 800Mhz / 3 = 266Mhz // 133Mhz can be derived from this for for QSPI if flash chip supports the speed.
+    RCC_PeriphClkInit.PLL2.PLL2R = 4; // 800Mhz / 4 = 200Mhz // HAL LIBS REQUIRE 200MHZ SDMMC CLOCK, see HAL_SD_ConfigWideBusOperation, SDMMC_HSpeed_CLK_DIV, SDMMC_NSpeed_CLK_DIV
     RCC_PeriphClkInit.SdmmcClockSelection = RCC_SDMMCCLKSOURCE_PLL2;
     HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
 #else
