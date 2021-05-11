@@ -350,6 +350,10 @@ void max7456ReInit(void)
     max7456Send(MAX7456ADD_DMM, displayMemoryModeReg | CLEAR_DISPLAY);
     spiNegateCS(dev);
 
+    // Allow ~20us for display to be cleared
+    while ((max7456Send(MAX7456ADD_READ | MAX7456ADD_DMM, 0x00) & CLEAR_DISPLAY) != 0x00);
+    spiNegateCS(dev);
+
     // Clear shadow to force redraw all screen in non-dma mode.
     max7456ClearShadowBuffer();
     if (firstInit) {
@@ -400,7 +404,7 @@ max7456InitStatus_e max7456Init(const max7456Config_t *max7456Config, const vcdP
     spiSetClkDivisor(dev, spiCalculateDivider(MAX7456_MAX_SPI_CLK_HZ / 2));
 
     // Write 0xff to conclude any current SPI transaction the MAX7456 is expecting
-    spiReadWriteBuf(dev, NULL, NULL, 1);
+    spiWrite(dev, END_STRING);
 
     uint8_t osdm = max7456Send(MAX7456ADD_OSDM|MAX7456ADD_READ, 0xff);
 
@@ -457,12 +461,21 @@ max7456InitStatus_e max7456Init(const max7456Config_t *max7456Config, const vcdP
     max7456Send(MAX7456ADD_VM0, MAX7456_RESET);
     spiNegateCS(dev);
 
+    // Wait for 100us
+    delayMicroseconds(100);
+
+    // Wait for reset to complete
+    while ((max7456Send(MAX7456ADD_READ | MAX7456ADD_VM0, 0x00) & MAX7456_RESET) != 0x00);
+    spiNegateCS(dev);
+
+
     // Setup values to write to registers
     videoSignalCfg = pVcdProfile->video_system;
     hosRegValue = 32 - pVcdProfile->h_offset;
     vosRegValue = 16 - pVcdProfile->v_offset;
 
-    // Real init will be made later when driver detect idle.
+    max7456ReInit();
+
     return MAX7456_INIT_OK;
 }
 
@@ -585,8 +598,12 @@ void max7456ReInitIfRequired(bool forceStallCheck)
     bool stalled = false;
     if (forceStallCheck || (lastStallCheckMs + MAX7456_STALL_CHECK_INTERVAL_MS < nowMs)) {
         lastStallCheckMs = nowMs;
+
+        // Block pending completion of any prior SPI access
+        spiWait(dev);
+
         // Write 0xff to conclude any current SPI transaction the MAX7456 is expecting
-        spiReadWriteBuf(dev, NULL, NULL, 1);
+        spiWrite(dev, END_STRING);
 
         stalled = (max7456Send(MAX7456ADD_VM0|MAX7456ADD_READ, 0x00) != videoSignalReg);
         spiNegateCS(dev);
@@ -596,6 +613,12 @@ void max7456ReInitIfRequired(bool forceStallCheck)
         max7456ReInit();
     } else if ((videoSignalCfg == VIDEO_SYSTEM_AUTO)
               && ((nowMs - lastSigCheckMs) > MAX7456_SIGNAL_CHECK_INTERVAL_MS)) {
+
+        // Block pending completion of any prior SPI access
+        spiWait(dev);
+
+        // Write 0xff to conclude any current SPI transaction the MAX7456 is expecting
+        spiWrite(dev, END_STRING);
 
         // Adjust output format based on the current input format.
 
@@ -777,10 +800,14 @@ void max7456HardwareReset(void)
     IOConfigGPIO(max7456ResetPin, IO_RESET_CFG);
 
 
-    // RESET
+    // RESET 50ms long pulse, followed by 100us pause
     IOLo(max7456ResetPin);
-    delay(100);
+    delay(50);
     IOHi(max7456ResetPin);
+    delayMicroseconds(100);
+#else
+    // Allow device 50ms to powerup
+    delay(50);
 #endif
 }
 
