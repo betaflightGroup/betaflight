@@ -821,7 +821,7 @@ static const OSD_Entry cmsx_menuDynFiltEntries[] =
     { "-- DYN FILT --", OME_Label, NULL, NULL, 0 },
 
 #ifdef USE_GYRO_DATA_ANALYSE
-    { "NOTCH COUNT",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &dynFiltCount,        1, DYN_NOTCH_COUNT_MAX, 1 }, 0 },
+    { "NOTCH COUNT",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &dynFiltCount,        0, DYN_NOTCH_COUNT_MAX, 1 }, 0 },
     { "NOTCH WIDTH HZ", OME_UINT16, NULL, &(OSD_UINT16_t) { &dynFiltBandwidthHz,  1, 1000, 1 }, 0 },
     { "NOTCH MIN HZ",   OME_UINT16, NULL, &(OSD_UINT16_t) { &dynFiltNotchMinHz,   0, 1000, 1 }, 0 },
     { "NOTCH MAX HZ",   OME_UINT16, NULL, &(OSD_UINT16_t) { &dynFiltNotchMaxHz,   0, 1000, 1 }, 0 },
