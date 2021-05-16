@@ -91,11 +91,6 @@ static int clearScreen(displayPort_t *displayPort)
 {
     UNUSED(displayPort);
 
-    // FIXME: clearScreen is called outside of a transaction during init
-    // so the current frame buffer pointer must always be obtained.
-    // see displayInit().
-    frameBuffer = spracingPixelOSDGetActiveFrameBuffer();
-
     // clearing the framebuffer is an expensive operation and handled in hardware asynchronously, see the framebuffer API.
     // scheduling the clearing of the screen prior to needing to actually render to the screen is recommended.
 
