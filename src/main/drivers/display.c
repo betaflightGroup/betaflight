@@ -216,7 +216,11 @@ bool displaySupportsOsdSymbols(displayPort_t *instance)
 void displayInit(displayPort_t *instance, const displayPortVTable_t *vTable, displayPortDeviceType_e deviceType)
 {
     instance->vTable = vTable;
+
+    instance->vTable->beginTransaction(instance, DISPLAY_TRANSACTION_OPT_NONE);
     instance->vTable->clearScreen(instance);
+    instance->vTable->commitTransaction(instance);
+
     instance->useFullscreen = false;
     instance->cleared = true;
     instance->grabCount = 0;
