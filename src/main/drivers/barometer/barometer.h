@@ -31,7 +31,7 @@ typedef void (*baroCalculateFuncPtr)(int32_t *pressure, int32_t *temperature); /
 
 // the 'u' in these variable names means 'uncompensated', 't' is temperature, 'p' pressure.
 typedef struct baroDev_s {
-    busDevice_t busdev;
+    extDevice_t dev;
 #ifdef USE_EXTI
     extiCallbackRec_t exti;
 #endif

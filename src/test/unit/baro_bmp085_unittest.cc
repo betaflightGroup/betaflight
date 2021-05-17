@@ -191,15 +191,15 @@ extern "C" {
     void RCC_APB2PeriphClockCmd() {}
     void delay(uint32_t) {}
     void delayMicroseconds(uint32_t) {}
-    bool busReadRegisterBuffer(const busDevice_t*, uint8_t, uint8_t*, uint8_t) {return true;}
-    bool busWriteRegister(const busDevice_t*, uint8_t, uint8_t) {return true;}
+    bool busReadRegisterBuffer(extDevice_t*, uint8_t, uint8_t*, uint8_t) {return true;}
+    bool busWriteRegister(extDevice_t*, uint8_t, uint8_t) {return true;}
     void IOConfigGPIO() {}
     void IOHi() {}
     void IOLo() {}
     void IOInit() {}
     void IOGetByTag() {}
-    bool busBusy(const busDevice_t*, bool*) {return false;}
-    void busDeviceRegister(const busDevice_t*) {}
-    bool busReadRegisterBufferStart(const busDevice_t*, uint8_t, uint8_t*, uint8_t) {return true;}
-    bool busWriteRegisterStart(const busDevice_t*, uint8_t, uint8_t) {return true;}
+    bool busBusy(extDevice_t*, bool*) {return false;}
+    void busDeviceRegister(extDevice_t*) {}
+    bool busReadRegisterBufferStart(extDevice_t*, uint8_t, uint8_t*, uint8_t) {return true;}
+    bool busWriteRegisterStart(extDevice_t*, uint8_t, uint8_t) {return true;}
 }

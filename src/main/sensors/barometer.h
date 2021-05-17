@@ -38,7 +38,7 @@ typedef enum {
 #define BARO_SAMPLE_COUNT_MAX   48
 
 typedef struct barometerConfig_s {
-    uint8_t baro_bustype;
+    uint8_t baro_busType;
     uint8_t baro_spi_device;
     ioTag_t baro_spi_csn;                   // Also used as XCLR (positive logic) for BMP085
     uint8_t baro_i2c_device;

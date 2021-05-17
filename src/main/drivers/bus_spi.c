@@ -24,18 +24,24 @@
 
 #include "platform.h"
 
+#include "build/atomic.h"
+
 #ifdef USE_SPI
 
 #include "drivers/bus.h"
 #include "drivers/bus_spi.h"
 #include "drivers/bus_spi_impl.h"
+#include "drivers/dma_reqmap.h"
 #include "drivers/exti.h"
 #include "drivers/io.h"
+#include "drivers/motor.h"
 #include "drivers/rcc.h"
+#include "nvic.h"
 
 static uint8_t spiRegisteredDeviceCount = 0;
 
 spiDevice_t spiDevice[SPIDEV_COUNT];
+busDevice_t spiBusDevice[SPIDEV_COUNT];
 
 SPIDevice spiDeviceByInstance(SPI_TypeDef *instance)
 {
@@ -71,7 +77,7 @@ SPI_TypeDef *spiInstanceByDevice(SPIDevice device)
     return spiDevice[device].dev;
 }
 
-bool spiInit(SPIDevice device, bool leadingEdge)
+bool spiInit(SPIDevice device)
 {
     switch (device) {
     case SPIINVALID:
@@ -79,7 +85,7 @@ bool spiInit(SPIDevice device, bool leadingEdge)
 
     case SPIDEV_1:
 #ifdef USE_SPI_DEVICE_1
-        spiInitDevice(device, leadingEdge);
+        spiInitDevice(device);
         return true;
 #else
         break;
@@ -87,7 +93,7 @@ bool spiInit(SPIDevice device, bool leadingEdge)
 
     case SPIDEV_2:
 #ifdef USE_SPI_DEVICE_2
-        spiInitDevice(device, leadingEdge);
+        spiInitDevice(device);
         return true;
 #else
         break;
@@ -95,7 +101,7 @@ bool spiInit(SPIDevice device, bool leadingEdge)
 
     case SPIDEV_3:
 #if defined(USE_SPI_DEVICE_3) && !defined(STM32F1)
-        spiInitDevice(device, leadingEdge);
+        spiInitDevice(device);
         return true;
 #else
         break;
@@ -103,7 +109,7 @@ bool spiInit(SPIDevice device, bool leadingEdge)
 
     case SPIDEV_4:
 #if defined(USE_SPI_DEVICE_4)
-        spiInitDevice(device, leadingEdge);
+        spiInitDevice(device);
         return true;
 #else
         break;
@@ -111,7 +117,7 @@ bool spiInit(SPIDevice device, bool leadingEdge)
 
     case SPIDEV_5:
 #if defined(USE_SPI_DEVICE_5)
-        spiInitDevice(device, leadingEdge);
+        spiInitDevice(device);
         return true;
 #else
         break;
@@ -119,7 +125,7 @@ bool spiInit(SPIDevice device, bool leadingEdge)
 
     case SPIDEV_6:
 #if defined(USE_SPI_DEVICE_6)
-        spiInitDevice(device, leadingEdge);
+        spiInitDevice(device);
         return true;
 #else
         break;
@@ -128,116 +134,248 @@ bool spiInit(SPIDevice device, bool leadingEdge)
     return false;
 }
 
-uint32_t spiTimeoutUserCallback(SPI_TypeDef *instance)
+// Return true if DMA engine is busy
+bool spiIsBusy(extDevice_t *dev)
 {
-    SPIDevice device = spiDeviceByInstance(instance);
-    if (device == SPIINVALID) {
-        return -1;
+    return (dev->bus->curSegment != (busSegment_t *)NULL);
+}
+
+// Indicate that the bus on which this device resides may initiate DMA transfers from interrupt context
+void spiSetAtomicWait(extDevice_t *dev)
+{
+    dev->bus->useAtomicWait = true;
+}
+
+// Wait for DMA completion and claim the bus driver
+void spiWaitClaim(extDevice_t *dev)
+{
+    // If there is a device on the bus whose driver might call spiSequence from an ISR then an
+    // atomic access is required to claim the bus, however if not, then interrupts need not be
+    // disabled as this can result in edge triggered interrupts being missed
+
+    if (dev->bus->useAtomicWait) {
+        // Prevent race condition where the bus appears free, but a gyro interrupt starts a transfer
+        do {
+            ATOMIC_BLOCK(NVIC_PRIO_MPU_INT_EXTI) {
+                if (dev->bus->curSegment == (busSegment_t *)NULL) {
+                    dev->bus->curSegment = (busSegment_t *)0x04;
+                }
+            }
+        } while (dev->bus->curSegment != (busSegment_t *)0x04);
+    } else {
+        // Wait for completion
+        while (dev->bus->curSegment != (busSegment_t *)NULL);
     }
-    spiDevice[device].errorCount++;
-    return spiDevice[device].errorCount;
 }
 
-bool spiBusTransfer(const busDevice_t *bus, const uint8_t *txData, uint8_t *rxData, int length)
+// Wait for DMA completion
+void spiWait(extDevice_t *dev)
 {
-    IOLo(bus->busdev_u.spi.csnPin);
-    spiTransfer(bus->busdev_u.spi.instance, txData, rxData, length);
-    IOHi(bus->busdev_u.spi.csnPin);
-    return true;
+    // Wait for completion
+    while (dev->bus->curSegment != (busSegment_t *)NULL);
 }
 
-uint16_t spiGetErrorCounter(SPI_TypeDef *instance)
+// Wait for bus to become free, then read/write block of data
+void spiReadWriteBuf(extDevice_t *dev, uint8_t *txData, uint8_t *rxData, int len)
 {
-    SPIDevice device = spiDeviceByInstance(instance);
-    if (device == SPIINVALID) {
-        return 0;
+    // This routine blocks so no need to use static data
+    busSegment_t segments[] = {
+            {txData, rxData, len, true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
+
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(dev);
+
+    spiSequence(dev, &segments[0]);
+
+    spiWait(dev);
+}
+
+// Read/Write a block of data, returning false if the bus is busy
+bool spiReadWriteBufRB(extDevice_t *dev, uint8_t *txData, uint8_t *rxData, int length)
+{
+    // Ensure any prior DMA has completed before continuing
+    if (spiIsBusy(dev)) {
+        return false;
     }
-    return spiDevice[device].errorCount;
-}
 
-void spiResetErrorCounter(SPI_TypeDef *instance)
-{
-    SPIDevice device = spiDeviceByInstance(instance);
-    if (device != SPIINVALID) {
-        spiDevice[device].errorCount = 0;
-    }
-}
-
-bool spiBusIsBusBusy(const busDevice_t *bus)
-{
-    return spiIsBusBusy(bus->busdev_u.spi.instance);
-}
-
-uint8_t spiBusTransferByte(const busDevice_t *bus, uint8_t data)
-{
-    return spiTransferByte(bus->busdev_u.spi.instance, data);
-}
-
-void spiBusWriteByte(const busDevice_t *bus, uint8_t data)
-{
-    IOLo(bus->busdev_u.spi.csnPin);
-    spiBusTransferByte(bus, data);
-    IOHi(bus->busdev_u.spi.csnPin);
-}
-
-bool spiBusRawTransfer(const busDevice_t *bus, const uint8_t *txData, uint8_t *rxData, int len)
-{
-    return spiTransfer(bus->busdev_u.spi.instance, txData, rxData, len);
-}
-
-bool spiBusWriteRegister(const busDevice_t *bus, uint8_t reg, uint8_t data)
-{
-    IOLo(bus->busdev_u.spi.csnPin);
-    spiTransferByte(bus->busdev_u.spi.instance, reg);
-    spiTransferByte(bus->busdev_u.spi.instance, data);
-    IOHi(bus->busdev_u.spi.csnPin);
-
-    return true;
-}
-
-bool spiBusRawReadRegisterBuffer(const busDevice_t *bus, uint8_t reg, uint8_t *data, uint8_t length)
-{
-    IOLo(bus->busdev_u.spi.csnPin);
-    spiTransferByte(bus->busdev_u.spi.instance, reg);
-    spiTransfer(bus->busdev_u.spi.instance, NULL, data, length);
-    IOHi(bus->busdev_u.spi.csnPin);
+    spiReadWriteBuf(dev, txData, rxData, length);
 
     return true;
 }
 
-bool spiBusReadRegisterBuffer(const busDevice_t *bus, uint8_t reg, uint8_t *data, uint8_t length)
+// Wait for bus to become free, then read/write a single byte
+uint8_t spiReadWrite(extDevice_t *dev, uint8_t data)
 {
-    return spiBusRawReadRegisterBuffer(bus, reg | 0x80, data, length);
+    uint8_t retval;
+
+    // This routine blocks so no need to use static data
+    busSegment_t segments[] = {
+            {&data, &retval, sizeof (data), true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
+
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(dev);
+
+    spiSequence(dev, &segments[0]);
+
+    spiWait(dev);
+
+    return retval;
 }
 
-void spiBusWriteRegisterBuffer(const busDevice_t *bus, uint8_t reg, const uint8_t *data, uint8_t length)
+// Wait for bus to become free, then read/write a single byte from a register
+uint8_t spiReadWriteReg(extDevice_t *dev, uint8_t reg, uint8_t data)
 {
-    IOLo(bus->busdev_u.spi.csnPin);
-    spiTransferByte(bus->busdev_u.spi.instance, reg);
-    spiTransfer(bus->busdev_u.spi.instance, data, NULL, length);
-    IOHi(bus->busdev_u.spi.csnPin);
+    uint8_t retval;
+
+    // This routine blocks so no need to use static data
+    busSegment_t segments[] = {
+            {&reg, NULL, sizeof (reg), false, NULL},
+            {&data, &retval, sizeof (data), true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
+
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(dev);
+
+    spiSequence(dev, &segments[0]);
+
+    spiWait(dev);
+
+    return retval;
 }
 
-uint8_t spiBusRawReadRegister(const busDevice_t *bus, uint8_t reg)
+// Wait for bus to become free, then write a single byte
+void spiWrite(extDevice_t *dev, uint8_t data)
+{
+    // This routine blocks so no need to use static data
+    busSegment_t segments[] = {
+            {&data, NULL, sizeof (data), true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
+
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(dev);
+
+    spiSequence(dev, &segments[0]);
+
+    spiWait(dev);
+}
+
+// Write data to a register
+void spiWriteReg(extDevice_t *dev, uint8_t reg, uint8_t data)
+{
+    // This routine blocks so no need to use static data
+    busSegment_t segments[] = {
+            {&reg, NULL, sizeof (reg), false, NULL},
+            {&data, NULL, sizeof (data), true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
+
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(dev);
+
+    spiSequence(dev, &segments[0]);
+
+    spiWait(dev);
+}
+
+// Write data to a register, returning false if the bus is busy
+bool spiWriteRegRB(extDevice_t *dev, uint8_t reg, uint8_t data)
+{
+    // Ensure any prior DMA has completed before continuing
+    if (spiIsBusy(dev)) {
+        return false;
+    }
+
+    spiWriteReg(dev, reg, data);
+
+    return true;
+}
+
+// Read a block of data from a register
+void spiReadRegBuf(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
+{
+    // This routine blocks so no need to use static data
+    busSegment_t segments[] = {
+            {&reg, NULL, sizeof (reg), false, NULL},
+            {NULL, data, length, true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
+
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(dev);
+
+    spiSequence(dev, &segments[0]);
+
+    spiWait(dev);
+}
+
+// Read a block of data from a register, returning false if the bus is busy
+bool spiReadRegBufRB(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
+{
+    // Ensure any prior DMA has completed before continuing
+    if (spiIsBusy(dev)) {
+        return false;
+    }
+
+    spiReadRegBuf(dev, reg, data, length);
+
+    return true;
+}
+
+// Read a block of data where the register is ORed with 0x80, returning false if the bus is busy
+bool spiReadRegMskBufRB(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
+{
+    return spiReadRegBufRB(dev, reg | 0x80, data, length);
+}
+
+// Wait for bus to become free, then write a block of data to a register
+void spiWriteRegBuf(extDevice_t *dev, uint8_t reg, uint8_t *data, uint32_t length)
+{
+    // This routine blocks so no need to use static data
+    busSegment_t segments[] = {
+            {&reg, NULL, sizeof (reg), false, NULL},
+            {data, NULL, length, true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
+
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(dev);
+
+    spiSequence(dev, &segments[0]);
+
+    spiWait(dev);
+}
+
+// Wait for bus to become free, then read a byte from a register
+uint8_t spiReadReg(extDevice_t *dev, uint8_t reg)
 {
     uint8_t data;
-    IOLo(bus->busdev_u.spi.csnPin);
-    spiTransferByte(bus->busdev_u.spi.instance, reg);
-    spiTransfer(bus->busdev_u.spi.instance, NULL, &data, 1);
-    IOHi(bus->busdev_u.spi.csnPin);
+    // This routine blocks so no need to use static data
+    busSegment_t segments[] = {
+            {&reg, NULL, sizeof (reg), false, NULL},
+            {NULL, &data, sizeof (data), true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
+
+    // Ensure any prior DMA has completed before continuing
+    spiWaitClaim(dev);
+
+    spiSequence(dev, &segments[0]);
+
+    spiWait(dev);
 
     return data;
 }
 
-uint8_t spiBusReadRegister(const busDevice_t *bus, uint8_t reg)
+// Wait for bus to become free, then read a byte of data where the register is ORed with 0x80
+uint8_t spiReadRegMsk(extDevice_t *dev, uint8_t reg)
 {
-    return spiBusRawReadRegister(bus, reg | 0x80);
-}
-
-void spiBusSetInstance(busDevice_t *bus, SPI_TypeDef *instance)
-{
-    bus->bustype = BUSTYPE_SPI;
-    bus->busdev_u.spi.instance = instance;
+    return spiReadReg(dev, reg | 0x80);
 }
 
 uint16_t spiCalculateDivider(uint32_t freq)
@@ -259,54 +397,210 @@ uint16_t spiCalculateDivider(uint32_t freq)
     return divisor;
 }
 
-void spiBusSetDivisor(busDevice_t *bus, uint16_t divisor)
+// Interrupt handler for SPI receive DMA completion
+static void spiRxIrqHandler(dmaChannelDescriptor_t* descriptor)
 {
-    spiSetDivisor(bus->busdev_u.spi.instance, divisor);
-    // bus->busdev_u.spi.modeCache = bus->busdev_u.spi.instance->CR1;
+    extDevice_t *dev = (extDevice_t *)descriptor->userParam;
+
+    if (!dev) {
+        return;
+    }
+
+    busDevice_t *bus = dev->bus;
+
+    if (bus->curSegment->negateCS) {
+        // Negate Chip Select
+        IOHi(dev->busType_u.spi.csnPin);
+    }
+
+    spiPrivStopDMA(dev);
+
+#ifdef __DCACHE_PRESENT
+#ifdef STM32H7
+    if (bus->curSegment->rxData &&
+        ((bus->curSegment->rxData < &_dmaram_start__) || (bus->curSegment->rxData >= &_dmaram_end__))) {
+#else
+    if (bus->curSegment->rxData) {
+#endif
+         // Invalidate the D cache covering the area into which data has been read
+        SCB_InvalidateDCache_by_Addr(
+            (uint32_t *)((uint32_t)bus->curSegment->rxData & ~CACHE_LINE_MASK),
+            (((uint32_t)bus->curSegment->rxData & CACHE_LINE_MASK) +
+              bus->curSegment->len - 1 + CACHE_LINE_SIZE) & ~CACHE_LINE_MASK);
+    }
+#endif // __DCACHE_PRESENT
+
+    if (bus->curSegment->callback) {
+        switch(bus->curSegment->callback(dev->callbackArg)) {
+        case BUS_BUSY:
+            // Repeat the last DMA segment
+            bus->curSegment--;
+            // Reinitialise the cached init values as segment is not progressing
+            spiPrivInitStream(dev, true);
+            break;
+
+        case BUS_ABORT:
+            bus->curSegment = (busSegment_t *)NULL;
+            return;
+
+        case BUS_READY:
+        default:
+            // Advance to the next DMA segment
+            break;
+        }
+    }
+
+    // Advance through the segment list
+    bus->curSegment++;
+
+    if (bus->curSegment->len == 0) {
+        // The end of the segment list has been reached, so mark transactions as complete
+        bus->curSegment = (busSegment_t *)NULL;
+    } else {
+        // After the completion of the first segment setup the init structure for the subsequent segment
+        if (bus->initSegment) {
+            spiPrivInitStream(dev, false);
+            bus->initSegment = false;
+        }
+
+        // Launch the next transfer
+        spiPrivStartDMA(dev);
+
+        // Prepare the init structures ready for the next segment to reduce inter-segment time
+        spiPrivInitStream(dev, true);
+    }
 }
 
-#ifdef USE_SPI_TRANSACTION
-// Separate set of spiBusTransactionXXX to keep fast path for acc/gyros.
 
-void spiBusTransactionBegin(const busDevice_t *bus)
+bool spiSetBusInstance(extDevice_t *dev, uint32_t device, resourceOwner_e owner)
 {
-    spiBusTransactionSetup(bus);
-    IOLo(bus->busdev_u.spi.csnPin);
+    if (device > SPIDEV_COUNT) {
+        return false;
+    }
+
+    dev->bus = &spiBusDevice[SPI_CFG_TO_DEV(device)];
+
+    if (dev->bus->busType == BUSTYPE_SPI) {
+        // This bus has already been initialised
+        dev->bus->deviceCount++;
+        return true;
+    }
+
+    busDevice_t *bus = dev->bus;
+
+    bus->busType_u.spi.instance = spiInstanceByDevice(SPI_CFG_TO_DEV(device));
+
+    if (bus->busType_u.spi.instance == NULL) {
+        return false;
+    }
+
+    bus->busType = BUSTYPE_SPI;
+    bus->useDMA = false;
+    bus->useAtomicWait = false;
+    bus->deviceCount = 1;
+    bus->owner = owner;
+    bus->initTx = &dev->initTx;
+    bus->initRx = &dev->initRx;
+
+    return true;
 }
 
-void spiBusTransactionEnd(const busDevice_t *bus)
+void spiInitBusDMA()
 {
-    IOHi(bus->busdev_u.spi.csnPin);
+    uint32_t device;
+#ifdef STM32F4
+    /* Check https://www.st.com/resource/en/errata_sheet/dm00037591-stm32f405407xx-and-stm32f415417xx-device-limitations-stmicroelectronics.pdf
+     * section 2.1.10 which reports an errata that corruption may occurs on DMA2 if AHB peripherals (eg GPIO ports) are
+     * access concurrently with APB peripherals (eg SPI busses). Bitbang DSHOT uses DMA2 to write to GPIO ports. If this
+     * is enabled, then don't enable DMA on an SPI bus using DMA2
+     */
+    const bool dshotBitbangActive = isDshotBitbangActive(&motorConfig()->dev);
+#endif
+
+    for (device = 0; device < SPIDEV_COUNT; device++) {
+        busDevice_t *bus = &spiBusDevice[device];
+
+        if (bus->busType != BUSTYPE_SPI) {
+            // This bus is not in use
+            continue;
+        }
+
+        dmaIdentifier_e dmaTxIdentifier = DMA_NONE;
+        dmaIdentifier_e dmaRxIdentifier = DMA_NONE;
+
+        for (uint8_t opt = 0; opt < MAX_PERIPHERAL_DMA_OPTIONS; opt++) {
+            const dmaChannelSpec_t *dmaTxChannelSpec = dmaGetChannelSpecByPeripheral(DMA_PERIPH_SPI_TX, device, opt);
+
+            if (dmaTxChannelSpec) {
+                dmaTxIdentifier = dmaGetIdentifier(dmaTxChannelSpec->ref);
+#ifdef STM32F4
+                if (dshotBitbangActive && (DMA_DEVICE_NO(dmaTxIdentifier) == 2)) {
+                    dmaTxIdentifier = DMA_NONE;
+                    break;
+                }
+#endif
+                bus->dmaTxChannel = dmaTxChannelSpec->channel;
+                dmaInit(dmaTxIdentifier, bus->owner, 0);
+                break;
+            }
+        }
+
+        for (uint8_t opt = 0; opt < MAX_PERIPHERAL_DMA_OPTIONS; opt++) {
+            const dmaChannelSpec_t *dmaRxChannelSpec = dmaGetChannelSpecByPeripheral(DMA_PERIPH_SPI_RX, device, opt);
+
+            if (dmaRxChannelSpec) {
+                dmaRxIdentifier = dmaGetIdentifier(dmaRxChannelSpec->ref);
+#ifdef STM32F4
+                if (dshotBitbangActive && (DMA_DEVICE_NO(dmaRxIdentifier) == 2)) {
+                    dmaRxIdentifier = DMA_NONE;
+                    break;
+                }
+#endif
+                bus->dmaRxChannel = dmaRxChannelSpec->channel;
+                dmaInit(dmaRxIdentifier, bus->owner, 0);
+                break;
+            }
+        }
+
+        if (dmaTxIdentifier && dmaRxIdentifier) {
+            bus->dmaTx = dmaGetDescriptorByIdentifier(dmaTxIdentifier);
+            bus->dmaRx = dmaGetDescriptorByIdentifier(dmaRxIdentifier);
+
+            // Ensure streams are disabled
+            spiResetStream(bus->dmaRx);
+            spiResetStream(bus->dmaTx);
+
+            spiResetDescriptors(bus);
+
+            /* Note that this driver may be called both from the normal thread of execution, or from USB interrupt
+             * handlers, so the DMA completion interrupt must be at a higher priority
+             */
+            dmaSetHandler(dmaRxIdentifier, spiRxIrqHandler, NVIC_PRIO_SPI_DMA, 0);
+
+            bus->useDMA = true;
+        }
+    }
 }
 
-bool spiBusTransactionTransfer(const busDevice_t *bus, const uint8_t *txData, uint8_t *rxData, int length)
+void spiSetClkDivisor(extDevice_t *dev, uint16_t divisor)
 {
-    spiBusTransactionSetup(bus);
-    return spiBusTransfer(bus, txData, rxData, length);
+    dev->busType_u.spi.speed = divisor;
 }
 
-bool spiBusTransactionWriteRegister(const busDevice_t *bus, uint8_t reg, uint8_t data)
+void spiNegateCS(extDevice_t *dev)
 {
-    spiBusTransactionSetup(bus);
-    return spiBusWriteRegister(bus, reg, data);
+    // Negate Chip Select
+    IOHi(dev->busType_u.spi.csnPin);
 }
 
-uint8_t spiBusTransactionReadRegister(const busDevice_t *bus, uint8_t reg)
+bool spiUseDMA(extDevice_t *dev)
 {
-    spiBusTransactionSetup(bus);
-    return spiBusReadRegister(bus, reg);
+    return dev->bus->useDMA;
 }
 
-bool spiBusTransactionReadRegisterBuffer(const busDevice_t *bus, uint8_t reg, uint8_t *data, uint8_t length)
+void spiBusDeviceRegister(extDevice_t *dev)
 {
-    spiBusTransactionSetup(bus);
-    return spiBusReadRegisterBuffer(bus, reg, data, length);
-}
-#endif // USE_SPI_TRANSACTION
-
-void spiBusDeviceRegister(const busDevice_t *bus)
-{
-    UNUSED(bus);
+    UNUSED(dev);
 
     spiRegisteredDeviceCount++;
 }
@@ -314,5 +608,10 @@ void spiBusDeviceRegister(const busDevice_t *bus)
 uint8_t spiGetRegisteredDeviceCount(void)
 {
     return spiRegisteredDeviceCount;
+}
+
+uint8_t spiGetExtDeviceCount(extDevice_t *dev)
+{
+    return dev->bus->deviceCount;
 }
 #endif

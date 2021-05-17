@@ -38,7 +38,6 @@ struct flashGeometry_s;
 const struct flashGeometry_s* flashfsGetGeometry(void);
 
 void flashfsSeekAbs(uint32_t offset);
-void flashfsSeekRel(int32_t offset);
 
 void flashfsWriteByte(uint8_t byte);
 void flashfsWrite(const uint8_t *data, unsigned int len, bool sync);

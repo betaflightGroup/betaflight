@@ -273,6 +273,18 @@ void initialiseMemorySections(void)
 #endif
 }
 
+void initialiseD2MemorySections(void)
+{
+    /* Load DMA_DATA variable intializers into D2 RAM */
+    extern uint8_t _sdmaram_bss;
+    extern uint8_t _edmaram_bss;
+    extern uint8_t _sdmaram_data;
+    extern uint8_t _edmaram_data;
+    extern uint8_t _sdmaram_idata;
+    bzero(&_sdmaram_bss, (size_t) (&_edmaram_bss - &_sdmaram_bss));
+    memcpy(&_sdmaram_data, &_sdmaram_idata, (size_t) (&_edmaram_data - &_sdmaram_data));
+}
+
 static void unusedPinInit(IO_t io)
 {
     if (IOGetOwner(io) == OWNER_FREE) {
