@@ -201,6 +201,12 @@ static void configureDMAHandlers(void)
     dmaSetHandler(dmaGetIdentifier(adcDmaRef), ADC_DMA_IRQHandler, NVIC_PRIO_VIDEO_ADC, adcDmaParam);
 
     //
+    // Sync Detecton
+    //
+
+    HAL_NVIC_SetPriority(COMP_IRQn, NVIC_PRIORITY_BASE(NVIC_PRIO_VIDEO_SYNC), NVIC_PRIORITY_SUB(NVIC_PRIO_VIDEO_SYNC));
+
+    //
     // Sync Generation DMA
     //
 
