@@ -207,6 +207,16 @@ void SPI4_IRQHandler(void)
     HAL_SPI_IRQHandler(&spiDevice[SPIDEV_4].hspi);
 }
 
+void SPI5_IRQHandler(void)
+{
+    HAL_SPI_IRQHandler(&spiDevice[SPIDEV_5].hspi);
+}
+
+void SPI6_IRQHandler(void)
+{
+    HAL_SPI_IRQHandler(&spiDevice[SPIDEV_6].hspi);
+}
+
 void dmaSPIIRQHandler(dmaChannelDescriptor_t* descriptor)
 {
     SPIDevice device = descriptor->userParam;
