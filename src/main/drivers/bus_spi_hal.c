@@ -187,32 +187,32 @@ DMA_HandleTypeDef* dmaHandleByInstance(SPI_TypeDef *instance)
     return &spiDevice[spiDeviceByInstance(instance)].hdma;
 }
 
-void SPI1_IRQHandler(void)
+FAST_CODE void SPI1_IRQHandler(void)
 {
     HAL_SPI_IRQHandler(&spiDevice[SPIDEV_1].hspi);
 }
 
-void SPI2_IRQHandler(void)
+FAST_CODE void SPI2_IRQHandler(void)
 {
     HAL_SPI_IRQHandler(&spiDevice[SPIDEV_2].hspi);
 }
 
-void SPI3_IRQHandler(void)
+FAST_CODE void SPI3_IRQHandler(void)
 {
     HAL_SPI_IRQHandler(&spiDevice[SPIDEV_3].hspi);
 }
 
-void SPI4_IRQHandler(void)
+FAST_CODE void SPI4_IRQHandler(void)
 {
     HAL_SPI_IRQHandler(&spiDevice[SPIDEV_4].hspi);
 }
 
-void SPI5_IRQHandler(void)
+FAST_CODE void SPI5_IRQHandler(void)
 {
     HAL_SPI_IRQHandler(&spiDevice[SPIDEV_5].hspi);
 }
 
-void SPI6_IRQHandler(void)
+FAST_CODE void SPI6_IRQHandler(void)
 {
     HAL_SPI_IRQHandler(&spiDevice[SPIDEV_6].hspi);
 }
