@@ -362,7 +362,7 @@ static const char * const lookupOverclock[] = {
 
 #ifdef USE_LED_STRIP
     static const char * const lookupLedStripFormatRGB[] = {
-        "GRB", "RGB"
+        "GRB", "RGB", "GRBW"
     };
 #endif
 
