@@ -287,8 +287,10 @@ void changeOsdProfileIndex(uint8_t profileIndex)
 {
     if (profileIndex <= OSD_PROFILE_COUNT) {
         osdConfigMutable()->osdProfileIndex = profileIndex;
+        displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
         setOsdProfile(profileIndex);
         osdAnalyzeActiveElements();
+        displayCommitTransaction(osdDisplayPort);
     }
 }
 #endif
@@ -417,7 +419,7 @@ static void osdCompleteInitialization(void)
     displayLayerSelect(osdDisplayPort, DISPLAYPORT_LAYER_FOREGROUND);
 
     displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
-    displayClearScreen(osdDisplayPort);
+    displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_WAIT);
 
     osdDrawLogo(3, 1);
 
@@ -904,7 +906,7 @@ static timeDelta_t osdShowArmed(void)
 {
     timeDelta_t ret;
 
-    displayClearScreen(osdDisplayPort);
+    displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_WAIT);
 
     if ((osdConfig()->logo_on_arming == OSD_LOGO_ARMING_ON) || ((osdConfig()->logo_on_arming == OSD_LOGO_ARMING_FIRST) && !ARMING_FLAG(WAS_EVER_ARMED))) {
         osdDrawLogo(3, 1);
@@ -1079,7 +1081,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
 #endif
             }
             if (clearScreen) {
-                displayClearScreen(osdDisplayPort);
+                displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_NONE);
             }
 
         }
@@ -1098,7 +1100,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
 
             displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
 
-            displayClearScreen(osdDisplayPort);
+            displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_NONE);
             if (!osdStatsVisible) {
                 nextState = END;
             }
@@ -1126,7 +1128,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
 
     case PREPARE_SCREEN_FOR_STATS: {
 
-            displayClearScreen(osdDisplayPort);
+            displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_NONE);
 
             nextState = RENDER_STATS;
         }

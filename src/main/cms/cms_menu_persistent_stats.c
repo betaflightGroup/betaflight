@@ -73,7 +73,7 @@ static const void *cmsx_ResetStats(displayPort_t *pDisplay, const void *ptr)
     stats_total_time_s = 0;
     stats_total_dist_m = 0;
 
-    displayClearScreen(pDisplay);
+    displayClearScreen(pDisplay, DISPLAY_CLEAR_WAIT);
     displayRedraw(pDisplay);
 
     return NULL;

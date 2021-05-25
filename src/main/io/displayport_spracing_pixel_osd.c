@@ -87,14 +87,18 @@ static int release(displayPort_t *displayPort)
     return 0;
 }
 
-static int clearScreen(displayPort_t *displayPort)
+static int clearScreen(displayPort_t *displayPort, displayClearOption_e options)
 {
     UNUSED(displayPort);
 
-    // clearing the framebuffer is an expensive operation and handled in hardware asynchronously, see the framebuffer API.
-    // scheduling the clearing of the screen prior to needing to actually render to the screen is recommended.
-
     frameBuffer_eraseBegin(frameBuffer);
+
+    if (options & DISPLAY_CLEAR_WAIT) {
+        // clearing the framebuffer is an expensive operation and handled in hardware asynchronously, see the framebuffer API.
+        // scheduling the clearing of the screen prior to needing to actually render to the screen is recommended.
+
+        frameBuffer_eraseWaitForComplete();
+    }
 
     return 0;
 }

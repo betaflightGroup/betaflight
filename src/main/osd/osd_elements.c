@@ -1876,7 +1876,7 @@ void osdDrawActiveElementsBackground(displayPort_t *osdDisplayPort)
 {
     if (backgroundLayerSupported) {
         displayLayerSelect(osdDisplayPort, DISPLAYPORT_LAYER_BACKGROUND);
-        displayClearScreen(osdDisplayPort);
+        displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_WAIT);
         for (unsigned i = 0; i < activeOsdElementCount; i++) {
             osdDrawSingleElementBackground(osdDisplayPort, activeOsdElementArray[i]);
         }

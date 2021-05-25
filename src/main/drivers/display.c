@@ -31,9 +31,9 @@
 
 #include "display.h"
 
-void displayClearScreen(displayPort_t *instance)
+void displayClearScreen(displayPort_t *instance, displayClearOption_e options)
 {
-    instance->vTable->clearScreen(instance);
+    instance->vTable->clearScreen(instance, options);
     instance->cleared = true;
     instance->cursorRow = -1;
 }
@@ -51,7 +51,7 @@ int displayScreenSize(const displayPort_t *instance)
 void displayGrab(displayPort_t *instance)
 {
     instance->vTable->grab(instance);
-    instance->vTable->clearScreen(instance);
+    instance->vTable->clearScreen(instance, DISPLAY_CLEAR_WAIT);
     ++instance->grabCount;
 }
 
@@ -224,7 +224,7 @@ void displayInit(displayPort_t *instance, const displayPortVTable_t *vTable, dis
     instance->deviceType = deviceType;
 
     displayBeginTransaction(instance, DISPLAY_TRANSACTION_OPT_NONE);
-    displayClearScreen(instance);
+    displayClearScreen(instance, DISPLAY_CLEAR_WAIT);
     displayCommitTransaction(instance);
 
 }

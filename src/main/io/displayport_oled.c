@@ -42,8 +42,10 @@ static int oledRelease(displayPort_t *displayPort)
     return 0;
 }
 
-static int oledClearScreen(displayPort_t *displayPort)
+static int oledClearScreen(displayPort_t *displayPort, displayClearOption_e options)
 {
+    UNUSED(options);
+
     i2c_OLED_clear_display_quick(displayPort->device);
     return 0;
 }
