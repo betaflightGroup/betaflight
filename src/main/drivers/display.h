@@ -85,6 +85,7 @@ typedef struct displayPort_s {
 
     // Displayport device capability
     bool useDeviceBlink;
+    uint8_t frameBufferCount;
 
     // The type of display device
     displayPortDeviceType_e deviceType;

@@ -348,6 +348,8 @@ displayPort_t *spracingPixelOSDDisplayPortInit(const vcdProfile_t *vcdProfile)
 
     syncVoltages = spracingPixelOSDLibraryVTable->getSyncVoltages();
 
+    spracingPixelOSDDisplayPort.frameBufferCount = 2;
+
     displayInit(&spracingPixelOSDDisplayPort, &spracingPixelOSDVTable, DISPLAYPORT_DEVICE_TYPE_SPRACINGPIXELOSD);
 
     redraw(&spracingPixelOSDDisplayPort);
