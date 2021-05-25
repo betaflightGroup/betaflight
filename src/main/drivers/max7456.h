@@ -52,7 +52,7 @@ void    max7456Brightness(uint8_t black, uint8_t white);
 void    max7456DrawScreen(void);
 bool    max7456WriteNvm(uint8_t char_address, const uint8_t *font_data);
 uint8_t max7456GetRowsCount(void);
-void    max7456Write(uint8_t x, uint8_t y, const char *buff);
+void    max7456Write(uint8_t x, uint8_t y, const char *input);
 void    max7456WriteChar(uint8_t x, uint8_t y, uint8_t c);
 void    max7456ClearScreen(void);
 void    max7456RefreshAll(void);
