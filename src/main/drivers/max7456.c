@@ -655,8 +655,9 @@ void max7456Write(uint8_t x, uint8_t y, const char *buff)
 {
     if (y < VIDEO_LINES_PAL) {
         uint8_t *buffer = getActiveLayerBuffer();
+        uint32_t bufferOffset = y * CHARS_PER_LINE;
         for (int i = 0; buff[i] && x + i < CHARS_PER_LINE; i++) {
-            buffer[y * CHARS_PER_LINE + x + i] = buff[i];
+            buffer[bufferOffset + x + i] = buff[i];
         }
     }
 }
