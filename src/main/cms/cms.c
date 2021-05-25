@@ -672,6 +672,11 @@ static void cmsDrawMenu(displayPort_t *pDisplay, uint32_t currentTimeUs)
         return;
     }
 
+    if (pDisplay->frameBufferCount > 1) {
+        // With 2 or more frame buffers the display would flicker between a drawn-to framebuffer and a previous framebuffer.
+        displayClearScreen(pDisplay, DISPLAY_CLEAR_WAIT);
+    }
+
     const bool displayWasCleared = pDisplay->cleared;
     uint8_t i;
     const OSD_Entry *p;
