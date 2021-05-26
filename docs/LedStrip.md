@@ -89,7 +89,8 @@ It could be possible to be able to specify the timings required via CLI if users
   * Fits well under motors on mini 250 quads.
 * [Adafruit NeoPixel Stick](https://www.adafruit.com/products/1426) (works well)
   * Measured current consumption in all white mode ~ 350 mA.
-* [Aliexpress SK6812 RBGWW strip](https://www.aliexpress.com/wholesale?SearchText=rgbww+sk6812) 
+* [Aliexpress SK6812 RBGWW strip](https://www.aliexpress.com/wholesale?SearchText=rgbw+sk6812) (works well)
+  * Alternative [Adafruit NeoPixel Stick RGBW](https://www.adafruit.com/product/2869)
 
 
 ### WS2811 vs WS2812
