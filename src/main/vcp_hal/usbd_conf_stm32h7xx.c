@@ -273,13 +273,13 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef * hpcd)
     /* Enable USB HS Clocks */
     __HAL_RCC_USB1_OTG_HS_CLK_ENABLE();
 
-    HAL_NVIC_SetPriority(OTG_HS_EP1_OUT_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(OTG_HS_EP1_OUT_IRQn, 6, 0);
     HAL_NVIC_EnableIRQ(OTG_HS_EP1_OUT_IRQn);
 
-    HAL_NVIC_SetPriority(OTG_HS_EP1_IN_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(OTG_HS_EP1_IN_IRQn, 6, 0);
     HAL_NVIC_EnableIRQ(OTG_HS_EP1_IN_IRQn);
 
-    HAL_NVIC_SetPriority(OTG_HS_IRQn, 1, 0);
+    HAL_NVIC_SetPriority(OTG_HS_IRQn, 7, 0);
     HAL_NVIC_EnableIRQ(OTG_HS_IRQn);
 
 #else
