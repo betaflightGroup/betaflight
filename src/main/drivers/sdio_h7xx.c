@@ -57,7 +57,7 @@ SD_HandleTypeDef hsd1;
 SD_CardInfo_t                      SD_CardInfo;
 SD_CardType_t                      SD_CardType;
 
-static SD_Handle_t                 SD_Handle;
+SD_Handle_t                        SD_Handle;
 
 typedef struct sdioPin_s {
     ioTag_t pin;
@@ -263,7 +263,7 @@ bool SD_GetState(void)
     return (cardState == HAL_SD_CARD_TRANSFER);
 }
 
-SD_Error_t SD_Init(void)
+static SD_Error_t SD_DoInit(void)
 {
     HAL_StatusTypeDef status;
 
@@ -519,6 +519,22 @@ SD_Error_t SD_GetCardInfo(void)
     return ErrorState;
 }
 
+SD_Error_t SD_Init(void)
+{
+    static bool sdInitAttempted = false;
+    static SD_Error_t result = SD_ERROR;
+
+    if (sdInitAttempted) {
+        return result;
+    }
+
+    sdInitAttempted = true;
+
+    result = SD_DoInit();
+
+    return result;
+}
+
 SD_Error_t SD_CheckWrite(void) {
     if (SD_Handle.TXCplt != 0) return SD_BUSY;
     return SD_OK;
@@ -628,7 +644,7 @@ void HAL_SD_ErrorCallback(SD_HandleTypeDef *hsd)
 
     if (SD_Handle.TXCplt) {
         SD_Handle.TXErrors++;
-    SD_Handle.TXCplt = 0;
+        SD_Handle.TXCplt = 0;
     }
 }
 

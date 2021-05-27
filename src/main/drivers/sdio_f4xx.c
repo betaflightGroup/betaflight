@@ -1654,7 +1654,7 @@ bool SD_GetState(void)
 
 
 /** -----------------------------------------------------------------------------------------------------------------*/
-SD_Error_t SD_Init(void)
+static SD_Error_t SD_DoInit(void)
 {
     SD_Error_t errorState;
 
@@ -1702,6 +1702,22 @@ SD_Error_t SD_Init(void)
     }
 
     return errorState;
+}
+
+SD_Error_t SD_Init(void)
+{
+    static bool sdInitAttempted = false;
+    static SD_Error_t result = SD_ERROR;
+
+    if (sdInitAttempted) {
+        return result;
+    }
+
+    sdInitAttempted = true;
+
+    result = SD_DoInit();
+
+    return result;
 }
 
 /** -----------------------------------------------------------------------------------------------------------------*/

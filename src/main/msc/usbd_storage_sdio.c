@@ -181,7 +181,7 @@ static int8_t STORAGE_Init (uint8_t lun)
     if (!sdcard_isInserted()) {
         return 1;
     }
-    if (SD_Init() != 0) {
+    if (SD_Init() != SD_OK) {
         return 1;
     }
 
