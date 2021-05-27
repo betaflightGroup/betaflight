@@ -47,6 +47,9 @@ typedef struct SD_Handle_s
     uint32_t          CID[4];           // SD card identification number table
     volatile uint32_t RXCplt;          // SD RX Complete is equal 0 when no transfer
     volatile uint32_t TXCplt;          // SD TX Complete is equal 0 when no transfer
+
+    uint32_t RXErrors;
+    uint32_t TXErrors;
 } SD_Handle_t;
 
 SD_HandleTypeDef hsd1;
@@ -613,6 +616,20 @@ void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
      */
     uint32_t alignedAddr = (uint32_t)sdReadParameters.buffer &  ~0x1F;
     SCB_InvalidateDCache_by_Addr((uint32_t*)alignedAddr, sdReadParameters.NumberOfBlocks * sdReadParameters.BlockSize + ((uint32_t)sdReadParameters.buffer - alignedAddr));
+}
+
+void HAL_SD_ErrorCallback(SD_HandleTypeDef *hsd)
+{
+    UNUSED(hsd);
+    if (SD_Handle.RXCplt) {
+        SD_Handle.RXErrors++;
+        SD_Handle.RXCplt = 0;
+    }
+
+    if (SD_Handle.TXCplt) {
+        SD_Handle.TXErrors++;
+    SD_Handle.TXCplt = 0;
+    }
 }
 
 void HAL_SD_AbortCallback(SD_HandleTypeDef *hsd)
