@@ -271,7 +271,13 @@ float pidGetFfJitterFactor()
 {
     return pidRuntime.ffJitterFactor;
 }
+
+float pidGetFfTransition()
+{
+    return pidRuntime.feedforwardTransition;
+}
 #endif
+
 
 void pidResetIterm(void)
 {
@@ -1103,9 +1109,8 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         // Only enable feedforward for rate mode and if launch control is inactive
         const float feedforwardGain = (flightModeFlags || launchControlActive) ? 0.0f : pidRuntime.pidCoefficient[axis].Kf;
         if (feedforwardGain > 0) {
-            // no transition if feedforwardTransition == 0
-            float transition = pidRuntime.feedforwardTransition > 0 ? MIN(1.f, getRcDeflectionAbs(axis) * pidRuntime.feedforwardTransition) : 1;
-            float feedForward = feedforwardGain * transition * pidSetpointDelta * pidRuntime.pidFrequency;
+            // transition now calculated in feedforward.c when new RC data arrives 
+            float feedForward = feedforwardGain * pidSetpointDelta * pidRuntime.pidFrequency;
 
 #ifdef USE_FEEDFORWARD
             pidData[axis].F = shouldApplyFeedforwardLimits(axis) ?
