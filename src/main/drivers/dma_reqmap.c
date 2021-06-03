@@ -540,8 +540,7 @@ const dmaChannelSpec_t *dmaGetChannelSpecByPeripheral(dmaPeripheral_e device, ui
         if (periph->device == device && periph->index == index) {
             dmaChannelSpec_t *dmaSpec = &dmaChannelSpec[opt];
             dmaIdentifier_e dmaIdentifier = dmaGetIdentifier(dmaSpec->ref);
-            if (dmaGetOwner(dmaIdentifier)->owner == OWNER_FREE)
-            {
+            if (dmaGetOwner(dmaIdentifier)->owner == OWNER_FREE) {
                 dmaSetupRequest(dmaSpec, periph->dmaRequest);
                 return dmaSpec;
             }
@@ -549,8 +548,7 @@ const dmaChannelSpec_t *dmaGetChannelSpecByPeripheral(dmaPeripheral_e device, ui
         if (periph->device == device && periph->index == index && periph->channelSpec[opt].ref) {
             const dmaChannelSpec_t *dmaSpec =  &periph->channelSpec[opt];
             dmaIdentifier_e dmaIdentifier = dmaGetIdentifier(dmaSpec->ref);
-            if (dmaGetOwner(dmaIdentifier)->owner == OWNER_FREE)
-            {
+            if (dmaGetOwner(dmaIdentifier)->owner == OWNER_FREE) {
                 return dmaSpec;
             }
 #endif
