@@ -123,15 +123,15 @@ bool spiIsBusy(const extDevice_t *dev);
 
 /*
  * Routine naming convention is:
- * 	spi[Read][Write][Reg][Msk][Buf][RB]
+ *  spi[Read][Write][Reg][Msk][Buf][RB]
  *
- * 		Read: Perform a read, returning the value read unless 'Buf' is specified
- * 		Write Perform a write
- * 		ReadWrite: Perform both a read and write, returning the value read unless 'Buf' is specified
- * 		Reg: Register number 'reg' is written prior to the read being performed
- * 		Msk: Register number is logically ORed with 0x80 as some devices indicate a read by accessing a register with bit 7 set
- * 		Buf: Pass data of given length by reference
- * 		RB:  Return false immediately if the bus is busy, otherwise complete the access and return true
+ *      Read: Perform a read, returning the value read unless 'Buf' is specified
+ *      Write Perform a write
+ *      ReadWrite: Perform both a read and write, returning the value read unless 'Buf' is specified
+ *      Reg: Register number 'reg' is written prior to the read being performed
+ *      Msk: Register number is logically ORed with 0x80 as some devices indicate a read by accessing a register with bit 7 set
+ *      Buf: Pass data of given length by reference
+ *      RB:  Return false immediately if the bus is busy, otherwise complete the access and return true
  */
 uint8_t spiReadReg(const extDevice_t *dev, uint8_t reg);
 uint8_t spiReadRegMsk(const extDevice_t *dev, uint8_t reg);
