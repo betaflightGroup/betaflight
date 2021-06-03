@@ -120,6 +120,7 @@ typedef struct accDev_s {
     int16_t ADCRaw[XYZ_AXIS_COUNT];
     mpuDetectionResult_t mpuDetectionResult;
     sensor_align_e accAlign;
+    bool dataReady;
     gyroDev_t *gyro;
     bool acc_high_fsr;
     char revisionCode;                                      // a revision code for the sensor, if known
