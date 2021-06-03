@@ -161,7 +161,7 @@ void spiInitDevice(SPIDevice device)
 #endif
 }
 
-void spiResetDescriptors(busDevice_t *bus)
+void spiPrivResetDescriptors(busDevice_t *bus)
 {
     LL_DMA_InitTypeDef *initTx = bus->initTx;
     LL_DMA_InitTypeDef *initRx = bus->initRx;
@@ -202,7 +202,7 @@ void spiResetDescriptors(busDevice_t *bus)
     initRx->PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_BYTE;
 }
 
-void spiResetStream(dmaChannelDescriptor_t *descriptor)
+void spiPrivResetStream(dmaChannelDescriptor_t *descriptor)
 {
     // Disable the stream
     LL_DMA_DisableStream(descriptor->dma, descriptor->stream);

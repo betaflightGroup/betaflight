@@ -567,10 +567,10 @@ void spiInitBusDMA()
             bus->dmaRx = dmaGetDescriptorByIdentifier(dmaRxIdentifier);
 
             // Ensure streams are disabled
-            spiResetStream(bus->dmaRx);
-            spiResetStream(bus->dmaTx);
+            spiPrivResetStream(bus->dmaRx);
+            spiPrivResetStream(bus->dmaTx);
 
-            spiResetDescriptors(bus);
+            spiPrivResetDescriptors(bus);
 
             /* Note that this driver may be called both from the normal thread of execution, or from USB interrupt
              * handlers, so the DMA completion interrupt must be at a higher priority

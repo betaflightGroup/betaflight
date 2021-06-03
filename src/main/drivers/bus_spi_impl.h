@@ -85,4 +85,6 @@ void spiInitDevice(SPIDevice device);
 void spiPrivInitStream(const extDevice_t *dev, bool preInit);
 void spiPrivStartDMA(const extDevice_t *dev);
 void spiPrivStopDMA (const extDevice_t *dev);
+void spiPrivResetStream(dmaChannelDescriptor_t *descriptor);
+void spiPrivResetDescriptors(busDevice_t *bus);
 

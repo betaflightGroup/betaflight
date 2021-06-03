@@ -98,7 +98,7 @@ void spiInitDevice(SPIDevice device)
     SPI_Cmd(spi->dev, ENABLE);
 }
 
-void spiResetDescriptors(busDevice_t *bus)
+void spiPrivResetDescriptors(busDevice_t *bus)
 {
     DMA_InitTypeDef *initTx = bus->initTx;
     DMA_InitTypeDef *initRx = bus->initRx;
@@ -123,7 +123,7 @@ void spiResetDescriptors(busDevice_t *bus)
     initRx->DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
 }
 
-void spiResetStream(dmaChannelDescriptor_t *descriptor)
+void spiPrivResetStream(dmaChannelDescriptor_t *descriptor)
 {
     DMA_Stream_TypeDef *streamRegs = (DMA_Stream_TypeDef *)descriptor->ref;
 

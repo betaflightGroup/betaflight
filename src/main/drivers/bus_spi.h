@@ -93,8 +93,8 @@ void spiPreinitByIO(IO_t io);
 void spiPreinitByTag(ioTag_t tag);
 
 bool spiInit(SPIDevice device);
-void spiResetStream(dmaChannelDescriptor_t *descriptor);
-void spiResetDescriptors(busDevice_t *bus);
+
+// Called after all devices are initialised to enable SPI DMA where streams are available.
 void spiInitBusDMA();
 
 

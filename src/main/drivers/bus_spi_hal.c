@@ -170,12 +170,12 @@ void spiPrivStopDMA (const extDevice_t *dev)
     UNUSED(dev);
 }
 
-void spiResetDescriptors(busDevice_t *bus)
+void spiPrivResetDescriptors(busDevice_t *bus)
 {
     UNUSED(bus);
 }
 
-void spiResetStream(dmaChannelDescriptor_t *descriptor)
+void spiPrivResetStream(dmaChannelDescriptor_t *descriptor)
 {
     UNUSED(descriptor);
 }
