@@ -311,12 +311,12 @@ static void emfat_add_log(emfat_entry_t *entry, int number, uint32_t offset, uin
 
 static int emfat_find_log(emfat_entry_t *entry, int maxCount, int flashfsUsedSpace)
 {
+    static uint8_t buffer[HDR_BUF_SIZE];
     int lastOffset = 0;
     int currOffset = 0;
     int buffOffset;
     int hdrOffset;
     int fileNumber = 0;
-    uint8_t buffer[HDR_BUF_SIZE];
     int logCount = 0;
     char *logHeader = "H Product:Blackbox";
     int lenLogHeader = strlen(logHeader);

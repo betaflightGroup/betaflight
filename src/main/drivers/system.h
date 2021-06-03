@@ -72,6 +72,9 @@ void systemCheckResetReason(void);
 #endif
 
 void initialiseMemorySections(void);
+#ifdef STM32H7
+void initialiseD2MemorySections(void);
+#endif
 
 void enableGPIOPowerUsageAndNoiseReductions(void);
 // current crystal frequency - 8 or 12MHz

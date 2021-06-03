@@ -169,6 +169,7 @@ SECTIONS
   .fastram_data :
   {
     . = ALIGN(4);
+    _sfastram = .;       	   /* create a global symbol at fast ram start */
     _sfastram_data = .;        /* create a global symbol at data start */
     *(.fastram_data)           /* .data sections */
     *(.fastram_data*)          /* .data* sections */
@@ -206,6 +207,7 @@ SECTIONS
     PROVIDE ( _end = . );
     . = . + _Min_Heap_Size;
     . = . + _Min_Stack_Size;
+    _efastram = .;       /* create a global symbol at fast ram end */
     . = ALIGN(4);
   } >STACKRAM = 0xa5
 

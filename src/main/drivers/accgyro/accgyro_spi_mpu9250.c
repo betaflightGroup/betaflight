@@ -55,25 +55,19 @@
 static void mpu9250AccAndGyroInit(gyroDev_t *gyro);
 
 
-bool mpu9250SpiWriteRegister(const busDevice_t *bus, uint8_t reg, uint8_t data)
+bool mpu9250SpiWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
-    IOLo(bus->busdev_u.spi.csnPin);
     delayMicroseconds(1);
-    spiTransferByte(bus->busdev_u.spi.instance, reg);
-    spiTransferByte(bus->busdev_u.spi.instance, data);
-    IOHi(bus->busdev_u.spi.csnPin);
+    spiWriteRegBuf(dev, reg, &data, sizeof (data));
     delayMicroseconds(1);
 
     return true;
 }
 
-static bool mpu9250SpiSlowReadRegisterBuffer(const busDevice_t *bus, uint8_t reg, uint8_t *data, uint8_t length)
+static bool mpu9250SpiSlowReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
 {
-    IOLo(bus->busdev_u.spi.csnPin);
     delayMicroseconds(1);
-    spiTransferByte(bus->busdev_u.spi.instance, reg | 0x80); // read transaction
-    spiTransfer(bus->busdev_u.spi.instance, NULL, data, length);
-    IOHi(bus->busdev_u.spi.csnPin);
+    spiReadRegBuf(dev, reg | 0x80, data, length);
     delayMicroseconds(1);
 
     return true;
@@ -85,14 +79,11 @@ void mpu9250SpiGyroInit(gyroDev_t *gyro)
 
     mpu9250AccAndGyroInit(gyro);
 
-    spiResetErrorCounter(gyro->bus.busdev_u.spi.instance);
-
-    spiSetDivisor(gyro->bus.busdev_u.spi.instance, spiCalculateDivider(MPU9250_MAX_SPI_CLK_HZ)); //high speed now that we don't need to write to the slow registers
+    spiSetClkDivisor(&gyro->dev, spiCalculateDivider(MPU9250_MAX_SPI_CLK_HZ)); //high speed now that we don't need to write to the slow registers
 
     mpuGyroRead(gyro);
 
-    if ((((int8_t)gyro->gyroADCRaw[1]) == -1 && ((int8_t)gyro->gyroADCRaw[0]) == -1) || spiGetErrorCounter(gyro->bus.busdev_u.spi.instance) != 0) {
-        spiResetErrorCounter(gyro->bus.busdev_u.spi.instance);
+    if ((((int8_t)gyro->gyroADCRaw[1]) == -1 && ((int8_t)gyro->gyroADCRaw[0]) == -1)) {
         failureMode(FAILURE_GYRO_INIT_FAILED);
     }
 }
@@ -102,20 +93,20 @@ void mpu9250SpiAccInit(accDev_t *acc)
     acc->acc_1G = 512 * 4;
 }
 
-bool mpu9250SpiWriteRegisterVerify(const busDevice_t *bus, uint8_t reg, uint8_t data)
+bool mpu9250SpiWriteRegisterVerify(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
-    mpu9250SpiWriteRegister(bus, reg, data);
+    mpu9250SpiWriteRegister(dev, reg, data);
     delayMicroseconds(100);
 
     uint8_t attemptsRemaining = 20;
     do {
         uint8_t in;
-        mpu9250SpiSlowReadRegisterBuffer(bus, reg, &in, 1);
+        mpu9250SpiSlowReadRegisterBuffer(dev, reg, &in, 1);
         if (in == data) {
             return true;
         } else {
             debug[3]++;
-            mpu9250SpiWriteRegister(bus, reg, data);
+            mpu9250SpiWriteRegister(dev, reg, data);
             delayMicroseconds(100);
         }
     } while (attemptsRemaining--);
@@ -124,39 +115,39 @@ bool mpu9250SpiWriteRegisterVerify(const busDevice_t *bus, uint8_t reg, uint8_t 
 
 static void mpu9250AccAndGyroInit(gyroDev_t *gyro) {
 
-    spiSetDivisor(gyro->bus.busdev_u.spi.instance, spiCalculateDivider(MPU9250_MAX_SPI_INIT_CLK_HZ)); //low speed for writing to slow registers
+    spiSetClkDivisor(&gyro->dev, spiCalculateDivider(MPU9250_MAX_SPI_INIT_CLK_HZ)); //low speed for writing to slow registers
 
-    mpu9250SpiWriteRegister(&gyro->bus, MPU_RA_PWR_MGMT_1, MPU9250_BIT_RESET);
+    mpu9250SpiWriteRegister(&gyro->dev, MPU_RA_PWR_MGMT_1, MPU9250_BIT_RESET);
     delay(50);
 
-    mpu9250SpiWriteRegisterVerify(&gyro->bus, MPU_RA_PWR_MGMT_1, INV_CLK_PLL);
+    mpu9250SpiWriteRegisterVerify(&gyro->dev, MPU_RA_PWR_MGMT_1, INV_CLK_PLL);
 
-    mpu9250SpiWriteRegisterVerify(&gyro->bus, MPU_RA_GYRO_CONFIG, INV_FSR_2000DPS << 3);
+    mpu9250SpiWriteRegisterVerify(&gyro->dev, MPU_RA_GYRO_CONFIG, INV_FSR_2000DPS << 3);
 
-    mpu9250SpiWriteRegisterVerify(&gyro->bus, MPU_RA_CONFIG, mpuGyroDLPF(gyro));
+    mpu9250SpiWriteRegisterVerify(&gyro->dev, MPU_RA_CONFIG, mpuGyroDLPF(gyro));
 
-    mpu9250SpiWriteRegisterVerify(&gyro->bus, MPU_RA_SMPLRT_DIV, gyro->mpuDividerDrops);
+    mpu9250SpiWriteRegisterVerify(&gyro->dev, MPU_RA_SMPLRT_DIV, gyro->mpuDividerDrops);
 
-    mpu9250SpiWriteRegisterVerify(&gyro->bus, MPU_RA_ACCEL_CONFIG, INV_FSR_16G << 3);
-    mpu9250SpiWriteRegisterVerify(&gyro->bus, MPU_RA_INT_PIN_CFG, 0 << 7 | 0 << 6 | 0 << 5 | 1 << 4 | 0 << 3 | 0 << 2 | 1 << 1 | 0 << 0);  // INT_ANYRD_2CLEAR, BYPASS_EN
+    mpu9250SpiWriteRegisterVerify(&gyro->dev, MPU_RA_ACCEL_CONFIG, INV_FSR_16G << 3);
+    mpu9250SpiWriteRegisterVerify(&gyro->dev, MPU_RA_INT_PIN_CFG, 0 << 7 | 0 << 6 | 0 << 5 | 1 << 4 | 0 << 3 | 0 << 2 | 1 << 1 | 0 << 0);  // INT_ANYRD_2CLEAR, BYPASS_EN
 
 #if defined(USE_MPU_DATA_READY_SIGNAL)
-    mpu9250SpiWriteRegisterVerify(&gyro->bus, MPU_RA_INT_ENABLE, 0x01); //this resets register MPU_RA_PWR_MGMT_1 and won't read back correctly.
+    mpu9250SpiWriteRegisterVerify(&gyro->dev, MPU_RA_INT_ENABLE, 0x01); //this resets register MPU_RA_PWR_MGMT_1 and won't read back correctly.
 #endif
 
-    spiSetDivisor(gyro->bus.busdev_u.spi.instance, spiCalculateDivider(MPU9250_MAX_SPI_CLK_HZ));
+    spiSetClkDivisor(&gyro->dev, spiCalculateDivider(MPU9250_MAX_SPI_CLK_HZ));
 }
 
-uint8_t mpu9250SpiDetect(const busDevice_t *bus)
+uint8_t mpu9250SpiDetect(const extDevice_t *dev)
 {
 
-    spiSetDivisor(bus->busdev_u.spi.instance, spiCalculateDivider(MPU9250_MAX_SPI_INIT_CLK_HZ)); //low speed
-    mpu9250SpiWriteRegister(bus, MPU_RA_PWR_MGMT_1, MPU9250_BIT_RESET);
+    spiSetClkDivisor(dev, spiCalculateDivider(MPU9250_MAX_SPI_INIT_CLK_HZ)); //low speed
+    mpu9250SpiWriteRegister(dev, MPU_RA_PWR_MGMT_1, MPU9250_BIT_RESET);
 
     uint8_t attemptsRemaining = 20;
     do {
         delay(150);
-        const uint8_t in = spiBusReadRegister(bus, MPU_RA_WHO_AM_I);
+        const uint8_t in = spiReadRegMsk(dev, MPU_RA_WHO_AM_I);
         if (in == MPU9250_WHO_AM_I_CONST || in == MPU9255_WHO_AM_I_CONST) {
             break;
         }
@@ -165,7 +156,7 @@ uint8_t mpu9250SpiDetect(const busDevice_t *bus)
         }
     } while (attemptsRemaining--);
 
-    spiSetDivisor(bus->busdev_u.spi.instance, spiCalculateDivider(MPU9250_MAX_SPI_CLK_HZ));
+    spiSetClkDivisor(dev, spiCalculateDivider(MPU9250_MAX_SPI_CLK_HZ));
 
     return MPU_9250_SPI;
 }
@@ -177,7 +168,7 @@ bool mpu9250SpiAccDetect(accDev_t *acc)
     }
 
     acc->initFn = mpu9250SpiAccInit;
-    acc->readFn = mpuAccRead;
+    acc->readFn = mpuAccReadSPI;
 
     return true;
 }

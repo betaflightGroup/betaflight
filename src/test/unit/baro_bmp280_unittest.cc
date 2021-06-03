@@ -147,21 +147,18 @@ TEST(baroBmp280Test, TestBmp280CalculateZeroP)
 extern "C" {
 
 void delay(uint32_t) {}
-bool busBusy(const busDevice_t*, bool*) {return false;}
-bool busReadRegisterBuffer(const busDevice_t*, uint8_t, uint8_t*, uint8_t) {return true;}
-bool busReadRegisterBufferStart(const busDevice_t*, uint8_t, uint8_t*, uint8_t) {return true;}
-bool busWriteRegister(const busDevice_t*, uint8_t, uint8_t) {return true;}
-bool busWriteRegisterStart(const busDevice_t*, uint8_t, uint8_t) {return true;}
-void busDeviceRegister(const busDevice_t*) {}
+bool busBusy(const extDevice_t*, bool*) {return false;}
+bool busReadRegisterBuffer(const extDevice_t*, uint8_t, uint8_t*, uint8_t) {return true;}
+bool busReadRegisterBufferStart(const extDevice_t*, uint8_t, uint8_t*, uint8_t) {return true;}
+bool busWriteRegister(const extDevice_t*, uint8_t, uint8_t) {return true;}
+bool busWriteRegisterStart(const extDevice_t*, uint8_t, uint8_t) {return true;}
+void busDeviceRegister(const extDevice_t*) {}
 
 uint16_t spiCalculateDivider() {
     return 2;
 }
 
-void spiBusSetDivisor() {
-}
-
-void spiBusTransactionInit() {
+void spiSetClkDivisor() {
 }
 
 void spiPreinitByIO() {

@@ -33,8 +33,6 @@
 #pragma GCC diagnostic push
 #if defined(SIMULATOR_BUILD) && defined(SIMULATOR_MULTITHREAD)
 #include <pthread.h>
-#elif !defined(UNIT_TEST)
-#pragma GCC diagnostic warning "-Wpadded"
 #endif
 
 #define GYRO_SCALE_2000DPS (2000.0f / (1 << 15))   // 16.384 dps/lsb scalefactor for 2000dps sensors
@@ -88,7 +86,7 @@ typedef struct gyroDev_s {
     sensorGyroReadFuncPtr readFn;                             // read 3 axis data function
     sensorGyroReadDataFuncPtr temperatureFn;                  // read temperature if available
     extiCallbackRec_t exti;
-    busDevice_t bus;
+    extDevice_t dev;
     float scale;                                             // scalefactor
     float gyroZero[XYZ_AXIS_COUNT];
     float gyroADC[XYZ_AXIS_COUNT];                           // gyro data after calibration and alignment
@@ -118,12 +116,12 @@ typedef struct accDev_s {
     float acc_1G_rec;
     sensorAccInitFuncPtr initFn;                              // initialize function
     sensorAccReadFuncPtr readFn;                              // read 3 axis data function
-    busDevice_t bus;
     uint16_t acc_1G;
     int16_t ADCRaw[XYZ_AXIS_COUNT];
     mpuDetectionResult_t mpuDetectionResult;
     sensor_align_e accAlign;
     bool dataReady;
+    gyroDev_t *gyro;
     bool acc_high_fsr;
     char revisionCode;                                      // a revision code for the sensor, if known
     uint8_t filler[2];

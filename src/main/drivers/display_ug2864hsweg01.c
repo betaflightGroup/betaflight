@@ -173,15 +173,15 @@ static const uint8_t multiWiiFont[][5] = { // Refer to "Times New Roman" Font Da
                 { 0x7A, 0x7E, 0x7E, 0x7E, 0x7A }, //   (131)    - 0x00C8 Vertical Bargraph - 6 (full)
         };
 
-static bool i2c_OLED_send_cmd(busDevice_t *bus, uint8_t command)
+static bool i2c_OLED_send_cmd(const extDevice_t *dev, uint8_t command)
 {
-    return i2cWrite(bus->busdev_u.i2c.device, bus->busdev_u.i2c.address, 0x80, command);
+    return i2cWrite(dev->bus->busType_u.i2c.device, dev->busType_u.i2c.address, 0x80, command);
 }
 
-static bool i2c_OLED_send_cmdarray(busDevice_t *bus, const uint8_t *commands, size_t len)
+static bool i2c_OLED_send_cmdarray(const extDevice_t *dev, const uint8_t *commands, size_t len)
 {
     for (size_t i = 0 ; i < len ; i++) {
-        if (!i2c_OLED_send_cmd(bus, commands[i])) {
+        if (!i2c_OLED_send_cmd(dev, commands[i])) {
             return false;
         }
     }
@@ -189,12 +189,12 @@ static bool i2c_OLED_send_cmdarray(busDevice_t *bus, const uint8_t *commands, si
     return true;
 }
 
-static bool i2c_OLED_send_byte(busDevice_t *bus, uint8_t val)
+static bool i2c_OLED_send_byte(const extDevice_t *dev, uint8_t val)
 {
-    return i2cWrite(bus->busdev_u.i2c.device, bus->busdev_u.i2c.address, 0x40, val);
+    return i2cWrite(dev->bus->busType_u.i2c.device, dev->busType_u.i2c.address, 0x40, val);
 }
 
-void i2c_OLED_clear_display_quick(busDevice_t *bus)
+void i2c_OLED_clear_display_quick(const extDevice_t *dev)
 {
     static const uint8_t i2c_OLED_cmd_clear_display_quick[] = {
         0xb0, // set page address to 0
@@ -203,14 +203,14 @@ void i2c_OLED_clear_display_quick(busDevice_t *bus)
         0x10, // Set high col address to 0
     };
 
-    i2c_OLED_send_cmdarray(bus, i2c_OLED_cmd_clear_display_quick, ARRAYLEN(i2c_OLED_cmd_clear_display_quick));
+    i2c_OLED_send_cmdarray(dev, i2c_OLED_cmd_clear_display_quick, ARRAYLEN(i2c_OLED_cmd_clear_display_quick));
 
     for (uint16_t i = 0; i < 1024; i++) {      // fill the display's RAM with graphic... 128*64 pixel picture
-        i2c_OLED_send_byte(bus, 0x00);  // clear
+        i2c_OLED_send_byte(dev, 0x00);  // clear
     }
 }
 
-void i2c_OLED_clear_display(busDevice_t *bus)
+void i2c_OLED_clear_display(const extDevice_t *dev)
 {
     static const uint8_t i2c_OLED_cmd_clear_display_pre[] = {
         0xa6, // Set Normal Display
@@ -219,9 +219,9 @@ void i2c_OLED_clear_display(busDevice_t *bus)
         0x00, // Set Memory Addressing Mode to Horizontal addressing mode
     };
 
-    i2c_OLED_send_cmdarray(bus, i2c_OLED_cmd_clear_display_pre, ARRAYLEN(i2c_OLED_cmd_clear_display_pre));
+    i2c_OLED_send_cmdarray(dev, i2c_OLED_cmd_clear_display_pre, ARRAYLEN(i2c_OLED_cmd_clear_display_pre));
 
-    i2c_OLED_clear_display_quick(bus);
+    i2c_OLED_clear_display_quick(dev);
 
     static const uint8_t i2c_OLED_cmd_clear_display_post[] = {
         0x81, // Setup CONTRAST CONTROL, following byte is the contrast Value... always a 2 byte instruction
@@ -229,10 +229,10 @@ void i2c_OLED_clear_display(busDevice_t *bus)
         0xaf, // display on
     };
 
-    i2c_OLED_send_cmdarray(bus, i2c_OLED_cmd_clear_display_post, ARRAYLEN(i2c_OLED_cmd_clear_display_post));
+    i2c_OLED_send_cmdarray(dev, i2c_OLED_cmd_clear_display_post, ARRAYLEN(i2c_OLED_cmd_clear_display_post));
 }
 
-void i2c_OLED_set_xy(busDevice_t *bus, uint8_t col, uint8_t row)
+void i2c_OLED_set_xy(const extDevice_t *dev, uint8_t col, uint8_t row)
 {
     uint8_t i2c_OLED_cmd_set_xy[] = {
         0xb0 + row,                                            //set page address
@@ -240,31 +240,31 @@ void i2c_OLED_set_xy(busDevice_t *bus, uint8_t col, uint8_t row)
         0x10 + (((CHARACTER_WIDTH_TOTAL * col) >> 4) & 0x0f)   //set high col address
     };
 
-    i2c_OLED_send_cmdarray(bus, i2c_OLED_cmd_set_xy, ARRAYLEN(i2c_OLED_cmd_set_xy));
+    i2c_OLED_send_cmdarray(dev, i2c_OLED_cmd_set_xy, ARRAYLEN(i2c_OLED_cmd_set_xy));
 }
 
-void i2c_OLED_set_line(busDevice_t *bus, uint8_t row)
+void i2c_OLED_set_line(const extDevice_t *dev, uint8_t row)
 {
-    i2c_OLED_set_xy(bus, 0, row);
+    i2c_OLED_set_xy(dev, 0, row);
 }
 
-void i2c_OLED_send_char(busDevice_t *bus, unsigned char ascii)
+void i2c_OLED_send_char(const extDevice_t *dev, unsigned char ascii)
 {
     unsigned char i;
     uint8_t buffer;
     for (i = 0; i < 5; i++) {
         buffer = multiWiiFont[ascii - 32][i];
         buffer ^= CHAR_FORMAT;  // apply
-        i2c_OLED_send_byte(bus, buffer);
+        i2c_OLED_send_byte(dev, buffer);
     }
-    i2c_OLED_send_byte(bus, CHAR_FORMAT);    // the gap
+    i2c_OLED_send_byte(dev, CHAR_FORMAT);    // the gap
 }
 
-void i2c_OLED_send_string(busDevice_t *bus, const char *string)
+void i2c_OLED_send_string(const extDevice_t *dev, const char *string)
 {
     // Sends a string of chars until null terminator
     while (*string) {
-        i2c_OLED_send_char(bus, *string);
+        i2c_OLED_send_char(dev, *string);
         string++;
     }
 }
@@ -273,11 +273,11 @@ void i2c_OLED_send_string(busDevice_t *bus, const char *string)
 * according to http://www.adafruit.com/datasheets/UG-2864HSWEG01.pdf Chapter 4.4 Page 15
 */
 
-bool ug2864hsweg01InitI2C(busDevice_t *bus)
+bool ug2864hsweg01InitI2C(const extDevice_t *dev)
 {
 
     // Set display OFF
-    if (!i2c_OLED_send_cmd(bus, 0xAE)) {
+    if (!i2c_OLED_send_cmd(dev, 0xAE)) {
         return false;
     }
 
@@ -306,9 +306,9 @@ bool ug2864hsweg01InitI2C(busDevice_t *bus)
         0xAF, // Set display On
     };
 
-    i2c_OLED_send_cmdarray(bus, i2c_OLED_cmd_init, ARRAYLEN(i2c_OLED_cmd_init));
+    i2c_OLED_send_cmdarray(dev, i2c_OLED_cmd_init, ARRAYLEN(i2c_OLED_cmd_init));
 
-    i2c_OLED_clear_display(bus);
+    i2c_OLED_clear_display(dev);
 
     return true;
 }

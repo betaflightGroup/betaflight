@@ -708,9 +708,10 @@ void gyroSetTargetLooptime(uint8_t pidDenom)
     }
 }
 
-const busDevice_t *gyroSensorBus(void)
+
+gyroDev_t *gyroActiveDev(void)
 {
-    return &ACTIVE_GYRO->gyroDev.bus;
+    return &ACTIVE_GYRO->gyroDev;
 }
 
 const mpuDetectionResult_t *gyroMpuDetectionResult(void)
@@ -724,20 +725,20 @@ int16_t gyroRateDps(int axis)
 }
 
 #ifdef USE_GYRO_REGISTER_DUMP
-static const busDevice_t *gyroSensorBusByDevice(uint8_t whichSensor)
+static extDevice_t *gyroSensorDevByInstance(uint8_t whichSensor)
 {
 #ifdef USE_MULTI_GYRO
     if (whichSensor == GYRO_CONFIG_USE_GYRO_2) {
-        return &gyro.gyroSensor2.gyroDev.bus;
+        return &gyro.gyroSensor2.gyroDev.dev;
     }
 #else
     UNUSED(whichSensor);
 #endif
-    return &gyro.gyroSensor1.gyroDev.bus;
+    return &gyro.gyroSensor1.gyroDev.dev;
 }
 
 uint8_t gyroReadRegister(uint8_t whichSensor, uint8_t reg)
 {
-    return mpuGyroReadRegister(gyroSensorBusByDevice(whichSensor), reg);
+    return mpuGyroReadRegister(gyroSensorDevByInstance(whichSensor), reg);
 }
 #endif // USE_GYRO_REGISTER_DUMP

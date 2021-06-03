@@ -60,6 +60,7 @@ EXCLUDES        = \
                 stm32h7xx_hal_smartcard_ex.c \
                 stm32h7xx_hal_smbus.c \
                 stm32h7xx_hal_spdifrx.c \
+                stm32h7xx_hal_spi.c \
                 stm32h7xx_hal_sram.c \
                 stm32h7xx_hal_swpmi.c \
                 stm32h7xx_hal_usart.c \
@@ -85,7 +86,6 @@ EXCLUDES        = \
                 stm32h7xx_ll_rcc.c \
                 stm32h7xx_ll_rng.c \
                 stm32h7xx_ll_rtc.c \
-                stm32h7xx_ll_spi.c \
                 stm32h7xx_ll_swpmi.c \
                 stm32h7xx_ll_usart.c \
                 stm32h7xx_ll_utils.c
@@ -282,7 +282,7 @@ MCU_COMMON_SRC = \
             drivers/serial_uart_hal.c \
             drivers/serial_uart_stm32h7xx.c \
             drivers/bus_quadspi_hal.c \
-            drivers/bus_spi_hal.c \
+            drivers/bus_spi_ll.c \
             drivers/dma_stm32h7xx.c \
             drivers/dshot_bitbang.c \
             drivers/dshot_bitbang_decode.c \

@@ -1056,12 +1056,10 @@ void osdUpdate(timeUs_t currentTimeUs)
         showVisualBeeper = true;
     }
 
-#ifdef MAX7456_DMA_CHANNEL_TX
     // don't touch buffers if DMA transaction is in progress
     if (displayIsTransferInProgress(osdDisplayPort)) {
         return;
     }
-#endif // MAX7456_DMA_CHANNEL_TX
 
 #ifdef USE_SLOW_MSP_DISPLAYPORT_RATE_WHEN_UNARMED
     static uint32_t idlecounter = 0;

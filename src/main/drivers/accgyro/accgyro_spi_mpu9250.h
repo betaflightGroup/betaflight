@@ -44,11 +44,11 @@
 
 void mpu9250SpiResetGyro(void);
 
-uint8_t mpu9250SpiDetect(const busDevice_t *bus);
+uint8_t mpu9250SpiDetect(const extDevice_t *dev);
 
 bool mpu9250SpiAccDetect(accDev_t *acc);
 bool mpu9250SpiGyroDetect(gyroDev_t *gyro);
 
-bool mpu9250SpiWriteRegister(const busDevice_t *bus, uint8_t reg, uint8_t data);
-bool mpu9250SpiWriteRegisterVerify(const busDevice_t *bus, uint8_t reg, uint8_t data);
-bool mpu9250SpiReadRegBuf(const busDevice_t *bus, uint8_t reg, uint8_t length, uint8_t *data);
+bool mpu9250SpiWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data);
+bool mpu9250SpiWriteRegisterVerify(const extDevice_t *dev, uint8_t reg, uint8_t data);
+bool mpu9250SpiReadRegBuf(const extDevice_t *dev, uint8_t reg, uint8_t length, uint8_t *data);
