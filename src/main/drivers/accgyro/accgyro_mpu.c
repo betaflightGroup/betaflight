@@ -275,6 +275,10 @@ static bool detectSPISensorsAndUpdateDetectionResult(gyroDev_t *gyro, const gyro
         }
     }
 
+    // Detection failed, disable CS pin again
+
+    spiPreinitByTag(config->csnTag);
+
     return false;
 }
 #endif
