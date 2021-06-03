@@ -202,6 +202,7 @@ void spiSequence(const extDevice_t *dev, busSegment_t *segments)
             hspi->Init.CLKPolarity = SPI_POLARITY_HIGH;
             hspi->Init.CLKPhase = SPI_PHASE_2EDGE;
         }
+        bus->busType_u.spi.leadingEdge = dev->busType_u.spi.leadingEdge;
 
         // Init SPI hardware
         HAL_SPI_Init(hspi);
