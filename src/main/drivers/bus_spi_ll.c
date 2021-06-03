@@ -106,7 +106,7 @@ static uint32_t spiDivisorToBRbits(SPI_TypeDef *instance, uint16_t divisor)
     divisor = constrain(divisor, 2, 256);
 
 #if defined(STM32H7)
-    uint32_t baudRatePrescaler[8] = {
+    const uint32_t baudRatePrescaler[8] = {
         LL_SPI_BAUDRATEPRESCALER_DIV2,
         LL_SPI_BAUDRATEPRESCALER_DIV4,
         LL_SPI_BAUDRATEPRESCALER_DIV8,
