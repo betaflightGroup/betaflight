@@ -468,11 +468,6 @@ void rxSetUplinkTxPwrMw(uint16_t uplinkTxPwrMwValue)
 }
 #endif
 
-void rxProcessPending(bool state)
-{
-    processPending = state;
-}
-
 bool rxUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
 {
     bool signalReceived = false;
