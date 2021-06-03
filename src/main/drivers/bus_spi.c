@@ -587,6 +587,12 @@ void spiSetClkDivisor(const extDevice_t *dev, uint16_t divisor)
     ((extDevice_t *)dev)->busType_u.spi.speed = divisor;
 }
 
+// Set the clock phase/polarity to be used for accesses by the given device
+void spiSetClkPhasePolarity(const extDevice_t *dev, bool leadingEdge)
+{
+    ((extDevice_t *)dev)->busType_u.spi.leadingEdge = leadingEdge;
+}
+
 bool spiUseDMA(const extDevice_t *dev)
 {
     return dev->bus->useDMA;
