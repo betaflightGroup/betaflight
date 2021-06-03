@@ -184,12 +184,28 @@ void spiResetStream(dmaChannelDescriptor_t *descriptor)
 void spiSequence(const extDevice_t *dev, busSegment_t *segments)
 {
     busDevice_t *bus = dev->bus;
+    SPIDevice device = spiDeviceByInstance(bus->busType_u.spi.instance);
+    SPI_HandleTypeDef *hspi = &spiDevice[device].hspi;
 
     bus->initSegment = true;
     bus->curSegment = segments;
 
     // Switch bus speed
     spiSetDivisor(bus->busType_u.spi.instance, dev->busType_u.spi.speed);
+
+    // Switch SPI clock polarity/phase if necessary
+    if (dev->busType_u.spi.leadingEdge != bus->busType_u.spi.leadingEdge) {
+        if (dev->busType_u.spi.leadingEdge){
+            hspi->Init.CLKPolarity = SPI_POLARITY_LOW;
+            hspi->Init.CLKPhase = SPI_PHASE_1EDGE;
+        } else {
+            hspi->Init.CLKPolarity = SPI_POLARITY_HIGH;
+            hspi->Init.CLKPhase = SPI_PHASE_2EDGE;
+        }
+
+        // Init SPI hardware
+        HAL_SPI_Init(hspi);
+    }
 
     // Manually work through the segment list performing a transfer for each
     while (bus->curSegment->len) {

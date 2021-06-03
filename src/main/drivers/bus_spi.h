@@ -115,7 +115,7 @@ void spiSequence(const extDevice_t *dev, busSegment_t *segments);
 // Wait for DMA completion
 void spiWait(const extDevice_t *dev);
 // Indicate that the bus on which this device resides may initiate DMA transfers from interrupt context
-vvoid spiSetAtomicWait(const extDevice_t *dev);
+void spiSetAtomicWait(const extDevice_t *dev);
 // Wait for DMA completion and claim the bus driver - use this when waiting for a prior access to complete before starting a new one
 void spiWaitClaim(const extDevice_t *dev);
 // Return true if DMA engine is busy
