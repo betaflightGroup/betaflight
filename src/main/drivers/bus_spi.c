@@ -471,7 +471,7 @@ static void spiRxIrqHandler(dmaChannelDescriptor_t* descriptor)
     }
 }
 
-
+// Mark this bus as being SPI and record the first owner to use it
 bool spiSetBusInstance(extDevice_t *dev, uint32_t device, resourceOwner_e owner)
 {
     if (device > SPIDEV_COUNT) {

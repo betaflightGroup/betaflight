@@ -101,21 +101,38 @@ void spiInitBusDMA();
 SPIDevice spiDeviceByInstance(SPI_TypeDef *instance);
 SPI_TypeDef *spiInstanceByDevice(SPIDevice device);
 
-//
 // BusDevice API
-//
-// Routines with RB suffix return false if bus is busy on entry
-//
+
+// Mark a device's associated bus as being SPI and record the first owner to use it
 bool spiSetBusInstance(extDevice_t *dev, uint32_t device, resourceOwner_e owner);
+// Determine the divisor to use for a given bus frequency
 uint16_t spiCalculateDivider(uint32_t freq);
+// Set the clock divisor to be used for accesses by the given device
 void spiSetClkDivisor(const extDevice_t *dev, uint16_t divider);
 
+// DMA transfer setup and start
 void spiSequence(const extDevice_t *dev, busSegment_t *segments);
+// Wait for DMA completion
 void spiWait(const extDevice_t *dev);
-void spiSetAtomicWait(const extDevice_t *dev);
+// Indicate that the bus on which this device resides may initiate DMA transfers from interrupt context
+vvoid spiSetAtomicWait(const extDevice_t *dev);
+// Wait for DMA completion and claim the bus driver - use this when waiting for a prior access to complete before starting a new one
 void spiWaitClaim(const extDevice_t *dev);
+// Return true if DMA engine is busy
 bool spiIsBusy(const extDevice_t *dev);
 
+/*
+ * Routine naming convention is:
+ * 	spi[Read][Write][Reg][Msk][Buf][RB]
+ *
+ * 		Read: Perform a read, returning the value read unless 'Buf' is specified
+ * 		Write Perform a write
+ * 		ReadWrite: Perform both a read and write, returning the value read unless 'Buf' is specified
+ * 		Reg: Register number 'reg' is written prior to the read being performed
+ * 		Msk: Register number is logically ORed with 0x80 as some devices indicate a read by accessing a register with bit 7 set
+ * 		Buf: Pass data of given length by reference
+ * 		RB:  Return false immediately if the bus is busy, otherwise complete the access and return true
+ */
 uint8_t spiReadReg(const extDevice_t *dev, uint8_t reg);
 uint8_t spiReadRegMsk(const extDevice_t *dev, uint8_t reg);
 void spiReadRegBuf(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
