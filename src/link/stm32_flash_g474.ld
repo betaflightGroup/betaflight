@@ -23,11 +23,10 @@ MEMORY
 /* Below are the true lengths for normal and close coupled RAM
  *    RAM (xrw)         : ORIGIN = 0x20000000, LENGTH = 96K
  *    CCM (xrw)         : ORIGIN = 0x20018000, LENGTH = 32K
- * Allow normal RAM overflow to occupy start of CCM, and only reserve 2560 bytes for  vector table and stack in CCM
- * CCM is aligned to a 512 byte boundary
+ * Allow normal RAM overflow to occupy first 24K of CCM, and only reserve 8K for explicit requested CCM
  */
-    RAM (xrw)         : ORIGIN = 0x20000000, LENGTH = 128512
-    CCM (xrw)         : ORIGIN = 0x2001F600, LENGTH = 2560
+    RAM (xrw)         : ORIGIN = 0x20000000, LENGTH = 120K
+    CCM (xrw)         : ORIGIN = 0x2001E000, LENGTH = 8K
     MEMORY_B1 (rx)    : ORIGIN = 0x60000000, LENGTH = 0K
 }
 

@@ -81,26 +81,26 @@ void pgResetFn_compassConfig(compassConfig_t *compassConfig)
 // 3. Slave I2C device on SPI gyro
 
 #if defined(USE_SPI) && (defined(USE_MAG_SPI_HMC5883) || defined(USE_MAG_SPI_AK8963))
-    compassConfig->mag_bustype = BUSTYPE_SPI;
+    compassConfig->mag_busType = BUSTYPE_SPI;
     compassConfig->mag_spi_device = SPI_DEV_TO_CFG(spiDeviceByInstance(MAG_SPI_INSTANCE));
     compassConfig->mag_spi_csn = IO_TAG(MAG_CS_PIN);
     compassConfig->mag_i2c_device = I2C_DEV_TO_CFG(I2CINVALID);
     compassConfig->mag_i2c_address = 0;
 #elif defined(USE_MAG_HMC5883) || defined(USE_MAG_QMC5883) || defined(USE_MAG_AK8975) || (defined(USE_MAG_AK8963) && !(defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250)))
-    compassConfig->mag_bustype = BUSTYPE_I2C;
+    compassConfig->mag_busType = BUSTYPE_I2C;
     compassConfig->mag_i2c_device = I2C_DEV_TO_CFG(MAG_I2C_INSTANCE);
     compassConfig->mag_i2c_address = 0;
     compassConfig->mag_spi_device = SPI_DEV_TO_CFG(SPIINVALID);
     compassConfig->mag_spi_csn = IO_TAG_NONE;
 #elif defined(USE_MAG_AK8963) && (defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250))
-    compassConfig->mag_bustype = BUSTYPE_MPU_SLAVE;
+    compassConfig->mag_busType = BUSTYPE_MPU_SLAVE;
     compassConfig->mag_i2c_device = I2C_DEV_TO_CFG(I2CINVALID);
     compassConfig->mag_i2c_address = 0;
     compassConfig->mag_spi_device = SPI_DEV_TO_CFG(SPIINVALID);
     compassConfig->mag_spi_csn = IO_TAG_NONE;
 #else
     compassConfig->mag_hardware = MAG_NONE;
-    compassConfig->mag_bustype = BUSTYPE_NONE;
+    compassConfig->mag_busType = BUSTYPE_NONE;
     compassConfig->mag_i2c_device = I2C_DEV_TO_CFG(I2CINVALID);
     compassConfig->mag_i2c_address = 0;
     compassConfig->mag_spi_device = SPI_DEV_TO_CFG(SPIINVALID);
@@ -115,7 +115,7 @@ static uint8_t magInit = 0;
 void compassPreInit(void)
 {
 #ifdef USE_SPI
-    if (compassConfig()->mag_bustype == BUSTYPE_SPI) {
+    if (compassConfig()->mag_busType == BUSTYPE_SPI) {
         spiPreinitRegister(compassConfig()->mag_spi_csn, IOCFG_IPU, 1);
     }
 #endif
@@ -136,7 +136,7 @@ bool compassDetect(magDev_t *magDev, uint8_t *alignment)
     magDev->magIntExtiTag = compassConfig()->interruptTag;
 #endif
 
-    switch (compassConfig()->mag_bustype) {
+    switch (compassConfig()->mag_busType) {
 #ifdef USE_I2C
     case BUSTYPE_I2C:
         i2cBusSetInstance(dev, compassConfig()->mag_i2c_device);

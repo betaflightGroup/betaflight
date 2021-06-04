@@ -55,7 +55,7 @@
 static void mpu9250AccAndGyroInit(gyroDev_t *gyro);
 
 
-bool mpu9250SpiWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
+bool mpu9250SpiWriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data)
 {
     delayMicroseconds(1);
     spiWriteRegBuf(dev, reg, &data, sizeof (data));
@@ -64,7 +64,7 @@ bool mpu9250SpiWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
     return true;
 }
 
-static bool mpu9250SpiSlowReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
+static bool mpu9250SpiSlowReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
 {
     delayMicroseconds(1);
     spiReadRegBuf(dev, reg | 0x80, data, length);
@@ -93,7 +93,7 @@ void mpu9250SpiAccInit(accDev_t *acc)
     acc->acc_1G = 512 * 4;
 }
 
-bool mpu9250SpiWriteRegisterVerify(const extDevice_t *dev, uint8_t reg, uint8_t data)
+bool mpu9250SpiWriteRegisterVerify(extDevice_t *dev, uint8_t reg, uint8_t data)
 {
     mpu9250SpiWriteRegister(dev, reg, data);
     delayMicroseconds(100);
@@ -138,7 +138,7 @@ static void mpu9250AccAndGyroInit(gyroDev_t *gyro) {
     spiSetClkDivisor(&gyro->dev, spiCalculateDivider(MPU9250_MAX_SPI_CLK_HZ));
 }
 
-uint8_t mpu9250SpiDetect(const extDevice_t *dev)
+uint8_t mpu9250SpiDetect(extDevice_t *dev)
 {
 
     spiSetClkDivisor(dev, spiCalculateDivider(MPU9250_MAX_SPI_INIT_CLK_HZ)); //low speed

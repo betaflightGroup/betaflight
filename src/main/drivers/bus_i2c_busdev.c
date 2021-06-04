@@ -31,12 +31,12 @@
 
 static uint8_t i2cRegisteredDeviceCount = 0;
 
-bool i2cBusWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
+bool i2cBusWriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data)
 {
     return i2cWrite(dev->bus->busType_u.i2c.device, dev->busType_u.i2c.address, reg, data);
 }
 
-bool i2cBusWriteRegisterStart(const extDevice_t *dev, uint8_t reg, uint8_t data)
+bool i2cBusWriteRegisterStart(extDevice_t *dev, uint8_t reg, uint8_t data)
 {
     // Need a static value, not on the stack
     static uint8_t byte;
@@ -46,24 +46,24 @@ bool i2cBusWriteRegisterStart(const extDevice_t *dev, uint8_t reg, uint8_t data)
     return i2cWriteBuffer(dev->bus->busType_u.i2c.device, dev->busType_u.i2c.address, reg, sizeof (byte), &byte);
 }
 
-bool i2cBusReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
+bool i2cBusReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
 {
     return i2cRead(dev->bus->busType_u.i2c.device, dev->busType_u.i2c.address, reg, length, data);
 }
 
-uint8_t i2cBusReadRegister(const extDevice_t *dev, uint8_t reg)
+uint8_t i2cBusReadRegister(extDevice_t *dev, uint8_t reg)
 {
     uint8_t data;
     i2cRead(dev->bus->busType_u.i2c.device, dev->busType_u.i2c.address, reg, 1, &data);
     return data;
 }
 
-bool i2cBusReadRegisterBufferStart(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
+bool i2cBusReadRegisterBufferStart(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
 {
     return i2cReadBuffer(dev->bus->busType_u.i2c.device, dev->busType_u.i2c.address, reg, length, data);
 }
 
-bool i2cBusBusy(const extDevice_t *dev, bool *error)
+bool i2cBusBusy(extDevice_t *dev, bool *error)
 {
     return i2cBusy(dev->bus->busType_u.i2c.device, error);
 }
@@ -84,7 +84,7 @@ bool i2cBusSetInstance(extDevice_t *dev, uint32_t device)
     return true;
 }
 
-void i2cBusDeviceRegister(const extDevice_t *dev)
+void i2cBusDeviceRegister(extDevice_t *dev)
 {
     UNUSED(dev);
 

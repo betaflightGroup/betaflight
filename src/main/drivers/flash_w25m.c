@@ -62,7 +62,7 @@ static flashDevice_t dieDevice[MAX_DIE_COUNT];
 static int dieCount;
 static uint32_t dieSize;
 
-static void w25m_dieSelect(const extDevice_t *dev, int die)
+static void w25m_dieSelect(extDevice_t *dev, int die)
 {
     static int activeDie = -1;
 
@@ -190,19 +190,19 @@ void w25m_eraseCompletely(flashDevice_t *fdevice)
 static uint32_t currentWriteAddress;
 static int currentWriteDie;
 
-void w25m_pageProgramBegin(flashDevice_t *fdevice, uint32_t address)
+void w25m_pageProgramBegin(flashDevice_t *fdevice, uint32_t address, void (*callback)(uint32_t length))
 {
     currentWriteDie = address / dieSize;
     w25m_dieSelect(fdevice->io.handle.dev, currentWriteDie);
     currentWriteAddress = address % dieSize;
-    dieDevice[currentWriteDie].vTable->pageProgramBegin(&dieDevice[currentWriteDie], address);
+    dieDevice[currentWriteDie].vTable->pageProgramBegin(&dieDevice[currentWriteDie], address, callback);
 }
 
-void w25m_pageProgramContinue(flashDevice_t *fdevice, const uint8_t *data, int length)
+uint32_t w25m_pageProgramContinue(flashDevice_t *fdevice, uint8_t const **buffers, uint32_t *bufferSizes, uint32_t bufferCount)
 {
     UNUSED(fdevice);
 
-    dieDevice[currentWriteDie].vTable->pageProgramContinue(&dieDevice[currentWriteDie], data, length);
+    return dieDevice[currentWriteDie].vTable->pageProgramContinue(&dieDevice[currentWriteDie], buffers, bufferSizes, bufferCount);
 }
 
 void w25m_pageProgramFinish(flashDevice_t *fdevice)
@@ -212,16 +212,16 @@ void w25m_pageProgramFinish(flashDevice_t *fdevice)
     dieDevice[currentWriteDie].vTable->pageProgramFinish(&dieDevice[currentWriteDie]);
 }
 
-void w25m_pageProgram(flashDevice_t *fdevice, uint32_t address, const uint8_t *data, int length)
+void w25m_pageProgram(flashDevice_t *fdevice, uint32_t address, const uint8_t *data, uint32_t length, void (*callback)(uint32_t length))
 {
-    w25m_pageProgramBegin(fdevice, address);
+    w25m_pageProgramBegin(fdevice, address, callback);
 
-    w25m_pageProgramContinue(fdevice, data, length);
+    w25m_pageProgramContinue(fdevice, &data, &length, 1);
 
     w25m_pageProgramFinish(fdevice);
 }
 
-int w25m_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, int length)
+int w25m_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, uint32_t length)
 {
     int rlen; // remaining length
     int tlen; // transfer length for a round

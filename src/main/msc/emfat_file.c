@@ -317,6 +317,7 @@ static int emfat_find_log(emfat_entry_t *entry, int maxCount, int flashfsUsedSpa
     int buffOffset;
     int hdrOffset;
     int fileNumber = 0;
+    static uint8_t buffer[HDR_BUF_SIZE];
     int logCount = 0;
     char *logHeader = "H Product:Blackbox";
     int lenLogHeader = strlen(logHeader);

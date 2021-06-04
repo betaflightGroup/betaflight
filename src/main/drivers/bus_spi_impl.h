@@ -82,9 +82,7 @@ typedef struct SPIDevice_s {
 extern spiDevice_t spiDevice[SPIDEV_COUNT];
 
 void spiInitDevice(SPIDevice device);
-void spiPrivInitStream(const extDevice_t *dev, bool preInit);
-void spiPrivStartDMA(const extDevice_t *dev);
-void spiPrivStopDMA (const extDevice_t *dev);
-void spiPrivResetStream(dmaChannelDescriptor_t *descriptor);
-void spiPrivResetDescriptors(busDevice_t *bus);
+void spiPrivInitStream(extDevice_t *dev, bool preInit);
+void spiPrivStartDMA(extDevice_t *dev);
+void spiPrivStopDMA (extDevice_t *dev);
 

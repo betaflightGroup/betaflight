@@ -130,17 +130,17 @@ void targetBusInit(void);
 #endif
 
 // Access routines where the register is accessed directly
-bool busRawWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data);
-bool busRawWriteRegisterStart(const extDevice_t *dev, uint8_t reg, uint8_t data);
-bool busRawReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
-bool busRawReadRegisterBufferStart(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
+bool busRawWriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data);
+bool busRawWriteRegisterStart(extDevice_t *dev, uint8_t reg, uint8_t data);
+bool busRawReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
+bool busRawReadRegisterBufferStart(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
 // Write routines where the register is masked with 0x7f
-bool busWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data);
-bool busWriteRegisterStart(const extDevice_t *dev, uint8_t reg, uint8_t data);
+bool busWriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data);
+bool busWriteRegisterStart(extDevice_t *dev, uint8_t reg, uint8_t data);
 // Read routines where the register is ORed with 0x80
-bool busReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
-bool busReadRegisterBufferStart(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
-uint8_t busReadRegister(const extDevice_t *dev, uint8_t reg);
+bool busReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
+bool busReadRegisterBufferStart(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length);
+uint8_t busReadRegister(extDevice_t *dev, uint8_t reg);
 
-bool busBusy(const extDevice_t *dev, bool *error);
-void busDeviceRegister(const extDevice_t *dev);
+bool busBusy(extDevice_t *dev, bool *error);
+void busDeviceRegister(extDevice_t *dev);

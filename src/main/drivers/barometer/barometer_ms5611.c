@@ -62,7 +62,7 @@ static uint8_t ms5611_osr = CMD_ADC_4096;
 #define MS5611_DATA_FRAME_SIZE 3
 static DMA_DATA_ZERO_INIT uint8_t sensor_data[MS5611_DATA_FRAME_SIZE];
 
-void ms5611BusInit(const extDevice_t *dev)
+void ms5611BusInit(extDevice_t *dev)
 {
 #ifdef USE_BARO_SPI_MS5611
     if (dev->bus->busType == BUSTYPE_SPI) {
@@ -76,7 +76,7 @@ void ms5611BusInit(const extDevice_t *dev)
 #endif
 }
 
-void ms5611BusDeinit(const extDevice_t *dev)
+void ms5611BusDeinit(extDevice_t *dev)
 {
 #ifdef USE_BARO_SPI_MS5611
     if (dev->bus->busType == BUSTYPE_SPI) {
@@ -87,14 +87,14 @@ void ms5611BusDeinit(const extDevice_t *dev)
 #endif
 }
 
-static void ms5611Reset(const extDevice_t *dev)
+static void ms5611Reset(extDevice_t *dev)
 {
     busRawWriteRegister(dev, CMD_RESET, 1);
 
     delayMicroseconds(2800);
 }
 
-static uint16_t ms5611Prom(const extDevice_t *dev, int8_t coef_num)
+static uint16_t ms5611Prom(extDevice_t *dev, int8_t coef_num)
 {
     uint8_t rxbuf[2] = { 0, 0 };
 
@@ -133,7 +133,7 @@ STATIC_UNIT_TESTED int8_t ms5611CRC(uint16_t *prom)
     return -1;
 }
 
-static void ms5611ReadAdc(const extDevice_t *dev)
+static void ms5611ReadAdc(extDevice_t *dev)
 {
     busRawReadRegisterBufferStart(dev, CMD_ADC_READ, sensor_data, MS5611_DATA_FRAME_SIZE); // read ADC
 }

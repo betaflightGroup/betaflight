@@ -115,17 +115,17 @@ static baroState_t  baroState;
 static uint8_t buf[6];
 
 // Helper functions
-static uint8_t registerRead(const extDevice_t *dev, uint8_t reg)
+static uint8_t registerRead(extDevice_t *dev, uint8_t reg)
 {
     return busReadRegister(dev, reg);
 }
 
-static void registerWrite(const extDevice_t *dev, uint8_t reg, uint8_t value)
+static void registerWrite(extDevice_t *dev, uint8_t reg, uint8_t value)
 {
     busWrite(dev, reg, value);
 }
 
-static void registerSetBits(const extDevice_t *dev, uint8_t reg, uint8_t setbits)
+static void registerSetBits(extDevice_t *dev, uint8_t reg, uint8_t setbits)
 {
     uint8_t val = registerRead(dev, reg);
 
@@ -145,7 +145,7 @@ static int32_t getTwosComplement(uint32_t raw, uint8_t length)
     }
 }
 
-static bool deviceConfigure(const extDevice_t *dev)
+static bool deviceConfigure(extDevice_t *dev)
 {
     // Trigger a chip reset
     registerSetBits(dev, DPS310_REG_RESET, DPS310_RESET_BIT_SOFT_RST);
@@ -286,7 +286,7 @@ static void deviceCalculate(int32_t *pressure, int32_t *temperature)
 
 
 #define DETECTION_MAX_RETRY_COUNT   5
-static bool deviceDetect(const extDevice_t *dev)
+static bool deviceDetect(extDevice_t *dev)
 {
     for (int retry = 0; retry < DETECTION_MAX_RETRY_COUNT; retry++) {
         uint8_t chipId[1];
@@ -327,7 +327,7 @@ static void dps310StartUP(baroDev_t *baro)
     UNUSED(baro);
 }
 
-static void deviceInit(const extDevice_t *dev, resourceOwner_e owner)
+static void deviceInit(extDevice_t *dev, resourceOwner_e owner)
 {
 #ifdef USE_BARO_SPI_DPS310
     if (dev->bus->busType == BUSTYPE_SPI) {
@@ -342,7 +342,7 @@ static void deviceInit(const extDevice_t *dev, resourceOwner_e owner)
 #endif
 }
 
-static void deviceDeInit(const extDevice_t *dev)
+static void deviceDeInit(extDevice_t *dev)
 {
 #ifdef USE_BARO_SPI_DPS310
     if (dev->bus->busType == BUSTYPE_SPI) {

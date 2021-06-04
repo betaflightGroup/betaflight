@@ -194,7 +194,7 @@ void bmp388_extiHandler(extiCallbackRec_t* cb)
 }
 #endif
 
-void bmp388BusInit(const extDevice_t *dev)
+void bmp388BusInit(extDevice_t *dev)
 {
 #ifdef USE_BARO_SPI_BMP388
     if (dev->bus->busType == BUSTYPE_SPI) {
@@ -208,7 +208,7 @@ void bmp388BusInit(const extDevice_t *dev)
 #endif
 }
 
-void bmp388BusDeinit(const extDevice_t *dev)
+void bmp388BusDeinit(extDevice_t *dev)
 {
 #ifdef USE_BARO_SPI_BMP388
     if (dev->bus->busType == BUSTYPE_SPI) {
@@ -219,7 +219,7 @@ void bmp388BusDeinit(const extDevice_t *dev)
 #endif
 }
 
-void bmp388BeginForcedMeasurement(const extDevice_t *dev)
+void bmp388BeginForcedMeasurement(extDevice_t *dev)
 {
     // enable pressure measurement, temperature measurement, set power mode and start sampling
     uint8_t mode = BMP388_MODE_FORCED << 4 | 1 << 1 | 1 << 0;

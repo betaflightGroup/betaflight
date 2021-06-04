@@ -119,7 +119,6 @@ STATIC_ASSERT(M25P16_PAGESIZE < FLASH_MAX_PAGE_SIZE, M25P16_PAGESIZE_too_small);
 
 const flashVTable_t m25p16_vTable;
 
-
 static uint8_t m25p16_readStatus(flashDevice_t *fdevice)
 {
     DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
@@ -129,7 +128,6 @@ static uint8_t m25p16_readStatus(flashDevice_t *fdevice)
 
     return readyStatus[1];
 }
-
 
 static bool m25p16_isReady(flashDevice_t *fdevice)
 {
@@ -218,7 +216,6 @@ static void m25p16_setCommandAddress(uint8_t *buf, uint32_t address, bool useLon
     *buf = address & 0xff;
 }
 
-
 // Called in ISR context
 // A write enable has just been issued
 busStatus_e m25p16_callbackWriteEnable(uint32_t arg)
@@ -227,6 +224,20 @@ busStatus_e m25p16_callbackWriteEnable(uint32_t arg)
 
     // As a write has just occurred, the device could be busy
     fdevice->couldBeBusy = true;
+
+    return BUS_READY;
+}
+
+// Called in ISR context
+// Write operation has just completed
+busStatus_e m25p16_callbackWriteComplete(uint32_t arg)
+{
+    flashDevice_t *fdevice = (flashDevice_t *)arg;
+
+    // Call transfer completion callback
+    if (fdevice->callback) {
+        fdevice->callback(fdevice->callbackArg);
+    }
 
     return BUS_READY;
 }
@@ -300,14 +311,16 @@ static void m25p16_eraseCompletely(flashDevice_t *fdevice)
     spiWait(fdevice->io.handle.dev);
 }
 
-
-static void m25p16_pageProgramBegin(flashDevice_t *fdevice, uint32_t address)
+static void m25p16_pageProgramBegin(flashDevice_t *fdevice, uint32_t address, void (*callback)(uint32_t length))
 {
+    UNUSED(fdevice);
+
+    fdevice->callback = callback;
     fdevice->currentWriteAddress = address;
 }
 
 
-static void m25p16_pageProgramContinue(flashDevice_t *fdevice, const uint8_t *data, int length)
+static uint32_t m25p16_pageProgramContinue(flashDevice_t *fdevice, uint8_t const **buffers, uint32_t *bufferSizes, uint32_t bufferCount)
 {
     // The segment list cannot be in automatic storage as this routine is non-blocking
     DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
@@ -321,6 +334,7 @@ static void m25p16_pageProgramContinue(flashDevice_t *fdevice, const uint8_t *da
             {pageProgram, NULL, 0, false, NULL},
             {NULL, NULL, 0, true, NULL},
             {NULL, NULL, 0, true, NULL},
+            {NULL, NULL, 0, true, NULL},
     };
 
     // Ensure any prior DMA has completed before continuing
@@ -330,9 +344,27 @@ static void m25p16_pageProgramContinue(flashDevice_t *fdevice, const uint8_t *da
     segments[2].len = fdevice->isLargeFlash ? 5 : 4;
     m25p16_setCommandAddress(&pageProgram[1], fdevice->currentWriteAddress, fdevice->isLargeFlash);
 
-    // Patch the data segment
-    segments[3].txData = (uint8_t *)data;
-    segments[3].len = length;
+    // Patch the data segments
+    segments[3].txData = (uint8_t *)buffers[0];
+    segments[3].len = bufferSizes[0];
+    fdevice->callbackArg = bufferSizes[0];
+
+    if (bufferCount == 1) {
+        segments[3].negateCS = true;
+        segments[3].callback = m25p16_callbackWriteComplete;
+        // Mark segment following data as being of zero length
+        segments[4].len = 0;
+    } else if (bufferCount == 2) {
+        segments[3].negateCS = false;
+        segments[3].callback = NULL;
+        segments[4].txData = (uint8_t *)buffers[1];
+        segments[4].len = bufferSizes[1];
+        fdevice->callbackArg += bufferSizes[1];
+        segments[4].negateCS = true;
+        segments[4].callback = m25p16_callbackWriteComplete;
+    } else {
+        return 0;
+    }
 
     spiSequence(fdevice->io.handle.dev, fdevice->couldBeBusy ? &segments[0] : &segments[1]);
 
@@ -341,7 +373,7 @@ static void m25p16_pageProgramContinue(flashDevice_t *fdevice, const uint8_t *da
         spiWait(fdevice->io.handle.dev);
     }
 
-    fdevice->currentWriteAddress += length;
+    return fdevice->callbackArg;
 }
 
 static void m25p16_pageProgramFinish(flashDevice_t *fdevice)
@@ -364,11 +396,11 @@ static void m25p16_pageProgramFinish(flashDevice_t *fdevice)
  * If you want to write multiple buffers (whose sum of sizes is still not more than the page size) then you can
  * break this operation up into one beginProgram call, one or more continueProgram calls, and one finishProgram call.
  */
-static void m25p16_pageProgram(flashDevice_t *fdevice, uint32_t address, const uint8_t *data, int length)
+static void m25p16_pageProgram(flashDevice_t *fdevice, uint32_t address, const uint8_t *data, uint32_t length, void (*callback)(uint32_t length))
 {
-    m25p16_pageProgramBegin(fdevice, address);
+    m25p16_pageProgramBegin(fdevice, address, callback);
 
-    m25p16_pageProgramContinue(fdevice, data, length);
+    m25p16_pageProgramContinue(fdevice, &data, &length, 1);
 
     m25p16_pageProgramFinish(fdevice);
 }
@@ -379,7 +411,7 @@ static void m25p16_pageProgram(flashDevice_t *fdevice, uint32_t address, const u
  *
  * The number of bytes actually read is returned, which can be zero if an error or timeout occurred.
  */
-static int m25p16_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, int length)
+static int m25p16_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, uint32_t length)
 {
     DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
     DMA_DATA_AUTO uint8_t readyStatus[2];

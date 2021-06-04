@@ -562,8 +562,7 @@ static void sdcardSpi_init(const sdcardConfig_t *config, const spiPinConfig_t *s
     }
     sdcard.dev.busType_u.spi.csnPin = chipSelectIO;
 
-    // Set the clock phase/polarity
-    spiSetClkPhasePolarity(&sdcard.dev, true);
+    sdcard.dev.busType_u.spi.leadingEdge = true;
 
     // Set the callback argument when calling back to this driver for DMA completion
     sdcard.dev.callbackArg = (uint32_t)&sdcard;

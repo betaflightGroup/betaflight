@@ -106,7 +106,7 @@ static uint32_t spiDivisorToBRbits(SPI_TypeDef *instance, uint16_t divisor)
     divisor = constrain(divisor, 2, 256);
 
 #if defined(STM32H7)
-    const uint32_t baudRatePrescaler[8] = {
+    uint32_t baudRatePrescaler[8] = {
         LL_SPI_BAUDRATEPRESCALER_DIV2,
         LL_SPI_BAUDRATEPRESCALER_DIV4,
         LL_SPI_BAUDRATEPRESCALER_DIV8,
@@ -161,7 +161,7 @@ void spiInitDevice(SPIDevice device)
 #endif
 }
 
-void spiPrivResetDescriptors(busDevice_t *bus)
+void spiResetDescriptors(busDevice_t *bus)
 {
     LL_DMA_InitTypeDef *initTx = bus->initTx;
     LL_DMA_InitTypeDef *initRx = bus->initRx;
@@ -202,7 +202,7 @@ void spiPrivResetDescriptors(busDevice_t *bus)
     initRx->PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_BYTE;
 }
 
-void spiPrivResetStream(dmaChannelDescriptor_t *descriptor)
+void spiResetStream(dmaChannelDescriptor_t *descriptor)
 {
     // Disable the stream
     LL_DMA_DisableStream(descriptor->dma, descriptor->stream);
@@ -281,7 +281,7 @@ static bool spiPrivReadWriteBufPolled(SPI_TypeDef *instance, const uint8_t *txDa
     return true;
 }
 
-void spiPrivInitStream(const extDevice_t *dev, bool preInit)
+void spiPrivInitStream(extDevice_t *dev, bool preInit)
 {
     static uint8_t dummyTxByte = 0xff;
     static uint8_t dummyRxByte;
@@ -361,7 +361,7 @@ void spiPrivInitStream(const extDevice_t *dev, bool preInit)
     initRx->NbData = len;
 }
 
-void spiPrivStartDMA(const extDevice_t *dev)
+void spiPrivStartDMA(extDevice_t *dev)
 {
     busDevice_t *bus = dev->bus;
 
@@ -418,7 +418,7 @@ void spiPrivStartDMA(const extDevice_t *dev)
 #endif
 }
 
-void spiPrivStopDMA (const extDevice_t *dev)
+void spiPrivStopDMA (extDevice_t *dev)
 {
     busDevice_t *bus = dev->bus;
 
@@ -441,7 +441,7 @@ void spiPrivStopDMA (const extDevice_t *dev)
 }
 
 // DMA transfer setup and start
-void spiSequence(const extDevice_t *dev, busSegment_t *segments)
+void spiSequence(extDevice_t *dev, busSegment_t *segments)
 {
     busDevice_t *bus = dev->bus;
     SPI_TypeDef *instance = bus->busType_u.spi.instance;
@@ -464,7 +464,7 @@ void spiSequence(const extDevice_t *dev, busSegment_t *segments)
     }
 
     // Switch SPI clock polarity/phase if necessary
-    if (dev->busType_u.spi.leadingEdge != bus->busType_u.spi.leadingEdge) {
+    if (dev->busType_u.spi.leadingEdge |= bus->busType_u.spi.leadingEdge) {
         if (dev->busType_u.spi.leadingEdge) {
             IOConfigGPIOAF(IOGetByTag(spi->sck), SPI_IO_AF_SCK_CFG_LOW, spi->sckAF);
             LL_SPI_SetClockPhase(instance, LL_SPI_PHASE_1EDGE);

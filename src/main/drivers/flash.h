@@ -54,11 +54,11 @@ bool flashIsReady(void);
 bool flashWaitForReady(void);
 void flashEraseSector(uint32_t address);
 void flashEraseCompletely(void);
-void flashPageProgramBegin(uint32_t address);
-void flashPageProgramContinue(const uint8_t *data, int length);
+void flashPageProgramBegin(uint32_t address, void (*callback)(uint32_t arg));
+uint32_t flashPageProgramContinue(const uint8_t **buffers, uint32_t *bufferSizes, uint32_t bufferCount);
 void flashPageProgramFinish(void);
-void flashPageProgram(uint32_t address, const uint8_t *data, int length);
-int flashReadBytes(uint32_t address, uint8_t *buffer, int length);
+void flashPageProgram(uint32_t address, const uint8_t *data, uint32_t length, void (*callback)(uint32_t length));
+int flashReadBytes(uint32_t address, uint8_t *buffer, uint32_t length);
 void flashFlush(void);
 const flashGeometry_t *flashGetGeometry(void);
 

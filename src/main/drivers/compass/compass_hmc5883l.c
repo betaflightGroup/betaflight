@@ -186,7 +186,7 @@ static void hmc5883lConfigureDataReadyInterruptHandling(magDev_t* mag)
 }
 
 #ifdef USE_MAG_SPI_HMC5883
-static void hmc5883SpiInit(const extDevice_t *dev)
+static void hmc5883SpiInit(extDevice_t *dev)
 {
     busDeviceRegister(dev);
 

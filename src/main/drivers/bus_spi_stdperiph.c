@@ -26,14 +26,8 @@
 
 #ifdef USE_SPI
 
-// STM32F405 can't DMA to/from FASTRAM (CCM SRAM)
-#ifdef STM32F40_41xxx
-extern uint8_t _sfastram;
-extern uint8_t _efastram;
-#define IS_CCM(p) (((uint8_t *)p >= &_sfastram) && ((uint8_t *)p < &_efastram))
-#else
-#define IS_CCM(p) false
-#endif
+// STM32F405 can't DMA to/from the stack in FASTRAM (CCM SRAM)
+#define IS_CCM(p) (((uint32_t)p & 0xffff0000) == 0x10000000)
 
 #include "common/maths.h"
 #include "drivers/bus.h"
@@ -104,7 +98,7 @@ void spiInitDevice(SPIDevice device)
     SPI_Cmd(spi->dev, ENABLE);
 }
 
-void spiPrivResetDescriptors(busDevice_t *bus)
+void spiResetDescriptors(busDevice_t *bus)
 {
     DMA_InitTypeDef *initTx = bus->initTx;
     DMA_InitTypeDef *initRx = bus->initRx;
@@ -129,7 +123,7 @@ void spiPrivResetDescriptors(busDevice_t *bus)
     initRx->DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
 }
 
-void spiPrivResetStream(dmaChannelDescriptor_t *descriptor)
+void spiResetStream(dmaChannelDescriptor_t *descriptor)
 {
     DMA_Stream_TypeDef *streamRegs = (DMA_Stream_TypeDef *)descriptor->ref;
 
@@ -159,7 +153,7 @@ static bool spiPrivReadWriteBufPolled(SPI_TypeDef *instance, const uint8_t *txDa
     return true;
 }
 
-void spiPrivInitStream(const extDevice_t *dev, bool preInit)
+void spiPrivInitStream(extDevice_t *dev, bool preInit)
 {
     static uint8_t dummyTxByte = 0xff;
     static uint8_t dummyRxByte;
@@ -210,7 +204,7 @@ void spiPrivInitStream(const extDevice_t *dev, bool preInit)
     initRx->DMA_BufferSize = len;
 }
 
-void spiPrivStartDMA(const extDevice_t *dev)
+void spiPrivStartDMA(extDevice_t *dev)
 {
     // Assert Chip Select
     IOLo(dev->busType_u.spi.csnPin);
@@ -256,7 +250,7 @@ void spiPrivStartDMA(const extDevice_t *dev)
 }
 
 
-void spiPrivStopDMA (const extDevice_t *dev)
+void spiPrivStopDMA (extDevice_t *dev)
 {
     dmaChannelDescriptor_t *dmaTx = dev->bus->dmaTx;
     dmaChannelDescriptor_t *dmaRx = dev->bus->dmaRx;
@@ -272,7 +266,7 @@ void spiPrivStopDMA (const extDevice_t *dev)
 }
 
 // DMA transfer setup and start
-void spiSequence(const extDevice_t *dev, busSegment_t *segments)
+void spiSequence(extDevice_t *dev, busSegment_t *segments)
 {
     busDevice_t *bus = dev->bus;
     SPI_TypeDef *instance = bus->busType_u.spi.instance;
@@ -291,7 +285,7 @@ void spiSequence(const extDevice_t *dev, busSegment_t *segments)
         bus->busType_u.spi.speed = dev->busType_u.spi.speed;
     }
 
-    if (dev->busType_u.spi.leadingEdge != bus->busType_u.spi.leadingEdge) {
+    if (dev->busType_u.spi.leadingEdge |= bus->busType_u.spi.leadingEdge) {
         // Switch SPI clock polarity/phase
         instance->CR1 &= ~(SPI_CPOL_High | SPI_CPHA_2Edge);
 

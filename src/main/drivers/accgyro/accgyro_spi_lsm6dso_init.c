@@ -78,7 +78,7 @@ typedef enum {
     LSM6DSO_MASK_CTRL9_XL = 0x02,        // 0b00000010
 } lsm6dsoConfigMasks_e;
 
-uint8_t lsm6dsoDetect(const extDevice_t *dev)
+uint8_t lsm6dsoDetect(extDevice_t *dev)
 {
     uint8_t chipID = 0;
     spiSetClkDivisor(dev, spiCalculateDivider(LSM6DSO_MAX_SPI_CLK_HZ));
@@ -92,7 +92,7 @@ uint8_t lsm6dsoDetect(const extDevice_t *dev)
     return MPU_NONE;
 }
 
-static void lsm6dsoWriteRegister(const extDevice_t *dev, lsm6dsoRegister_e registerID, uint8_t value, unsigned delayMs)
+static void lsm6dsoWriteRegister(extDevice_t *dev, lsm6dsoRegister_e registerID, uint8_t value, unsigned delayMs)
 {
     busWriteRegister(dev, registerID, value);
     if (delayMs) {
@@ -100,7 +100,7 @@ static void lsm6dsoWriteRegister(const extDevice_t *dev, lsm6dsoRegister_e regis
     }
 }
 
-static void lsm6dsoWriteRegisterBits(const extDevice_t *dev, lsm6dsoRegister_e registerID, lsm6dsoConfigMasks_e mask, uint8_t value, unsigned delayMs)
+static void lsm6dsoWriteRegisterBits(extDevice_t *dev, lsm6dsoRegister_e registerID, lsm6dsoConfigMasks_e mask, uint8_t value, unsigned delayMs)
 {
     uint8_t newValue;
     if (busReadRegisterBuffer(dev, registerID, &newValue, 1)) {

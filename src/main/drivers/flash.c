@@ -252,16 +252,33 @@ void flashEraseCompletely(void)
     flashDevice.vTable->eraseCompletely(&flashDevice);
 }
 
-void flashPageProgramBegin(uint32_t address)
+/* The callback, if provided, will receive the totoal number of bytes transfered
+ * by each call to flashPageProgramContinue() once the transfer completes.
+ */
+void flashPageProgramBegin(uint32_t address, void (*callback)(uint32_t length))
 {
-    flashDevice.callback = NULL;
-    flashDevice.vTable->pageProgramBegin(&flashDevice, address);
+    flashDevice.vTable->pageProgramBegin(&flashDevice, address, callback);
 }
 
-void flashPageProgramContinue(const uint8_t *data, int length)
+uint32_t flashPageProgramContinue(const uint8_t **buffers, uint32_t *bufferSizes, uint32_t bufferCount)
 {
-    flashDevice.callback = NULL;
-    flashDevice.vTable->pageProgramContinue(&flashDevice, data, length);
+    uint32_t maxBytesToWrite = flashDevice.geometry.pageSize - (flashDevice.currentWriteAddress % flashDevice.geometry.pageSize);
+
+    if (bufferCount == 0) {
+        return 0;
+    }
+
+    if (bufferSizes[0] >= maxBytesToWrite) {
+        bufferSizes[0] = maxBytesToWrite;
+        bufferCount = 1;
+    } else {
+        maxBytesToWrite -= bufferSizes[0];
+        if ((bufferCount == 2) && (bufferSizes[1] > maxBytesToWrite)) {
+            bufferSizes[1] = maxBytesToWrite;
+        }
+    }
+
+    return flashDevice.vTable->pageProgramContinue(&flashDevice, buffers, bufferSizes, bufferCount);
 }
 
 void flashPageProgramFinish(void)
@@ -270,13 +287,12 @@ void flashPageProgramFinish(void)
     flashDevice.vTable->pageProgramFinish(&flashDevice);
 }
 
-void flashPageProgram(uint32_t address, const uint8_t *data, int length)
+void flashPageProgram(uint32_t address, const uint8_t *data, uint32_t length, void (*callback)(uint32_t length))
 {
-    flashDevice.callback = NULL;
-    flashDevice.vTable->pageProgram(&flashDevice, address, data, length);
+    flashDevice.vTable->pageProgram(&flashDevice, address, data, length, callback);
 }
 
-int flashReadBytes(uint32_t address, uint8_t *buffer, int length)
+int flashReadBytes(uint32_t address, uint8_t *buffer, uint32_t length)
 {
     flashDevice.callback = NULL;
     return flashDevice.vTable->readBytes(&flashDevice, address, buffer, length);
