@@ -1027,6 +1027,8 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         float pidSetpointDelta = 0;
 #ifdef USE_FEEDFORWARD
         pidSetpointDelta = feedforwardApply(axis, newRcFrame, pidRuntime.feedforwardAveraging);
+#else
+        pidSetpointDelta = currentPidSetpoint - previousPidSetpoint[axis];
 #endif
         pidRuntime.previousPidSetpoint[axis] = currentPidSetpoint;
 

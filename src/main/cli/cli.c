@@ -5019,7 +5019,7 @@ static void cliRcSmoothing(const char *cmdName, char *cmdline)
             cliPrintLine("(auto)");
         }
         cliPrintf("# Active throttle cutoff: %dhz ", rcSmoothingData->throttleCutoffFrequency);
-        if (rcSmoothingData->ffCutoffSetting) {
+        if (rcSmoothingData->throttleCutoffSetting) {
             cliPrintLine("(manual)");
         } else {
             cliPrintLine("(auto)");

@@ -64,6 +64,7 @@ float rcCommandDelta[XYZ_AXIS_COUNT];
 #endif
 static float rawSetpoint[XYZ_AXIS_COUNT];
 static float setpointRate[3], rcDeflection[3], rcDeflectionAbs[3];
+static float rcDeflectionSmoothed[3];
 static float throttlePIDAttenuation;
 static bool reverseMotors = false;
 static applyRatesFn *applyRates;
@@ -106,13 +107,18 @@ bool getShouldUpdateFeedforward()
 }
 
 float getSetpointRate(int axis)
-// only used in pid.c to provide setpointRate for the crash recovery function
 {
+#ifdef USE_RC_SMOOTHING_FILTER
     return setpointRate[axis];
+#endif
+    return rawSetpoint[axis];
 }
 
 float getRcDeflection(int axis)
 {
+#ifdef USE_RC_SMOOTHING_FILTER
+    return rcDeflectionSmoothed[axis];
+#endif
     return rcDeflection[axis];
 }
 
@@ -249,10 +255,10 @@ static void scaleSetpointToFpvCamAngle(void)
         sinFactor = sin_approx(rxConfig()->fpvCamAngleDegrees * RAD);
     }
 
-    float roll = setpointRate[ROLL];
-    float yaw = setpointRate[YAW];
-    setpointRate[ROLL] = constrainf(roll * cosFactor -  yaw * sinFactor, -SETPOINT_RATE_LIMIT * 1.0f, SETPOINT_RATE_LIMIT * 1.0f);
-    setpointRate[YAW]  = constrainf(yaw  * cosFactor + roll * sinFactor, -SETPOINT_RATE_LIMIT * 1.0f, SETPOINT_RATE_LIMIT * 1.0f);
+    float roll = rawSetpoint[ROLL];
+    float yaw = rawSetpoint[YAW];
+    rawSetpoint[ROLL] = constrainf(roll * cosFactor -  yaw * sinFactor, -SETPOINT_RATE_LIMIT * 1.0f, SETPOINT_RATE_LIMIT * 1.0f);
+    rawSetpoint[YAW]  = constrainf(yaw  * cosFactor + roll * sinFactor, -SETPOINT_RATE_LIMIT * 1.0f, SETPOINT_RATE_LIMIT * 1.0f);
 }
 
 #define THROTTLE_BUFFER_MAX 20
@@ -336,7 +342,6 @@ FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *smoothi
         smoothingData->throttleCutoffFrequency = calcAutoSmoothingCutoff(smoothingData->averageFrameTimeUs, smoothingData->autoSmoothnessFactorThrottle);
     }
 
-
     // initialize or update the Setpoint filter
     if ((smoothingData->setpointCutoffFrequency != oldCutoff) || !smoothingData->filterInitialized) {
         for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
@@ -352,6 +357,15 @@ FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *smoothi
                 } else {
                     pt3FilterUpdateCutoff(&smoothingData->filter[i], pt3FilterGain(smoothingData->throttleCutoffFrequency, dT));
                 }
+            }
+        }
+
+        // initialize or update the Level filter
+        for (int i = FD_ROLL; i < FD_YAW; i++) {
+            if (!smoothingData->filterInitialized) {
+                pt3FilterInit(&smoothingData->filterDeflection[i], pt3FilterGain(smoothingData->setpointCutoffFrequency, dT));
+            } else {
+                pt3FilterUpdateCutoff(&smoothingData->filterDeflection[i], pt3FilterGain(smoothingData->setpointCutoffFrequency, dT));
             }
         }
     }
@@ -537,6 +551,17 @@ static FAST_CODE void processRcSmoothingFilter(void)
             *dst = rxDataToSmooth[i];
         }
     }
+
+    // for ANGLE and HORIZON, smooth rcDeflection on pitch and roll
+    bool smoothingNeeded = (FLIGHT_MODE(ANGLE_MODE) || FLIGHT_MODE(HORIZON_MODE)) && rcSmoothingData.filterInitialized;
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        if (smoothingNeeded && axis < FD_YAW) {
+            rcDeflectionSmoothed[axis] = pt3FilterApply(&rcSmoothingData.filterDeflection[axis], rcDeflection[axis]);
+        } else {
+            rcDeflectionSmoothed[axis] = rcDeflection[axis];
+        }
+    }
+
 }
 #endif // USE_RC_SMOOTHING_FILTER
 
