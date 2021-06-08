@@ -31,6 +31,8 @@
 
 #include "common/axis.h"
 
+#include "config/config.h"
+
 #include "pg/pg.h"
 #include "pg/pg_ids.h"
 
@@ -116,6 +118,7 @@ PG_RESET_TEMPLATE(imuConfig_t, imuConfig,
     .dcm_kp = 2500,                // 1.0 * 10000
     .dcm_ki = 0,                   // 0.003 * 10000
     .small_angle = 25,
+    .recovery_coef = 5,
 );
 
 static void imuQuaternionComputeProducts(quaternion *quat, quaternionProducts *quatProd)
@@ -170,6 +173,7 @@ void imuConfigure(uint16_t throttle_correction_angle, uint8_t throttle_correctio
 {
     imuRuntimeConfig.dcm_kp = imuConfig()->dcm_kp / 10000.0f;
     imuRuntimeConfig.dcm_ki = imuConfig()->dcm_ki / 10000.0f;
+    imuRuntimeConfig.recovery_coef = imuConfig()->recovery_coef;
 
     smallAngleCosZ = cos_approx(degreesToRadians(imuConfig()->small_angle));
 
@@ -424,6 +428,13 @@ static float imuCalcKpGain(timeUs_t currentTimeUs, bool useAcc, float *gyroAvera
           ret = ret * 10.0f; // Scale the kP to generally converge faster when disarmed.
        }
     }
+
+    if ((crashRecoveryModeActive()) && (currentPidProfile->crash_recovery == PID_CRASH_RECOVERY_LEVEL)) {
+        ret = imuRuntimeConfig.dcm_kp * imuRuntimeConfig.recovery_coef;
+    }
+
+    DEBUG_SET(DEBUG_RECOVERY, 0, crashRecoveryModeActive());
+    DEBUG_SET(DEBUG_RECOVERY, 1, lrintf(ret * 100.0f));
 
     return ret;
 }

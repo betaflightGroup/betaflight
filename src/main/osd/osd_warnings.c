@@ -327,6 +327,13 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
         return;
     }
 
+    if (osdWarnGetState(OSD_WARNING_RECOVERY) && crashRecoveryModeActive()) {
+        tfp_sprintf(warningText, "RECOVERY");
+        *displayAttr = DISPLAYPORT_ATTR_WARNING;
+        *blinking = true;
+        return;
+    }
+
     // Visual beeper
     if (osdWarnGetState(OSD_WARNING_VISUAL_BEEPER) && osdGetVisualBeeperState()) {
         tfp_sprintf(warningText, "  * * * *");

@@ -437,17 +437,19 @@ static void handleCrashRecovery(
     if (pidRuntime.inCrashRecoveryMode && cmpTimeUs(currentTimeUs, pidRuntime.crashDetectedAtUs) > pidRuntime.crashTimeDelayUs) {
         if (crash_recovery == PID_CRASH_RECOVERY_BEEP) {
             BEEP_ON;
-        }
-        if (axis == FD_YAW) {
-            *errorRate = constrainf(*errorRate, -pidRuntime.crashLimitYaw, pidRuntime.crashLimitYaw);
-        } else {
-            // on roll and pitch axes calculate currentPidSetpoint and errorRate to level the aircraft to recover from crash
-            if (sensors(SENSOR_ACC)) {
-                // errorAngle is deviation from horizontal
-                const float errorAngle =  -(attitude.raw[axis] - angleTrim->raw[axis]) / 10.0f;
-                *currentPidSetpoint = errorAngle * pidRuntime.levelGain;
-                *errorRate = *currentPidSetpoint - gyroRate;
-            }
+        };
+        if (crash_recovery != PID_CRASH_RECOVERY_LEVEL) {
+          if (axis == FD_YAW) {
+              *errorRate = constrainf(*errorRate, -pidRuntime.crashLimitYaw, pidRuntime.crashLimitYaw);
+          } else {
+              // on roll and pitch axes calculate currentPidSetpoint and errorRate to level the aircraft to recover from crash
+              if (sensors(SENSOR_ACC)) {
+                  // errorAngle is deviation from horizontal
+                  const float errorAngle =  -(attitude.raw[axis] - angleTrim->raw[axis]) / 10.0f;
+                  *currentPidSetpoint = errorAngle * pidRuntime.levelGain;
+                  *errorRate = *currentPidSetpoint - gyroRate;
+              }
+          }
         }
         // reset iterm, since accumulated error before crash is now meaningless
         // and iterm windup during crash recovery can be extreme, especially on yaw axis
@@ -456,7 +458,8 @@ static void handleCrashRecovery(
             || (getMotorMixRange() < 1.0f
                    && fabsf(gyro.gyroADCf[FD_ROLL]) < pidRuntime.crashRecoveryRate
                    && fabsf(gyro.gyroADCf[FD_PITCH]) < pidRuntime.crashRecoveryRate
-                   && fabsf(gyro.gyroADCf[FD_YAW]) < pidRuntime.crashRecoveryRate)) {
+                   && fabsf(gyro.gyroADCf[FD_YAW]) < pidRuntime.crashRecoveryRate
+                   && (crash_recovery != PID_CRASH_RECOVERY_LEVEL))) {
             if (sensors(SENSOR_ACC)) {
                 // check aircraft nearly level
                 if (ABS(attitude.raw[FD_ROLL] - angleTrim->raw[FD_ROLL]) < pidRuntime.crashRecoveryAngleDeciDegrees

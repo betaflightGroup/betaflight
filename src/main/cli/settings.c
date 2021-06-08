@@ -165,7 +165,7 @@ const char * const lookupTableOffOn[] = {
 };
 
 static const char * const lookupTableCrashRecovery[] = {
-    "OFF", "ON" ,"BEEP", "DISARM"
+    "OFF", "ON" ,"BEEP", "DISARM", "LEVEL"
 };
 
 static const char * const lookupTableUnit[] = {
@@ -966,6 +966,7 @@ const clivalue_t valueTable[] = {
     { "imu_dcm_kp",                 VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = { 0, 32000 }, PG_IMU_CONFIG, offsetof(imuConfig_t, dcm_kp) },
     { "imu_dcm_ki",                 VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = { 0, 32000 }, PG_IMU_CONFIG, offsetof(imuConfig_t, dcm_ki) },
     { "small_angle",                VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 180 }, PG_IMU_CONFIG, offsetof(imuConfig_t, small_angle) },
+    { "imu_recovery_coef",          VAR_UINT8  | MASTER_VALUE, .config.minmax = { 1, 20 }, PG_IMU_CONFIG, offsetof(imuConfig_t, recovery_coef) },
 
 // PG_ARMING_CONFIG
     { "auto_disarm_delay",          VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 60 }, PG_ARMING_CONFIG, offsetof(armingConfig_t, auto_disarm_delay) },
@@ -1300,6 +1301,7 @@ const clivalue_t valueTable[] = {
     { "osd_warn_rssi_dbm",          VAR_UINT32  | MASTER_VALUE | MODE_BITSET, .config.bitpos = OSD_WARNING_RSSI_DBM,         PG_OSD_CONFIG, offsetof(osdConfig_t, enabledWarnings)},
 #endif
     { "osd_warn_over_cap",          VAR_UINT32  | MASTER_VALUE | MODE_BITSET, .config.bitpos = OSD_WARNING_OVER_CAP,         PG_OSD_CONFIG, offsetof(osdConfig_t, enabledWarnings)},
+    { "osd_warn_recovery",          VAR_UINT32  | MASTER_VALUE | MODE_BITSET, .config.bitpos = OSD_WARNING_RECOVERY,         PG_OSD_CONFIG, offsetof(osdConfig_t, enabledWarnings)},
 
     { "osd_rssi_alarm",             VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 100 }, PG_OSD_CONFIG, offsetof(osdConfig_t, rssi_alarm) },
 #ifdef USE_RX_LINK_QUALITY_INFO

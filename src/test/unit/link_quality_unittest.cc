@@ -559,4 +559,6 @@ extern "C" {
     float getMotorOutputLow(void) { return 1000.0; }
 
     float getMotorOutputHigh(void) { return 2047.0; }
+
+    bool crashRecoveryModeActive(void) { return false; }
 }

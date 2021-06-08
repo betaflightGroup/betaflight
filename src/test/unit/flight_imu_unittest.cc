@@ -250,4 +250,5 @@ void mixerSetThrottleAngleCorrection(int) {};
 bool gpsRescueIsRunning(void) { return false; }
 bool isFixedWing(void) { return false; }
 void pinioBoxTaskControl(void) {}
+bool crashRecoveryModeActive(void) { return false; }
 }
