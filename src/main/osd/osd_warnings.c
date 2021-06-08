@@ -63,6 +63,20 @@
 #include "sensors/battery.h"
 #include "sensors/sensors.h"
 
+bool renderOsdWarningLandNow(char *warningText, bool *blinking, uint8_t *displayAttr)
+{
+    const batteryState_e batteryState = getBatteryState();
+
+    if (osdWarnGetState(OSD_WARNING_BATTERY_CRITICAL) && batteryState == BATTERY_CRITICAL) {
+        tfp_sprintf(warningText, " LAND NOW");
+        *displayAttr = DISPLAYPORT_ATTR_CRITICAL;
+        *blinking = true;
+        return true;
+    }
+
+    return false;
+}
+
 void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
 {
     const batteryState_e batteryState = getBatteryState();
@@ -188,10 +202,7 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
     }
 #endif // USE_RX_LINK_QUALITY_INFO
 
-    if (osdWarnGetState(OSD_WARNING_BATTERY_CRITICAL) && batteryState == BATTERY_CRITICAL) {
-        tfp_sprintf(warningText, " LAND NOW");
-        *displayAttr = DISPLAYPORT_ATTR_CRITICAL;
-        *blinking = true;;
+    if (renderOsdWarningLandNow(warningText, blinking, displayAttr)) {
         return;
     }
 

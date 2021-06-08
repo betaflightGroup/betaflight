@@ -1474,6 +1474,17 @@ static void osdElementWarnings(osdElementParms_t *element)
     }
 }
 
+static void osdElementWarningLandNow(osdElementParms_t *element)
+{
+    bool elementBlinking = false;
+    renderOsdWarningLandNow(element->buff, &elementBlinking, &element->attr);
+    if (elementBlinking) {
+        SET_BLINK(OSD_LAND_NOW_WARNING);
+    } else {
+        CLR_BLINK(OSD_LAND_NOW_WARNING);
+    }
+}
+
 // Define the order in which the elements are drawn.
 // Elements positioned later in the list will overlay the earlier
 // ones if their character positions overlap
@@ -1556,6 +1567,7 @@ static const uint8_t osdElementDisplayOrder[] = {
 #ifdef USE_PERSISTENT_STATS
     OSD_TOTAL_FLIGHTS,
 #endif
+    OSD_LAND_NOW_WARNING,
 };
 
 // Define the mapping between the OSD element id and the function to draw it
@@ -1671,8 +1683,9 @@ const osdElementDrawFn osdElementDrawFunction[OSD_ITEM_COUNT] = {
     [OSD_EFFICIENCY]              = osdElementEfficiency,
 #endif
 #ifdef USE_PERSISTENT_STATS
-    [OSD_TOTAL_FLIGHTS]   = osdElementTotalFlights,
+    [OSD_TOTAL_FLIGHTS]           = osdElementTotalFlights,
 #endif
+    [OSD_LAND_NOW_WARNING]        = osdElementWarningLandNow,
 };
 
 // Define the mapping between the OSD element id and the function to draw its background (static part)
@@ -1743,6 +1756,7 @@ void osdAddActiveElements(void)
 #ifdef USE_PERSISTENT_STATS
     osdAddActiveElement(OSD_TOTAL_FLIGHTS);
 #endif
+    osdAddActiveElement(OSD_LAND_NOW_WARNING);
 }
 
 static void osdDrawSingleElement(displayPort_t *osdDisplayPort, uint8_t item)
