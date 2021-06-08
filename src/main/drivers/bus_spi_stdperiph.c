@@ -27,13 +27,7 @@
 #ifdef USE_SPI
 
 // STM32F405 can't DMA to/from FASTRAM (CCM SRAM)
-#ifdef STM32F40_41xxx
-extern uint8_t _sfastram;
-extern uint8_t _efastram;
-#define IS_CCM(p) (((uint8_t *)p >= &_sfastram) && ((uint8_t *)p < &_efastram))
-#else
-#define IS_CCM(p) false
-#endif
+#define IS_CCM(p) (((uint32_t)p & 0xffff0000) == 0x10000000)
 
 #include "common/maths.h"
 #include "drivers/bus.h"
