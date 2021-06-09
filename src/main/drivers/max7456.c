@@ -608,6 +608,11 @@ void max7456ReInitIfRequired(bool forceStallCheck)
 void max7456DrawScreen(void)
 {
     static uint16_t pos = 0;
+    // This routine doesn't block so need to use static data
+    static busSegment_t segments[] = {
+            {NULL, NULL, 0, true, NULL},
+            {NULL, NULL, 0, true, NULL},
+    };
 
     if (!fontIsLoading) {
 
@@ -636,12 +641,6 @@ void max7456DrawScreen(void)
         }
 
         if (buff_len) {
-            // This routine doesn't block so need to use static data
-            static busSegment_t segments[] = {
-                    {NULL, NULL, 0, true, NULL},
-                    {NULL, NULL, 0, true, NULL},
-            };
-
             segments[0].txData = spiBuff;
             segments[0].len = buff_len;
 
