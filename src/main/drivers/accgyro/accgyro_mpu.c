@@ -180,8 +180,8 @@ bool mpuGyroRead(gyroDev_t *gyro)
 #ifdef USE_SPI_GYRO
 bool mpuAccReadSPI(accDev_t *acc)
 {
-    DMA_DATA_AUTO uint8_t dataToSend[7] = {MPU_RA_ACCEL_XOUT_H | 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    DMA_DATA_AUTO uint8_t data[7];
+    STATIC_DMA_DATA_AUTO uint8_t dataToSend[7] = {MPU_RA_ACCEL_XOUT_H | 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    STATIC_DMA_DATA_AUTO uint8_t data[7];
 
     const bool ack = spiReadWriteBufRB(&acc->gyro->dev, dataToSend, data, 7);
     if (!ack) {
@@ -197,8 +197,8 @@ bool mpuAccReadSPI(accDev_t *acc)
 
 bool mpuGyroReadSPI(gyroDev_t *gyro)
 {
-    DMA_DATA_AUTO uint8_t dataToSend[7] = {MPU_RA_GYRO_XOUT_H | 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    DMA_DATA_AUTO uint8_t data[7];
+    STATIC_DMA_DATA_AUTO uint8_t dataToSend[7] = {MPU_RA_GYRO_XOUT_H | 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    STATIC_DMA_DATA_AUTO uint8_t data[7];
 
     const bool ack = spiReadWriteBufRB(&gyro->dev, dataToSend, data, 7);
     if (!ack) {

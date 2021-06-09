@@ -538,7 +538,7 @@ int flashfsIdentifyStartOfFreeSpace(void)
 
     STATIC_ASSERT(FREE_BLOCK_SIZE >= FLASH_MAX_PAGE_SIZE, FREE_BLOCK_SIZE_too_small);
 
-    DMA_DATA_AUTO union {
+    STATIC_DMA_DATA_AUTO union {
         uint8_t bytes[FREE_BLOCK_TEST_SIZE_BYTES];
         uint32_t ints[FREE_BLOCK_TEST_SIZE_INTS];
     } testBuffer;

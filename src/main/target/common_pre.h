@@ -167,14 +167,14 @@
 #endif // USE_ITCM_RAM
 
 #ifdef USE_CCM_CODE
-#define CCM_CODE              __attribute__((section(".ccm_code")))
+#define CCM_CODE                    __attribute__((section(".ccm_code")))
 #else
 #define CCM_CODE
 #endif
 
 #ifdef USE_FAST_DATA
-#define FAST_DATA_ZERO_INIT          __attribute__ ((section(".fastram_bss"), aligned(4)))
-#define FAST_DATA                    __attribute__ ((section(".fastram_data"), aligned(4)))
+#define FAST_DATA_ZERO_INIT         __attribute__ ((section(".fastram_bss"), aligned(4)))
+#define FAST_DATA                   __attribute__ ((section(".fastram_data"), aligned(4)))
 #else
 #define FAST_DATA_ZERO_INIT
 #define FAST_DATA
@@ -184,17 +184,17 @@
 // F4 can't DMA to/from CCM (core coupled memory) SRAM (where the stack lives)
 #define DMA_DATA_ZERO_INIT
 #define DMA_DATA
-#define DMA_DATA_AUTO               static
+#define STATIC_DMA_DATA_AUTO        static
 #elif defined (STM32F7)
 // F7 has no cache coherency issues DMAing to/from DTCM, otherwise buffers must be cache aligned
 #define DMA_DATA_ZERO_INIT          FAST_DATA_ZERO_INIT
 #define DMA_DATA                    FAST_DATA
-#define DMA_DATA_AUTO               static DMA_DATA
+#define STATIC_DMA_DATA_AUTO        static DMA_DATA
 #else
 // DMA to/from any memory
 #define DMA_DATA_ZERO_INIT          __attribute__ ((section(".dmaram_bss"), aligned(32)))
 #define DMA_DATA                    __attribute__ ((section(".dmaram_data"), aligned(32)))
-#define DMA_DATA_AUTO               static DMA_DATA
+#define STATIC_DMA_DATA_AUTO        static DMA_DATA
 #endif
 
 #if defined(STM32F4) || defined (STM32H7)

@@ -249,8 +249,8 @@ void icm42605GyroInit(gyroDev_t *gyro)
 
 bool icm42605GyroReadSPI(gyroDev_t *gyro)
 {
-    DMA_DATA_AUTO uint8_t dataToSend[7] = {ICM42605_RA_GYRO_DATA_X1 | 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    DMA_DATA_AUTO uint8_t data[7];
+    STATIC_DMA_DATA_AUTO uint8_t dataToSend[7] = {ICM42605_RA_GYRO_DATA_X1 | 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    STATIC_DMA_DATA_AUTO uint8_t data[7];
 
     const bool ack = spiReadWriteBufRB(&gyro->dev, dataToSend, data, 7);
     if (!ack) {

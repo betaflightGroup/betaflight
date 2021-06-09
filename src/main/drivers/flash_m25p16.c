@@ -122,8 +122,8 @@ const flashVTable_t m25p16_vTable;
 
 static uint8_t m25p16_readStatus(flashDevice_t *fdevice)
 {
-    DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
-    DMA_DATA_AUTO uint8_t readyStatus[2];
+    STATIC_DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
+    STATIC_DMA_DATA_AUTO uint8_t readyStatus[2];
 
     spiReadWriteBuf(fdevice->io.handle.dev, readStatus, readyStatus, sizeof (readStatus));
 
@@ -256,10 +256,10 @@ busStatus_e m25p16_callbackReady(uint32_t arg)
  */
 static void m25p16_eraseSector(flashDevice_t *fdevice, uint32_t address)
 {
-    DMA_DATA_AUTO uint8_t sectorErase[5] = { M25P16_INSTRUCTION_SECTOR_ERASE };
-    DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
-    DMA_DATA_AUTO uint8_t readyStatus[2];
-    DMA_DATA_AUTO uint8_t writeEnable[] = { M25P16_INSTRUCTION_WRITE_ENABLE };
+    STATIC_DMA_DATA_AUTO uint8_t sectorErase[5] = { M25P16_INSTRUCTION_SECTOR_ERASE };
+    STATIC_DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
+    STATIC_DMA_DATA_AUTO uint8_t readyStatus[2];
+    STATIC_DMA_DATA_AUTO uint8_t writeEnable[] = { M25P16_INSTRUCTION_WRITE_ENABLE };
     busSegment_t segments[] = {
             {readStatus, readyStatus, sizeof (readStatus), true, m25p16_callbackReady},
             {writeEnable, NULL, sizeof (writeEnable), true, m25p16_callbackWriteEnable},
@@ -280,10 +280,10 @@ static void m25p16_eraseSector(flashDevice_t *fdevice, uint32_t address)
 
 static void m25p16_eraseCompletely(flashDevice_t *fdevice)
 {
-    DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
-    DMA_DATA_AUTO uint8_t readyStatus[2];
-    DMA_DATA_AUTO uint8_t writeEnable[] = { M25P16_INSTRUCTION_WRITE_ENABLE };
-    DMA_DATA_AUTO uint8_t bulkErase[] = { M25P16_INSTRUCTION_BULK_ERASE };
+    STATIC_DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
+    STATIC_DMA_DATA_AUTO uint8_t readyStatus[2];
+    STATIC_DMA_DATA_AUTO uint8_t writeEnable[] = { M25P16_INSTRUCTION_WRITE_ENABLE };
+    STATIC_DMA_DATA_AUTO uint8_t bulkErase[] = { M25P16_INSTRUCTION_BULK_ERASE };
     busSegment_t segments[] = {
             {readStatus, readyStatus, sizeof (readStatus), true, m25p16_callbackReady},
             {writeEnable, NULL, sizeof (writeEnable), true, m25p16_callbackWriteEnable},
@@ -310,10 +310,10 @@ static void m25p16_pageProgramBegin(flashDevice_t *fdevice, uint32_t address)
 static void m25p16_pageProgramContinue(flashDevice_t *fdevice, const uint8_t *data, int length)
 {
     // The segment list cannot be in automatic storage as this routine is non-blocking
-    DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
-    DMA_DATA_AUTO uint8_t readyStatus[2];
-    DMA_DATA_AUTO uint8_t writeEnable[] = { M25P16_INSTRUCTION_WRITE_ENABLE };
-    DMA_DATA_AUTO uint8_t pageProgram[5] = { M25P16_INSTRUCTION_PAGE_PROGRAM };
+    STATIC_DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
+    STATIC_DMA_DATA_AUTO uint8_t readyStatus[2];
+    STATIC_DMA_DATA_AUTO uint8_t writeEnable[] = { M25P16_INSTRUCTION_WRITE_ENABLE };
+    STATIC_DMA_DATA_AUTO uint8_t pageProgram[5] = { M25P16_INSTRUCTION_PAGE_PROGRAM };
 
     static busSegment_t segments[] = {
             {readStatus, readyStatus, sizeof (readStatus), true, m25p16_callbackReady},
@@ -381,9 +381,9 @@ static void m25p16_pageProgram(flashDevice_t *fdevice, uint32_t address, const u
  */
 static int m25p16_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, int length)
 {
-    DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
-    DMA_DATA_AUTO uint8_t readyStatus[2];
-    DMA_DATA_AUTO uint8_t readBytes[5] = { M25P16_INSTRUCTION_READ_BYTES };
+    STATIC_DMA_DATA_AUTO uint8_t readStatus[2] = { M25P16_INSTRUCTION_READ_STATUS_REG, 0 };
+    STATIC_DMA_DATA_AUTO uint8_t readyStatus[2];
+    STATIC_DMA_DATA_AUTO uint8_t readBytes[5] = { M25P16_INSTRUCTION_READ_BYTES };
 
     // Ensure any prior DMA has completed before continuing
     spiWaitClaim(fdevice->io.handle.dev);
