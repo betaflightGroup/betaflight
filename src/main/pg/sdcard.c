@@ -43,7 +43,6 @@ void pgResetFn_sdcardConfig(sdcardConfig_t *config)
 
     // We can safely handle SPI and SDIO cases separately on custom targets, as these are exclusive per target.
     // On generic targets, SPI has precedence over SDIO; SDIO must be post-flash configured.
-    config->useDma = false;
     config->device = SPI_DEV_TO_CFG(SPIINVALID);
 
 #ifdef CONFIG_IN_SDCARD
@@ -59,7 +58,6 @@ void pgResetFn_sdcardConfig(sdcardConfig_t *config)
 
 #if defined(STM32H7) && defined(USE_SDCARD_SDIO) // H7 only for now, likely should be applied to F4/F7 too
     config->mode = SDCARD_MODE_SDIO;
-    config->useDma = true;
 #endif
 
 #ifdef USE_SDCARD_SPI
@@ -73,15 +71,5 @@ void pgResetFn_sdcardConfig(sdcardConfig_t *config)
         config->mode = SDCARD_MODE_SPI;
     }
 #endif
-
-#ifndef USE_DMA_SPEC
-#ifdef USE_SDCARD_SPI
-#if defined(SDCARD_DMA_STREAM_TX_FULL)
-    config->dmaIdentifier = (uint8_t)dmaGetIdentifier(SDCARD_DMA_STREAM_TX_FULL);
-#elif defined(SDCARD_DMA_CHANNEL_TX)
-    config->dmaIdentifier = (uint8_t)dmaGetIdentifier(SDCARD_DMA_CHANNEL_TX);
-#endif
-#endif
-#endif // !USE_DMA_SPEC
 }
 #endif

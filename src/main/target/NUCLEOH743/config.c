@@ -41,7 +41,6 @@ void targetConfiguration(void)
     targetSerialPortFunctionConfig(targetSerialPortFunction, ARRAYLEN(targetSerialPortFunction));
 #if !defined(NUCLEOH743_RAMBASED)
     sdcardConfigMutable()->mode = SDCARD_MODE_SDIO;
-    sdcardConfigMutable()->useDma = true;
 #endif
 }
 #endif

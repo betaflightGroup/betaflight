@@ -39,6 +39,5 @@ void targetConfiguration(void)
 {
     targetSerialPortFunctionConfig(targetSerialPortFunction, ARRAYLEN(targetSerialPortFunction));
     sdcardConfigMutable()->mode = SDCARD_MODE_SDIO;
-    sdcardConfigMutable()->useDma = true;
 }
 #endif
