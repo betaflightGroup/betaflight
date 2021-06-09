@@ -161,7 +161,7 @@ void spiInitDevice(SPIDevice device)
 #endif
 }
 
-void spiPrivResetDescriptors(busDevice_t *bus)
+void spiInternalResetDescriptors(busDevice_t *bus)
 {
     LL_DMA_InitTypeDef *initTx = bus->initTx;
     LL_DMA_InitTypeDef *initRx = bus->initRx;
@@ -202,7 +202,7 @@ void spiPrivResetDescriptors(busDevice_t *bus)
     initRx->PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_BYTE;
 }
 
-void spiPrivResetStream(dmaChannelDescriptor_t *descriptor)
+void spiInternalResetStream(dmaChannelDescriptor_t *descriptor)
 {
     // Disable the stream
     LL_DMA_DisableStream(descriptor->dma, descriptor->stream);
@@ -213,7 +213,7 @@ void spiPrivResetStream(dmaChannelDescriptor_t *descriptor)
 }
 
 
-static bool spiPrivReadWriteBufPolled(SPI_TypeDef *instance, const uint8_t *txData, uint8_t *rxData, int len)
+static bool spiInternalReadWriteBufPolled(SPI_TypeDef *instance, const uint8_t *txData, uint8_t *rxData, int len)
 {
 #if defined(STM32H7)
     int txLen = len;
@@ -281,7 +281,7 @@ static bool spiPrivReadWriteBufPolled(SPI_TypeDef *instance, const uint8_t *txDa
     return true;
 }
 
-void spiPrivInitStream(const extDevice_t *dev, bool preInit)
+void spiInternalInitStream(const extDevice_t *dev, bool preInit)
 {
     static uint8_t dummyTxByte = 0xff;
     static uint8_t dummyRxByte;
@@ -361,7 +361,7 @@ void spiPrivInitStream(const extDevice_t *dev, bool preInit)
     initRx->NbData = len;
 }
 
-void spiPrivStartDMA(const extDevice_t *dev)
+void spiInternalStartDMA(const extDevice_t *dev)
 {
     busDevice_t *bus = dev->bus;
 
@@ -418,7 +418,7 @@ void spiPrivStartDMA(const extDevice_t *dev)
 #endif
 }
 
-void spiPrivStopDMA (const extDevice_t *dev)
+void spiInternalStopDMA (const extDevice_t *dev)
 {
     busDevice_t *bus = dev->bus;
 
@@ -541,17 +541,17 @@ void spiSequence(const extDevice_t *dev, busSegment_t *segments)
     // Use DMA if possible
     if (bus->useDMA && dmaSafe && ((segmentCount > 1) || (xferLen > 8))) {
         // Intialise the init structures for the first transfer
-        spiPrivInitStream(dev, false);
+        spiInternalInitStream(dev, false);
 
         // Start the transfers
-        spiPrivStartDMA(dev);
+        spiInternalStartDMA(dev);
     } else {
         // Manually work through the segment list performing a transfer for each
         while (bus->curSegment->len) {
             // Assert Chip Select
             IOLo(dev->busType_u.spi.csnPin);
 
-            spiPrivReadWriteBufPolled(
+            spiInternalReadWriteBufPolled(
                     bus->busType_u.spi.instance,
                     bus->curSegment->txData,
                     bus->curSegment->rxData,
