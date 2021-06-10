@@ -68,13 +68,13 @@ int main(void)
     print_rslt(rslt);
     if(rslt == BMI2_OK)
     {
-    	printf("\nAfter CRT Accel x,y,z values\n");
+        printf("\nAfter CRT Accel x,y,z values\n");
 
-    	/* read the accel data after CRT*/
-    	rslt = bmi2_get_sensor_data(&sensor_data, 1, &dev);
-    	print_rslt(rslt);
+        /* read the accel data after CRT*/
+        rslt = bmi2_get_sensor_data(&sensor_data, 1, &dev);
+        print_rslt(rslt);
 
-    	printf("X axes: %d, Y axes: %d, Z axes: %d",sensor_data.sens_data.acc.x, sensor_data.sens_data.acc.y, sensor_data.sens_data.acc.z );
+        printf("X axes: %d, Y axes: %d, Z axes: %d",sensor_data.sens_data.acc.x, sensor_data.sens_data.acc.y, sensor_data.sens_data.acc.z );
     }
 
 }

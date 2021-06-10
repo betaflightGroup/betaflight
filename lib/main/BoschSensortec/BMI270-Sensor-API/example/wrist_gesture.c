@@ -159,7 +159,7 @@ int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr, const uint8_t *reg_data
 int8_t i2c_reg_read(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length)
 {
 
-	/* Read from registers using I2C. Return 0 for a successful execution. */
+    /* Read from registers using I2C. Return 0 for a successful execution. */
     return 0;
 }
 

@@ -11,7 +11,7 @@ void print_rslt(int8_t rslt);
 
 int main(void)
 {
-	struct bmi2_dev dev;
+    struct bmi2_dev dev;
     struct bmi2_sensor_data sensor_data;
     struct bmi2_sens_config config;
 
@@ -47,7 +47,7 @@ int main(void)
      * dev.dummy_byte = 1;
      */
 
- 	 /* Initialize by enabling firmware download */
+     /* Initialize by enabling firmware download */
 
     dev.config_file_ptr = NULL;
 

@@ -302,7 +302,6 @@ bool mpuGyroReadSPI(gyroDev_t *gyro)
 
         // We need some offset from the gyro interrupts to ensure sampling after the interrupt
         gyro->gyroDmaMaxDuration = 5;
-        // Using DMA for gyro access upsets the scheduler on the F4
         if (gyro->detectedEXTI > GYRO_EXTI_DETECT_THRESHOLD) {
             if (spiUseDMA(&gyro->dev)) {
                 // Indicate that the bus on which this device resides may initiate DMA transfers from interrupt context

@@ -30,9 +30,9 @@
 * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 *
-* @file	bmi270.h
-* @date	2020-01-10
-* @version	v2.46.1
+* @file bmi270.h
+* @date 2020-01-10
+* @version  v2.46.1
 *
 */#ifndef BMI270_H_
 #define BMI270_H_

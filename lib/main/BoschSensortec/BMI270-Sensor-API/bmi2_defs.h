@@ -30,9 +30,9 @@
 * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 *
-* @file	bmi2_defs.h
-* @date	2020-01-10
-* @version	v2.46.1
+* @file bmi2_defs.h
+* @date 2020-01-10
+* @version  v2.46.1
 *
 */#ifndef BMI2_DEFS_H_
 #define BMI2_DEFS_H_
