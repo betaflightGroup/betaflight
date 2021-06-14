@@ -160,6 +160,9 @@ void gyroDataAnalyseInit(gyroAnalyseState_t *state, uint32_t targetLooptimeUs)
 // Collect gyro data, to be downsampled and analysed in gyroDataAnalyse() function
 void gyroDataAnalysePush(gyroAnalyseState_t *state, const uint8_t axis, const float sample)
 {
+    if (gyro.notchFilterDynCount == 0) {
+        return;
+    }
     state->oversampledGyroAccumulator[axis] += sample;
 }
 
@@ -168,6 +171,10 @@ static void gyroDataAnalyseUpdate(gyroAnalyseState_t *state);
 // Downsample and analyse gyro data
 FAST_CODE void gyroDataAnalyse(gyroAnalyseState_t *state)
 {
+    if (gyro.notchFilterDynCount == 0) {
+        return;
+    }
+
     // samples should have been pushed by `gyroDataAnalysePush`
     // if gyro sampling is > 1kHz, accumulate and average multiple gyro samples
     if (state->sampleCount == state->maxSampleCount) {

@@ -661,7 +661,7 @@ const clivalue_t valueTable[] = {
     { "gyro_to_use",                VAR_UINT8  | HARDWARE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_GYRO }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_to_use) },
 #endif
 #if defined(USE_GYRO_DATA_ANALYSE)
-    { "dyn_notch_count",            VAR_UINT8   | MASTER_VALUE, .config.minmaxUnsigned = { 1, DYN_NOTCH_COUNT_MAX }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, dyn_notch_count) },
+    { "dyn_notch_count",            VAR_UINT8   | MASTER_VALUE, .config.minmaxUnsigned = { 0, DYN_NOTCH_COUNT_MAX }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, dyn_notch_count) },
     { "dyn_notch_bandwidth_hz",     VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 1, 1000 }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, dyn_notch_bandwidth_hz) },
     { "dyn_notch_min_hz",           VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 60, 250 }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, dyn_notch_min_hz) },
     { "dyn_notch_max_hz",           VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 200, 1000 }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, dyn_notch_max_hz) },
