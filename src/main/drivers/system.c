@@ -273,6 +273,7 @@ void initialiseMemorySections(void)
 #endif
 }
 
+#ifdef STM32H7
 void initialiseD2MemorySections(void)
 {
     /* Load DMA_DATA variable intializers into D2 RAM */
@@ -284,6 +285,7 @@ void initialiseD2MemorySections(void)
     bzero(&_sdmaram_bss, (size_t) (&_edmaram_bss - &_sdmaram_bss));
     memcpy(&_sdmaram_data, &_sdmaram_idata, (size_t) (&_edmaram_data - &_sdmaram_data));
 }
+#endif
 
 static void unusedPinInit(IO_t io)
 {

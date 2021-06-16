@@ -313,8 +313,6 @@ static void m25p16_eraseCompletely(flashDevice_t *fdevice)
 
 static void m25p16_pageProgramBegin(flashDevice_t *fdevice, uint32_t address, void (*callback)(uint32_t length))
 {
-    UNUSED(fdevice);
-
     fdevice->callback = callback;
     fdevice->currentWriteAddress = address;
 }

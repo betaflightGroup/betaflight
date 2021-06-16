@@ -303,7 +303,7 @@ bool w25q128fv_detect(flashDevice_t *fdevice, uint32_t chipID)
     return true;
 }
 
-void w25q128fv_eraseSector(flashDevice_t *fdevice, uint32_t address)
+static void w25q128fv_eraseSector(flashDevice_t *fdevice, uint32_t address)
 {
 
     w25q128fv_waitForReady(fdevice);
@@ -315,7 +315,7 @@ void w25q128fv_eraseSector(flashDevice_t *fdevice, uint32_t address)
     w25q128fv_setTimeout(fdevice, W25Q128FV_TIMEOUT_BLOCK_ERASE_64KB_MS);
 }
 
-void w25q128fv_eraseCompletely(flashDevice_t *fdevice)
+static void w25q128fv_eraseCompletely(flashDevice_t *fdevice)
 {
     w25q128fv_waitForReady(fdevice);
 
@@ -344,42 +344,45 @@ static void w25q128fv_loadProgramData(flashDevice_t *fdevice, const uint8_t *dat
     w25q128fvState.currentWriteAddress += length;
 }
 
-void w25q128fv_pageProgramBegin(flashDevice_t *fdevice, uint32_t address)
+static void w25q128fv_pageProgramBegin(flashDevice_t *fdevice, uint32_t address, void (*callback)(uint32_t length))
 {
-    UNUSED(fdevice);
+    fdevice->callback = callback;
     w25q128fvState.currentWriteAddress = address;
 }
 
-void w25q128fv_pageProgramContinue(flashDevice_t *fdevice, const uint8_t *data, int length)
+static uint32_t w25q128fv_pageProgramContinue(flashDevice_t *fdevice, uint8_t const **buffers, uint32_t *bufferSizes, uint32_t bufferCount)
 {
-    w25q128fv_waitForReady(fdevice);
+    for (uint32_t i = 0; i < bufferCount; i++) {
+        w25q128fv_waitForReady(fdevice);
 
-    w25q128fv_writeEnable(fdevice);
+        w25q128fv_writeEnable(fdevice);
 
-    // verify write enable is set.
-    w25q128fv_setTimeout(fdevice, W25Q128FV_TIMEOUT_WRITE_ENABLE_MS);
-    bool writable = false;
-    do {
-        writable = w25q128fv_isWritable(fdevice);
-    } while (!writable && w25q128fv_hasTimedOut(fdevice));
+        // verify write enable is set.
+        w25q128fv_setTimeout(fdevice, W25Q128FV_TIMEOUT_WRITE_ENABLE_MS);
+        bool writable = false;
+        do {
+            writable = w25q128fv_isWritable(fdevice);
+        } while (!writable && w25q128fv_hasTimedOut(fdevice));
 
-    if (!writable) {
-        return; // TODO report failure somehow.
+        if (!writable) {
+            return 0; // TODO report failure somehow.
+        }
+
+        w25q128fv_loadProgramData(fdevice, buffers[i], bufferSizes[i]);
     }
 
-    w25q128fv_loadProgramData(fdevice, data, length);
-
+    return fdevice->callbackArg;
 }
 
-void w25q128fv_pageProgramFinish(flashDevice_t *fdevice)
+static void w25q128fv_pageProgramFinish(flashDevice_t *fdevice)
 {
     UNUSED(fdevice);
 }
 
-void w25q128fv_pageProgram(flashDevice_t *fdevice, uint32_t address, const uint8_t *data, int length)
+static void w25q128fv_pageProgram(flashDevice_t *fdevice, uint32_t address, const uint8_t *data, uint32_t length, void (*callback)(uint32_t length))
 {
-    w25q128fv_pageProgramBegin(fdevice, address);
-    w25q128fv_pageProgramContinue(fdevice, data, length);
+    w25q128fv_pageProgramBegin(fdevice, address, callback);
+    w25q128fv_pageProgramContinue(fdevice, &data, &length, 1);
     w25q128fv_pageProgramFinish(fdevice);
 }
 
@@ -388,7 +391,7 @@ void w25q128fv_flush(flashDevice_t *fdevice)
     UNUSED(fdevice);
 }
 
-int w25q128fv_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, int length)
+static int w25q128fv_readBytes(flashDevice_t *fdevice, uint32_t address, uint8_t *buffer, uint32_t length)
 {
     if (!w25q128fv_waitForReady(fdevice)) {
         return 0;

@@ -212,7 +212,7 @@ bool mpuGyroReadSPI(gyroDev_t *gyro)
     return true;
 }
 
-typedef uint8_t (*gyroSpiDetectFn_t)(extDevice_t *dev);
+typedef uint8_t (*gyroSpiDetectFn_t)(const extDevice_t *dev);
 
 static gyroSpiDetectFn_t gyroSpiDetectFnTable[] = {
 #ifdef USE_GYRO_SPI_MPU6000
@@ -274,6 +274,10 @@ static bool detectSPISensorsAndUpdateDetectionResult(gyroDev_t *gyro, const gyro
             return true;
         }
     }
+
+    // Detection failed, disable CS pin again
+
+    spiPreinitByTag(config->csnTag);
 
     return false;
 }
@@ -383,7 +387,7 @@ uint8_t mpuGyroDLPF(gyroDev_t *gyro)
 }
 
 #ifdef USE_GYRO_REGISTER_DUMP
-uint8_t mpuGyroReadRegister(extDevice_t *dev, uint8_t reg)
+uint8_t mpuGyroReadRegister(const extDevice_t *dev, uint8_t reg)
 {
     uint8_t data;
     const bool ack = busReadRegisterBuffer(dev, reg, &data, 1);

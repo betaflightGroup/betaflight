@@ -216,9 +216,8 @@ timeDelta_t getTaskDeltaTimeUs(taskId_e taskId)
     }
 }
 
-// Called by tasks executing what are known to be short states. Tasks should call this routine in all states
-// except the one which takes the longest to execute.
-void ignoreTaskStateTime()
+// Called by tasks executing what are known to be short states
+void ignoreTaskTime()
 {
     ignoreCurrentTaskTime = true;
 }

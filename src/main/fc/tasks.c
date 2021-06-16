@@ -170,9 +170,9 @@ bool taskUpdateRxMainInProgress()
 
 static void taskUpdateRxMain(timeUs_t currentTimeUs)
 {
-    // Where we are using a state machine call ignoreTaskStateTime() for all states bar one
+    // Where we are using a state machine call ignoreTaskTime() for all states bar one
     if (rxState != MODES) {
-        ignoreTaskStateTime();
+        ignoreTaskTime();
     }
 
     switch (rxState) {

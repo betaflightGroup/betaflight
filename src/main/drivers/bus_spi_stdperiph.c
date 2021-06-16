@@ -266,7 +266,7 @@ void spiInternalStopDMA (const extDevice_t *dev)
 }
 
 // DMA transfer setup and start
-void spiSequence(extDevice_t *dev, busSegment_t *segments)
+void spiSequence(const extDevice_t *dev, busSegment_t *segments)
 {
     busDevice_t *bus = dev->bus;
     SPI_TypeDef *instance = bus->busType_u.spi.instance;
@@ -285,7 +285,7 @@ void spiSequence(extDevice_t *dev, busSegment_t *segments)
         bus->busType_u.spi.speed = dev->busType_u.spi.speed;
     }
 
-    if (dev->busType_u.spi.leadingEdge |= bus->busType_u.spi.leadingEdge) {
+    if (dev->busType_u.spi.leadingEdge != bus->busType_u.spi.leadingEdge) {
         // Switch SPI clock polarity/phase
         instance->CR1 &= ~(SPI_CPOL_High | SPI_CPHA_2Edge);
 

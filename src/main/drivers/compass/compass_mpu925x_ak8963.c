@@ -37,7 +37,7 @@
 #define AK8963_MAG_I2C_ADDRESS          0x0C
 #define MPU9250_BIT_RESET               0x80
 
-static bool mpu925xDeviceDetect(extDevice_t * dev)
+static bool mpu925xDeviceDetect(const extDevice_t * dev)
 {
     busWriteRegister(dev, MPU_RA_PWR_MGMT_1, MPU9250_BIT_RESET);
     delay(150);

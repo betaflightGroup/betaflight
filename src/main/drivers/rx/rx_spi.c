@@ -84,7 +84,8 @@ bool rxSpiDeviceInit(const rxSpiConfig_t *rxSpiConfig)
     IOConfigGPIO(rxCsPin, SPI_IO_CS_CFG);
     dev->busType_u.spi.csnPin = rxCsPin;
 
-    dev->busType_u.spi.leadingEdge = true;
+    // Set the clock phase/polarity
+    spiSetClkPhasePolarity(dev, true);
 
     IOHi(rxCsPin);
     spiSetClkDivisor(dev, spiCalculateDivider(RX_MAX_SPI_CLK_HZ));

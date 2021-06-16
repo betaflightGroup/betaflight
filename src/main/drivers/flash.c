@@ -283,7 +283,6 @@ uint32_t flashPageProgramContinue(const uint8_t **buffers, uint32_t *bufferSizes
 
 void flashPageProgramFinish(void)
 {
-    flashDevice.callback = NULL;
     flashDevice.vTable->pageProgramFinish(&flashDevice);
 }
 

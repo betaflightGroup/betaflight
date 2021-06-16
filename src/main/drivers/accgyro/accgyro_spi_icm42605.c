@@ -95,7 +95,7 @@
 #define ICM42605_UI_DRDY_INT1_EN_DISABLED           (0 << 3)
 #define ICM42605_UI_DRDY_INT1_EN_ENABLED            (1 << 3)
 
-static void icm42605SpiInit(extDevice_t *dev)
+static void icm42605SpiInit(const extDevice_t *dev)
 {
     static bool hardwareInitialised = false;
 
@@ -109,7 +109,7 @@ static void icm42605SpiInit(extDevice_t *dev)
     hardwareInitialised = true;
 }
 
-uint8_t icm42605SpiDetect(extDevice_t *dev)
+uint8_t icm42605SpiDetect(const extDevice_t *dev)
 {
     icm42605SpiInit(dev);
 

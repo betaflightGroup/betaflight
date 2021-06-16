@@ -106,7 +106,7 @@ static uint32_t spiDivisorToBRbits(SPI_TypeDef *instance, uint16_t divisor)
     divisor = constrain(divisor, 2, 256);
 
 #if defined(STM32H7)
-    uint32_t baudRatePrescaler[8] = {
+    const uint32_t baudRatePrescaler[8] = {
         LL_SPI_BAUDRATEPRESCALER_DIV2,
         LL_SPI_BAUDRATEPRESCALER_DIV4,
         LL_SPI_BAUDRATEPRESCALER_DIV8,
@@ -441,7 +441,7 @@ void spiInternalStopDMA (const extDevice_t *dev)
 }
 
 // DMA transfer setup and start
-void spiSequence(extDevice_t *dev, busSegment_t *segments)
+void spiSequence(const extDevice_t *dev, busSegment_t *segments)
 {
     busDevice_t *bus = dev->bus;
     SPI_TypeDef *instance = bus->busType_u.spi.instance;
@@ -464,7 +464,7 @@ void spiSequence(extDevice_t *dev, busSegment_t *segments)
     }
 
     // Switch SPI clock polarity/phase if necessary
-    if (dev->busType_u.spi.leadingEdge |= bus->busType_u.spi.leadingEdge) {
+    if (dev->busType_u.spi.leadingEdge != bus->busType_u.spi.leadingEdge) {
         if (dev->busType_u.spi.leadingEdge) {
             IOConfigGPIOAF(IOGetByTag(spi->sck), SPI_IO_AF_SCK_CFG_LOW, spi->sckAF);
             LL_SPI_SetClockPhase(instance, LL_SPI_PHASE_1EDGE);
