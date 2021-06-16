@@ -413,7 +413,7 @@ static void spiRxIrqHandler(dmaChannelDescriptor_t* descriptor)
         IOHi(dev->busType_u.spi.csnPin);
     }
 
-    spiPrivStopDMA(dev);
+    spiInternalStopDMA(dev);
 
 #ifdef __DCACHE_PRESENT
 #ifdef STM32H7
@@ -436,7 +436,7 @@ static void spiRxIrqHandler(dmaChannelDescriptor_t* descriptor)
             // Repeat the last DMA segment
             bus->curSegment--;
             // Reinitialise the cached init values as segment is not progressing
-            spiPrivInitStream(dev, true);
+            spiInternalInitStream(dev, true);
             break;
 
         case BUS_ABORT:
@@ -459,15 +459,15 @@ static void spiRxIrqHandler(dmaChannelDescriptor_t* descriptor)
     } else {
         // After the completion of the first segment setup the init structure for the subsequent segment
         if (bus->initSegment) {
-            spiPrivInitStream(dev, false);
+            spiInternalInitStream(dev, false);
             bus->initSegment = false;
         }
 
         // Launch the next transfer
-        spiPrivStartDMA(dev);
+        spiInternalStartDMA(dev);
 
         // Prepare the init structures ready for the next segment to reduce inter-segment time
-        spiPrivInitStream(dev, true);
+        spiInternalInitStream(dev, true);
     }
 }
 
@@ -533,6 +533,9 @@ void spiInitBusDMA()
 
             if (dmaTxChannelSpec) {
                 dmaTxIdentifier = dmaGetIdentifier(dmaTxChannelSpec->ref);
+                if (dmaGetOwner(dmaTxIdentifier)->owner != OWNER_FREE) {
+                    continue;
+                }
 #ifdef STM32F4
                 if (dshotBitbangActive && (DMA_DEVICE_NO(dmaTxIdentifier) == 2)) {
                     dmaTxIdentifier = DMA_NONE;
@@ -550,6 +553,9 @@ void spiInitBusDMA()
 
             if (dmaRxChannelSpec) {
                 dmaRxIdentifier = dmaGetIdentifier(dmaRxChannelSpec->ref);
+                if (dmaGetOwner(dmaRxIdentifier)->owner != OWNER_FREE) {
+                    continue;
+                }
 #ifdef STM32F4
                 if (dshotBitbangActive && (DMA_DEVICE_NO(dmaRxIdentifier) == 2)) {
                     dmaRxIdentifier = DMA_NONE;
@@ -567,10 +573,10 @@ void spiInitBusDMA()
             bus->dmaRx = dmaGetDescriptorByIdentifier(dmaRxIdentifier);
 
             // Ensure streams are disabled
-            spiResetStream(bus->dmaRx);
-            spiResetStream(bus->dmaTx);
+            spiInternalResetStream(bus->dmaRx);
+            spiInternalResetStream(bus->dmaTx);
 
-            spiResetDescriptors(bus);
+            spiInternalResetDescriptors(bus);
 
             /* Note that this driver may be called both from the normal thread of execution, or from USB interrupt
              * handlers, so the DMA completion interrupt must be at a higher priority

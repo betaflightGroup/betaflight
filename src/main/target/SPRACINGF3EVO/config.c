@@ -41,7 +41,6 @@
 void targetConfiguration(void)
 {
     // Temporary workaround: Disable SDCard DMA by default since it causes errors on this target
-    sdcardConfigMutable()->useDma = false;
 
 #if defined(SPRACINGF3MQ)
 

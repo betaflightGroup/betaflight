@@ -41,9 +41,9 @@
 // Nucleo-H7A3 has one button (The blue USER button).
 // Force two buttons to look at the single button so config reset on button works
 #define USE_BUTTONS
-#define	BUTTON_A_PIN            PC13
+#define BUTTON_A_PIN            PC13
 #define BUTTON_A_PIN_INVERTED // Active high
-#define	BUTTON_B_PIN            PC13
+#define BUTTON_B_PIN            PC13
 #define BUTTON_B_PIN_INVERTED // Active high
 
 #define USE_BEEPER
