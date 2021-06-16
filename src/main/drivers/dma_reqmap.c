@@ -539,21 +539,14 @@ const dmaChannelSpec_t *dmaGetChannelSpecByPeripheral(dmaPeripheral_e device, ui
 #if defined(STM32H7) || defined(STM32G4)
         if (periph->device == device && periph->index == index) {
             dmaChannelSpec_t *dmaSpec = &dmaChannelSpec[opt];
-            dmaIdentifier_e dmaIdentifier = dmaGetIdentifier(dmaSpec->ref);
-            if (dmaGetOwner(dmaIdentifier)->owner == OWNER_FREE) {
-                dmaSetupRequest(dmaSpec, periph->dmaRequest);
-                return dmaSpec;
-            }
+            dmaSetupRequest(dmaSpec, periph->dmaRequest);
+            return dmaSpec;
+        }
 #else
         if (periph->device == device && periph->index == index && periph->channelSpec[opt].ref) {
-            const dmaChannelSpec_t *dmaSpec =  &periph->channelSpec[opt];
-            dmaIdentifier_e dmaIdentifier = dmaGetIdentifier(dmaSpec->ref);
-            if (dmaGetOwner(dmaIdentifier)->owner == OWNER_FREE) {
-                return dmaSpec;
-            }
-#endif
-            // Look for another matching entry with no existing owner
+            return &periph->channelSpec[opt];
         }
+#endif
     }
 
     return NULL;

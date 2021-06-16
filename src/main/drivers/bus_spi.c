@@ -533,6 +533,9 @@ void spiInitBusDMA()
 
             if (dmaTxChannelSpec) {
                 dmaTxIdentifier = dmaGetIdentifier(dmaTxChannelSpec->ref);
+                if (dmaGetOwner(dmaTxIdentifier)->owner != OWNER_FREE) {
+                    continue;
+                }
 #ifdef STM32F4
                 if (dshotBitbangActive && (DMA_DEVICE_NO(dmaTxIdentifier) == 2)) {
                     dmaTxIdentifier = DMA_NONE;
@@ -550,6 +553,9 @@ void spiInitBusDMA()
 
             if (dmaRxChannelSpec) {
                 dmaRxIdentifier = dmaGetIdentifier(dmaRxChannelSpec->ref);
+                if (dmaGetOwner(dmaRxIdentifier)->owner != OWNER_FREE) {
+                    continue;
+                }
 #ifdef STM32F4
                 if (dshotBitbangActive && (DMA_DEVICE_NO(dmaRxIdentifier) == 2)) {
                     dmaRxIdentifier = DMA_NONE;
