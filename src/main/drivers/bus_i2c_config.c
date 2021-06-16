@@ -71,8 +71,8 @@ void i2cHardwareConfigure(const i2cConfig_t *i2cConfig)
         if (pDev->scl && pDev->sda) {
             pDev->hardware = hardware;
             pDev->reg = hardware->reg;
-            pDev->overClock = i2cConfig[device].overClock;
             pDev->pullUp = i2cConfig[device].pullUp;
+            pDev->clockSpeed = i2cConfig[device].clockSpeed;
         }
     }
 }

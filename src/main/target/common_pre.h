@@ -30,9 +30,6 @@
 
 #define SCHEDULER_DEBUG // define this to use scheduler debug[] values. Undefined by default for performance reasons
 
-#define I2C1_OVERCLOCK true
-#define I2C2_OVERCLOCK true
-
 #ifdef STM32F1
 #define MINIMAL_CLI
 // Using RX DMA disables the use of receive callbacks
@@ -57,7 +54,6 @@
 #define USE_DSHOT_TELEMETRY_STATS
 #define USE_RPM_FILTER
 #define USE_DYN_IDLE
-#define I2C3_OVERCLOCK true
 #define USE_GYRO_DATA_ANALYSE
 #define USE_ADC
 #define USE_ADC_INTERNAL
@@ -85,8 +81,6 @@
 #define USE_DSHOT_TELEMETRY_STATS
 #define USE_RPM_FILTER
 #define USE_DYN_IDLE
-#define I2C3_OVERCLOCK true
-#define I2C4_OVERCLOCK true
 #define USE_GYRO_DATA_ANALYSE
 #define USE_OVERCLOCK
 #define USE_ADC_INTERNAL
@@ -98,7 +92,6 @@
 #define USE_TIMER_MGMT
 #define USE_PERSISTENT_OBJECTS
 #define USE_CUSTOM_DEFAULTS_ADDRESS
-#define USE_LATE_TASK_STATISTICS
 #endif // STM32F7
 
 #ifdef STM32H7
@@ -110,8 +103,6 @@
 #define USE_DSHOT_TELEMETRY_STATS
 #define USE_RPM_FILTER
 #define USE_DYN_IDLE
-#define I2C3_OVERCLOCK true
-#define I2C4_OVERCLOCK true
 #define USE_GYRO_DATA_ANALYSE
 #define USE_ADC_INTERNAL
 #define USE_USB_CDC_HID
@@ -134,8 +125,6 @@
 #define USE_DSHOT_TELEMETRY_STATS
 #define USE_RPM_FILTER
 #define USE_DYN_IDLE
-#define I2C3_OVERCLOCK true
-#define I2C4_OVERCLOCK true
 #define USE_OVERCLOCK
 #define USE_GYRO_DATA_ANALYSE
 #define USE_ADC_INTERNAL
@@ -178,14 +167,14 @@
 #endif // USE_ITCM_RAM
 
 #ifdef USE_CCM_CODE
-#define CCM_CODE              __attribute__((section(".ccm_code")))
+#define CCM_CODE                    __attribute__((section(".ccm_code")))
 #else
 #define CCM_CODE
 #endif
 
 #ifdef USE_FAST_DATA
-#define FAST_DATA_ZERO_INIT          __attribute__ ((section(".fastram_bss"), aligned(4)))
-#define FAST_DATA                    __attribute__ ((section(".fastram_data"), aligned(4)))
+#define FAST_DATA_ZERO_INIT         __attribute__ ((section(".fastram_bss"), aligned(4)))
+#define FAST_DATA                   __attribute__ ((section(".fastram_data"), aligned(4)))
 #else
 #define FAST_DATA_ZERO_INIT
 #define FAST_DATA
@@ -195,17 +184,17 @@
 // F4 can't DMA to/from CCM (core coupled memory) SRAM (where the stack lives)
 #define DMA_DATA_ZERO_INIT
 #define DMA_DATA
-#define DMA_DATA_AUTO               static
+#define STATIC_DMA_DATA_AUTO        static
 #elif defined (STM32F7)
 // F7 has no cache coherency issues DMAing to/from DTCM, otherwise buffers must be cache aligned
 #define DMA_DATA_ZERO_INIT          FAST_DATA_ZERO_INIT
 #define DMA_DATA                    FAST_DATA
-#define DMA_DATA_AUTO               static DMA_DATA
+#define STATIC_DMA_DATA_AUTO        static DMA_DATA
 #else
 // DMA to/from any memory
 #define DMA_DATA_ZERO_INIT          __attribute__ ((section(".dmaram_bss"), aligned(32)))
 #define DMA_DATA                    __attribute__ ((section(".dmaram_data"), aligned(32)))
-#define DMA_DATA_AUTO               static DMA_DATA
+#define STATIC_DMA_DATA_AUTO        static DMA_DATA
 #endif
 
 #if defined(STM32F4) || defined (STM32H7)
@@ -373,7 +362,6 @@ extern uint8_t _dmaram_end__;
 #if (TARGET_FLASH_SIZE > 256)
 #define USE_AIRMODE_LPF
 #define USE_CANVAS
-#define USE_DASHBOARD
 #define USE_FRSKYOSD
 #define USE_GPS
 #define USE_GPS_NMEA
@@ -400,8 +388,6 @@ extern uint8_t _dmaram_end__;
 #define USE_ESC_SENSOR_TELEMETRY
 #define USE_OSD_PROFILES
 #define USE_OSD_STICK_OVERLAY
-#define USE_ESCSERIAL_SIMONK
-#define USE_SERIAL_4WAY_SK_BOOTLOADER
 #define USE_CMS_FAILSAFE_MENU
 #define USE_CMS_GPS_RESCUE_MENU
 #define USE_TELEMETRY_SENSORS_DISABLED_DETAILS
@@ -409,11 +395,18 @@ extern uint8_t _dmaram_end__;
 #define USE_PERSISTENT_STATS
 #define USE_PROFILE_NAMES
 #define USE_SERIALRX_SRXL2     // Spektrum SRXL2 protocol
-#define USE_INTERPOLATED_SP
+#define USE_FEEDFORWARD
 #define USE_CUSTOM_BOX_NAMES
 #define USE_BATTERY_VOLTAGE_SAG_COMPENSATION
 #define USE_RX_MSP_OVERRIDE
 #define USE_SIMPLIFIED_TUNING
 #define USE_RX_LINK_UPLINK_POWER
 #define USE_GPS_PLUS_CODES
+#define USE_CRSF_V3
+#endif
+
+#if (TARGET_FLASH_SIZE > 512)
+#define USE_ESCSERIAL_SIMONK
+#define USE_SERIAL_4WAY_SK_BOOTLOADER
+#define USE_DASHBOARD
 #endif

@@ -124,7 +124,7 @@ static bool bmp085InitDone = false;
 STATIC_UNIT_TESTED uint16_t bmp085_ut;  // static result of temperature measurement
 STATIC_UNIT_TESTED uint32_t bmp085_up;  // static result of pressure measurement
 
-static void bmp085ReadCalibrarionParameters(extDevice_t *dev);
+static void bmp085ReadCalibrarionParameters(const extDevice_t *dev);
 static void bmp085StartUT(baroDev_t *baro);
 static bool bmp085ReadUT(baroDev_t *baro);
 static bool bmp085GetUT(baroDev_t *baro);
@@ -370,7 +370,7 @@ STATIC_UNIT_TESTED void bmp085Calculate(int32_t *pressure, int32_t *temperature)
         *temperature = temp;
 }
 
-static void bmp085ReadCalibrarionParameters(extDevice_t *dev)
+static void bmp085ReadCalibrarionParameters(const extDevice_t *dev)
 {
     uint8_t data[22];
     busReadRegisterBuffer(dev, BMP085_PROM_START__ADDR, data, BMP085_PROM_DATA__LEN);

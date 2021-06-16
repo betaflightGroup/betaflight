@@ -121,7 +121,7 @@
 #define SPI6_MISO_PIN           NONE
 #define SPI6_MOSI_PIN           NONE
 
-// #define USE_QUADSPI
+#define USE_QUADSPI
 #define USE_QUADSPI_DEVICE_1
 
 #define QUADSPI1_SCK_PIN        NONE // PB2
@@ -224,6 +224,8 @@
 #define USE_FLASH_CHIP
 #define USE_FLASH_M25P16
 #define USE_FLASH_W25M
+#define USE_FLASH_W25Q128FV
+#define USE_FLASH_W25N01G
 #define FLASH_SPI_INSTANCE      NULL
 #define FLASH_CS_PIN            NONE
 #define USE_FLASHFS

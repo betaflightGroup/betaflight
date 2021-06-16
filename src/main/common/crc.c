@@ -59,12 +59,12 @@ void crc16_ccitt_sbuf_append(sbuf_t *dst, uint8_t *start)
     sbufWriteU16(dst, crc);
 }
 
-uint8_t crc8_dvb_s2(uint8_t crc, unsigned char a)
+uint8_t crc8_calc(uint8_t crc, unsigned char a, uint8_t poly)
 {
     crc ^= a;
     for (int ii = 0; ii < 8; ++ii) {
         if (crc & 0x80) {
-            crc = (crc << 1) ^ 0xD5;
+            crc = (crc << 1) ^ poly;
         } else {
             crc = crc << 1;
         }
@@ -72,23 +72,23 @@ uint8_t crc8_dvb_s2(uint8_t crc, unsigned char a)
     return crc;
 }
 
-uint8_t crc8_dvb_s2_update(uint8_t crc, const void *data, uint32_t length)
+uint8_t crc8_update(uint8_t crc, const void *data, uint32_t length, uint8_t poly)
 {
     const uint8_t *p = (const uint8_t *)data;
     const uint8_t *pend = p + length;
 
     for (; p != pend; p++) {
-        crc = crc8_dvb_s2(crc, *p);
+        crc = crc8_calc(crc, *p, poly);
     }
     return crc;
 }
 
-void crc8_dvb_s2_sbuf_append(sbuf_t *dst, uint8_t *start)
+void crc8_sbuf_append(sbuf_t *dst, uint8_t *start, uint8_t poly)
 {
     uint8_t crc = 0;
     const uint8_t * const end = dst->ptr;
     for (const uint8_t *ptr = start; ptr < end; ++ptr) {
-        crc = crc8_dvb_s2(crc, *ptr);
+        crc = crc8_calc(crc, *ptr, poly);
     }
     sbufWriteU8(dst, crc);
 }

@@ -179,19 +179,6 @@ float scaleRangef(float x, float srcFrom, float srcTo, float destFrom, float des
     return (a / b) + destFrom;
 }
 
-// Normalize a vector
-void normalizeV(struct fp_vector *src, struct fp_vector *dest)
-{
-    float length;
-
-    length = sqrtf(src->X * src->X + src->Y * src->Y + src->Z * src->Z);
-    if (length != 0) {
-        dest->X = src->X / length;
-        dest->Y = src->Y / length;
-        dest->Z = src->Z / length;
-    }
-}
-
 void buildRotationMatrix(fp_angles_t *delta, fp_rotationMatrix_t *rotation)
 {
     float cosx, sinx, cosy, siny, cosz, sinz;
@@ -220,7 +207,7 @@ void buildRotationMatrix(fp_angles_t *delta, fp_rotationMatrix_t *rotation)
     rotation->m[2][Z] = cosy * cosx;
 }
 
-FAST_CODE void applyRotation(float *v, fp_rotationMatrix_t *rotationMatrix)
+void applyMatrixRotation(float *v, fp_rotationMatrix_t *rotationMatrix)
 {
     struct fp_vector *vDest = (struct fp_vector *)v;
     struct fp_vector vTmp = *vDest;
@@ -228,18 +215,6 @@ FAST_CODE void applyRotation(float *v, fp_rotationMatrix_t *rotationMatrix)
     vDest->X = (rotationMatrix->m[0][X] * vTmp.X + rotationMatrix->m[1][X] * vTmp.Y + rotationMatrix->m[2][X] * vTmp.Z);
     vDest->Y = (rotationMatrix->m[0][Y] * vTmp.X + rotationMatrix->m[1][Y] * vTmp.Y + rotationMatrix->m[2][Y] * vTmp.Z);
     vDest->Z = (rotationMatrix->m[0][Z] * vTmp.X + rotationMatrix->m[1][Z] * vTmp.Y + rotationMatrix->m[2][Z] * vTmp.Z);
-}
-
-// Rotate a vector *v by the euler angles defined by the 3-vector *delta.
-void rotateV(struct fp_vector *v, fp_angles_t *delta)
-{
-    struct fp_vector v_tmp = *v;
-
-    fp_rotationMatrix_t rotationMatrix;
-
-    buildRotationMatrix(delta, &rotationMatrix);
-
-    applyRotation((float *)&v_tmp, &rotationMatrix);
 }
 
 // Quick median filter implementation

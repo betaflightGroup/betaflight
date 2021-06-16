@@ -40,7 +40,7 @@ static void calculateNewPidValues(pidProfile_t *pidProfile)
     const int dMinDefaults[FLIGHT_DYNAMICS_INDEX_COUNT] = D_MIN_DEFAULT;
 
     const float masterMultiplier = pidProfile->simplified_master_multiplier / 100.0f;
-    const float ffGain = pidProfile->simplified_ff_gain / 100.0f;
+    const float feedforwardGain = pidProfile->simplified_feedforward_gain / 100.0f;
     const float pdGain = pidProfile->simplified_pd_gain / 100.0f;
     const float iGain = pidProfile->simplified_i_gain / 100.0f;
     const float pdRatio = pidProfile->simplified_pd_ratio / 100.0f;
@@ -57,7 +57,7 @@ static void calculateNewPidValues(pidProfile_t *pidProfile)
         } else {
             pidProfile->d_min[axis] = constrain(dMinDefaults[axis] * masterMultiplier * pdGain * rpRatio * dminRatio, 0, D_MIN_GAIN_MAX);
         }
-        pidProfile->pid[axis].F = constrain(pidDefaults[axis].F * masterMultiplier * ffGain * rpRatio, 0, F_GAIN_MAX);
+        pidProfile->pid[axis].F = constrain(pidDefaults[axis].F * masterMultiplier * feedforwardGain * rpRatio, 0, F_GAIN_MAX);
     }
 }
 

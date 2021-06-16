@@ -103,14 +103,14 @@
 
 #if defined(USE_MAG_AK8963) && (defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250))
 
-static bool ak8963SpiWriteRegisterDelay(extDevice_t *dev, uint8_t reg, uint8_t data)
+static bool ak8963SpiWriteRegisterDelay(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
     spiWriteReg(dev, reg, data);
     delayMicroseconds(10);
     return true;
 }
 
-static bool ak8963SlaveReadRegisterBuffer(extDevice_t *slaveDev, uint8_t reg, uint8_t *buf, uint8_t len)
+static bool ak8963SlaveReadRegisterBuffer(const extDevice_t *slaveDev, uint8_t reg, uint8_t *buf, uint8_t len)
 {
     extDevice_t *dev = slaveDev->bus->busType_u.mpuSlave.master;
 
@@ -124,7 +124,7 @@ static bool ak8963SlaveReadRegisterBuffer(extDevice_t *slaveDev, uint8_t reg, ui
     return ack;
 }
 
-static bool ak8963SlaveWriteRegister(extDevice_t *slaveDev, uint8_t reg, uint8_t data)
+static bool ak8963SlaveWriteRegister(const extDevice_t *slaveDev, uint8_t reg, uint8_t data)
 {
     extDevice_t *dev = slaveDev->bus->busType_u.mpuSlave.master;
 
@@ -143,7 +143,7 @@ typedef struct queuedReadState_s {
 
 static queuedReadState_t queuedRead = { false, 0, 0};
 
-static bool ak8963SlaveStartRead(extDevice_t *slaveDev, uint8_t reg, uint8_t len)
+static bool ak8963SlaveStartRead(const extDevice_t *slaveDev, uint8_t reg, uint8_t len)
 {
     if (queuedRead.waiting) {
         return false;
@@ -180,7 +180,7 @@ static uint32_t ak8963SlaveQueuedReadTimeRemaining(void)
     return timeRemaining;
 }
 
-static bool ak8963SlaveCompleteRead(extDevice_t *slaveDev, uint8_t *buf)
+static bool ak8963SlaveCompleteRead(const extDevice_t *slaveDev, uint8_t *buf)
 {
     uint32_t timeRemaining = ak8963SlaveQueuedReadTimeRemaining();
 
@@ -195,7 +195,7 @@ static bool ak8963SlaveCompleteRead(extDevice_t *slaveDev, uint8_t *buf)
     return spiReadRegMskBufRB(dev, MPU_RA_EXT_SENS_DATA_00, buf, queuedRead.len);            // read I2C buffer
 }
 
-static bool ak8963SlaveReadData(extDevice_t *dev, uint8_t *buf)
+static bool ak8963SlaveReadData(const extDevice_t *dev, uint8_t *buf)
 {
     typedef enum {
         CHECK_STATUS = 0,
@@ -262,7 +262,7 @@ restart:
 }
 #endif
 
-static bool ak8963ReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *buf, uint8_t len)
+static bool ak8963ReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *buf, uint8_t len)
 {
 #if defined(USE_MAG_AK8963) && (defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250))
     if (dev->bus->busType == BUSTYPE_MPU_SLAVE) {
@@ -272,7 +272,7 @@ static bool ak8963ReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *buf
     return busReadRegisterBuffer(dev, reg, buf, len);
 }
 
-static bool ak8963WriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data)
+static bool ak8963WriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
 #if defined(USE_MAG_AK8963) && (defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250))
     if (dev->bus->busType == BUSTYPE_MPU_SLAVE) {
@@ -282,7 +282,7 @@ static bool ak8963WriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data)
     return busWriteRegister(dev, reg, data);
 }
 
-static bool ak8963DirectReadData(extDevice_t *dev, uint8_t *buf)
+static bool ak8963DirectReadData(const extDevice_t *dev, uint8_t *buf)
 {
     uint8_t status;
 
@@ -370,7 +370,7 @@ static bool ak8963Init(magDev_t *mag)
     return true;
 }
 
-void ak8963BusInit(extDevice_t *dev)
+void ak8963BusInit(const extDevice_t *dev)
 {
     switch (dev->bus->busType) {
 #ifdef USE_MAG_AK8963
@@ -403,7 +403,7 @@ void ak8963BusInit(extDevice_t *dev)
     }
 }
 
-void ak8963BusDeInit(extDevice_t *dev)
+void ak8963BusDeInit(const extDevice_t *dev)
 {
     switch (dev->bus->busType) {
 #ifdef USE_MAG_AK8963

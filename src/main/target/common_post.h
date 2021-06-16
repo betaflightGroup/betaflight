@@ -107,6 +107,7 @@
 #if !defined(USE_SERIALRX_CRSF)
 #undef USE_TELEMETRY_CRSF
 #undef USE_CRSF_LINK_STATISTICS
+#undef USE_CRSF_V3
 #undef USE_RX_RSSI_DBM
 #endif
 

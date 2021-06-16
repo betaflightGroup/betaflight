@@ -87,6 +87,39 @@ typedef struct mspBuffer_s {
 
 static mspBuffer_t mspRxBuffer;
 
+#if defined(USE_CRSF_V3)
+static bool isCrsfV3Running = false;
+typedef struct {
+    uint8_t hasPendingReply:1;
+    uint8_t isNewSpeedValid:1;
+    uint8_t portID:3;
+    uint8_t index;
+    uint32_t confirmationTime;
+} crsfSpeedControl_s;
+
+static crsfSpeedControl_s crsfSpeed = {0};
+
+bool checkCrsfCustomizedSpeed(void)
+{
+    return crsfSpeed.index < BAUD_COUNT ? true : false;
+}
+
+uint32_t getCrsfDesiredSpeed(void)
+{
+    return checkCrsfCustomizedSpeed() ? baudRates[crsfSpeed.index] : CRSF_BAUDRATE;
+}
+
+void setCrsfDefaultSpeed(void)
+{
+    crsfSpeed.hasPendingReply = false;
+    crsfSpeed.isNewSpeedValid = false;
+    crsfSpeed.confirmationTime = 0;
+    crsfSpeed.index = BAUD_COUNT;
+    isCrsfV3Running = false;
+    crsfRxUpdateBaudrate(getCrsfDesiredSpeed());
+}
+#endif
+
 void initCrsfMspBuffer(void)
 {
     mspRxBuffer.len = 0;
@@ -326,6 +359,80 @@ void crsfFrameDeviceInfo(sbuf_t *dst) {
     *lengthPtr = sbufPtr(dst) - lengthPtr;
 }
 
+
+#if defined(USE_CRSF_V3)
+void crsfFrameSpeedNegotiationResponse(sbuf_t *dst, bool reply)
+{
+
+    uint8_t *lengthPtr = sbufPtr(dst);
+    sbufWriteU8(dst, 0);
+    sbufWriteU8(dst, CRSF_FRAMETYPE_COMMAND);
+    sbufWriteU8(dst, CRSF_ADDRESS_CRSF_RECEIVER);
+    sbufWriteU8(dst, CRSF_ADDRESS_FLIGHT_CONTROLLER);
+    sbufWriteU8(dst, CRSF_COMMAND_SUBCMD_GENERAL);
+    sbufWriteU8(dst, CRSF_COMMAND_SUBCMD_GENERAL_CRSF_SPEED_RESPONSE);
+    sbufWriteU8(dst, crsfSpeed.portID);
+    sbufWriteU8(dst, reply);
+    crc8_poly_0xba_sbuf_append(dst, &lengthPtr[1]);
+    *lengthPtr = sbufPtr(dst) - lengthPtr;
+}
+
+static void crsfProcessSpeedNegotiationCmd(uint8_t *frameStart)
+{
+
+    uint32_t newBaudrate = frameStart[2] << 24 | frameStart[3] << 16 | frameStart[4] << 8 | frameStart[5];
+    uint8_t ii = 0;
+    for (ii = 0; ii < BAUD_COUNT; ++ii) {
+        if (newBaudrate == baudRates[ii]) {
+            break;
+        }
+    }
+    crsfSpeed.portID = frameStart[1];
+    crsfSpeed.index = ii;
+}
+
+void crsfScheduleSpeedNegotiationResponse(void)
+{
+    crsfSpeed.hasPendingReply = true;
+    crsfSpeed.isNewSpeedValid = false;
+}
+
+void speedNegotiationProcess(uint32_t currentTime)
+{
+    if (!featureIsEnabled(FEATURE_TELEMETRY) && getCrsfDesiredSpeed() == CRSF_BAUDRATE) {
+        // to notify the RX to fall back to default baud rate by sending device info frame if telemetry is disabled
+        sbuf_t crsfPayloadBuf;
+        sbuf_t *dst = &crsfPayloadBuf;
+        crsfInitializeFrame(dst);
+        crsfFrameDeviceInfo(dst);
+        crsfFinalize(dst);
+        crsfRxSendTelemetryData();
+    } else {
+        if (crsfSpeed.hasPendingReply) {
+            bool found = crsfSpeed.index < BAUD_COUNT ? true : false;
+            sbuf_t crsfSpeedNegotiationBuf;
+            sbuf_t *dst = &crsfSpeedNegotiationBuf;
+            crsfInitializeFrame(dst);
+            crsfFrameSpeedNegotiationResponse(dst, found);
+            crsfFinalize(dst);
+            crsfRxSendTelemetryData();
+            crsfSpeed.hasPendingReply = false;
+            crsfSpeed.isNewSpeedValid = true;
+            crsfSpeed.confirmationTime = currentTime;
+            return;
+        } else if (crsfSpeed.isNewSpeedValid) {
+            if (currentTime - crsfSpeed.confirmationTime >= 4000) {
+                // delay 4ms before applying the new baudrate
+                crsfRxUpdateBaudrate(getCrsfDesiredSpeed());
+                crsfSpeed.isNewSpeedValid = false;
+                isCrsfV3Running = true;
+                return;
+            }
+        }
+    }
+}
+#endif
+
 #if defined(USE_CRSF_CMS_TELEMETRY)
 #define CRSF_DISPLAYPORT_MAX_CHUNK_LENGTH   50
 #define CRSF_DISPLAYPORT_BATCH_MAX          0x3F
@@ -518,7 +625,9 @@ void initCrsfTelemetry(void)
         || (isAmperageConfigured() && telemetryIsSensorEnabled(SENSOR_CURRENT | SENSOR_FUEL))) {
         crsfSchedule[index++] = BV(CRSF_FRAME_BATTERY_SENSOR_INDEX);
     }
-    crsfSchedule[index++] = BV(CRSF_FRAME_FLIGHT_MODE_INDEX);
+    if (telemetryIsSensorEnabled(SENSOR_MODE)) {
+        crsfSchedule[index++] = BV(CRSF_FRAME_FLIGHT_MODE_INDEX);
+    }
 #ifdef USE_GPS
     if (featureIsEnabled(FEATURE_GPS)
        && telemetryIsSensorEnabled(SENSOR_ALTITUDE | SENSOR_LAT_LONG | SENSOR_GROUND_SPEED | SENSOR_HEADING)) {
@@ -560,6 +669,28 @@ void crsfProcessDisplayPortCmd(uint8_t *frameStart)
 
 }
 
+#endif
+
+#if defined(USE_CRSF_V3)
+void crsfProcessCommand(uint8_t *frameStart)
+{
+    uint8_t cmd = *frameStart;
+    uint8_t subCmd = frameStart[1];
+    switch (cmd) {
+    case CRSF_COMMAND_SUBCMD_GENERAL:
+        switch (subCmd) {
+        case CRSF_COMMAND_SUBCMD_GENERAL_CRSF_SPEED_PROPOSAL:
+            crsfProcessSpeedNegotiationCmd(&frameStart[1]);
+            crsfScheduleSpeedNegotiationResponse();
+            break;
+        default:
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+}
 #endif
 
 /*

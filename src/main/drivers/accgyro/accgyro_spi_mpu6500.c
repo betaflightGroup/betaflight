@@ -44,13 +44,13 @@
 
 #define BIT_SLEEP                   0x40
 
-static void mpu6500SpiInit(extDevice_t *dev)
+static void mpu6500SpiInit(const extDevice_t *dev)
 {
 
     spiSetClkDivisor(dev, spiCalculateDivider(MPU6500_MAX_SPI_CLK_HZ));
 }
 
-uint8_t mpu6500SpiDetect(extDevice_t *dev)
+uint8_t mpu6500SpiDetect(const extDevice_t *dev)
 {
     mpu6500SpiInit(dev);
 

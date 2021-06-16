@@ -58,18 +58,6 @@ typedef enum {
     CENTERED
 } rollPitchStatus_e;
 
-typedef enum {
-    RC_SMOOTHING_OFF = 0,
-    RC_SMOOTHING_DEFAULT,
-    RC_SMOOTHING_AUTO,
-    RC_SMOOTHING_MANUAL
-} rcSmoothing_t;
-
-typedef enum {
-    RC_SMOOTHING_TYPE_INTERPOLATION,
-    RC_SMOOTHING_TYPE_FILTER
-} rcSmoothingType_e;
-
 #define ROL_LO (1 << (2 * ROLL))
 #define ROL_CE (3 << (2 * ROLL))
 #define ROL_HI (2 << (2 * ROLL))
@@ -107,14 +95,17 @@ typedef struct rcSmoothingFilterTraining_s {
 typedef struct rcSmoothingFilter_s {
     bool filterInitialized;
     pt3Filter_t filter[4];
-    uint8_t inputCutoffSetting;
-    uint16_t inputCutoffFrequency;
-    uint8_t derivativeCutoffSetting;
-    uint16_t derivativeCutoffFrequency;
+    uint8_t setpointCutoffSetting;
+    uint8_t throttleCutoffSetting;
+    uint16_t setpointCutoffFrequency;
+    uint16_t throttleCutoffFrequency;
+    uint8_t ffCutoffSetting;
+    uint16_t feedforwardCutoffFrequency;
     int averageFrameTimeUs;
     rcSmoothingFilterTraining_t training;
     uint8_t debugAxis;
-    uint8_t autoSmoothnessFactor;
+    uint8_t autoSmoothnessFactorSetpoint;
+    uint8_t autoSmoothnessFactorThrottle;
 } rcSmoothingFilter_t;
 
 typedef struct rcControlsConfig_s {

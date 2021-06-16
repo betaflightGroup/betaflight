@@ -95,7 +95,7 @@
 #define ICM42605_UI_DRDY_INT1_EN_DISABLED           (0 << 3)
 #define ICM42605_UI_DRDY_INT1_EN_ENABLED            (1 << 3)
 
-static void icm42605SpiInit(extDevice_t *dev)
+static void icm42605SpiInit(const extDevice_t *dev)
 {
     static bool hardwareInitialised = false;
 
@@ -109,7 +109,7 @@ static void icm42605SpiInit(extDevice_t *dev)
     hardwareInitialised = true;
 }
 
-uint8_t icm42605SpiDetect(extDevice_t *dev)
+uint8_t icm42605SpiDetect(const extDevice_t *dev)
 {
     icm42605SpiInit(dev);
 
@@ -249,8 +249,8 @@ void icm42605GyroInit(gyroDev_t *gyro)
 
 bool icm42605GyroReadSPI(gyroDev_t *gyro)
 {
-    DMA_DATA_AUTO uint8_t dataToSend[7] = {ICM42605_RA_GYRO_DATA_X1 | 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    DMA_DATA_AUTO uint8_t data[7];
+    STATIC_DMA_DATA_AUTO uint8_t dataToSend[7] = {ICM42605_RA_GYRO_DATA_X1 | 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    STATIC_DMA_DATA_AUTO uint8_t data[7];
 
     const bool ack = spiReadWriteBufRB(&gyro->dev, dataToSend, data, 7);
     if (!ack) {

@@ -30,6 +30,5 @@ void targetConfiguration(void)
 {
 
     sdcardConfigMutable()->mode = SDCARD_MODE_SDIO;
-    sdcardConfigMutable()->useDma = true;
 }
 #endif

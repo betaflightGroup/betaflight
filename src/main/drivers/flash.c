@@ -32,6 +32,7 @@
 #include "flash_impl.h"
 #include "flash_m25p16.h"
 #include "flash_w25n01g.h"
+#include "flash_w25q128fv.h"
 #include "flash_w25m.h"
 #include "drivers/bus_spi.h"
 #include "drivers/bus_quadspi.h"
@@ -55,39 +56,72 @@ static int flashPartitions = 0;
 #ifdef USE_QUADSPI
 static bool flashQuadSpiInit(const flashConfig_t *flashConfig)
 {
-    QUADSPI_TypeDef *quadSpiInstance = quadSpiInstanceByDevice(QUADSPI_CFG_TO_DEV(flashConfig->quadSpiDevice));
-    quadSpiSetDivisor(quadSpiInstance, QUADSPI_CLOCK_INITIALISATION);
+    bool detected = false;
 
-    uint8_t readIdResponse[4];
-    bool status = quadSpiReceive1LINE(quadSpiInstance, FLASH_INSTRUCTION_RDID, 8, readIdResponse, sizeof(readIdResponse));
-    if (!status) {
-        return false;
-    }
+    enum { TRY_1LINE = 0, TRY_4LINE, BAIL};
+    int phase = TRY_1LINE;
 
-    flashDevice.io.mode = FLASHIO_QUADSPI;
-    flashDevice.io.handle.quadSpi = quadSpiInstance;
+    QUADSPI_TypeDef *hqspi = quadSpiInstanceByDevice(QUADSPI_CFG_TO_DEV(flashConfig->quadSpiDevice));
 
-    // Manufacturer, memory type, and capacity
-    uint32_t chipID = (readIdResponse[0] << 16) | (readIdResponse[1] << 8) | (readIdResponse[2]);
+    do {
+        quadSpiSetDivisor(hqspi, QUADSPI_CLOCK_INITIALISATION);
 
-#if defined(USE_FLASH_W25N01G) || defined(USE_FLASH_W25M02G)
-    quadSpiSetDivisor(quadSpiInstance, QUADSPI_CLOCK_ULTRAFAST);
+        // 3 bytes for what we need, but some IC's need 8 dummy cycles after the instruction, so read 4 and make two attempts to
+        // assemble the chip id from the response.
+        uint8_t readIdResponse[4];
 
-#if defined(USE_FLASH_W25N01G)
-    if (w25n01g_detect(&flashDevice, chipID)) {
-        return true;
-    }
+        bool status = false;
+        switch (phase) {
+        case TRY_1LINE:
+            status = quadSpiReceive1LINE(hqspi, FLASH_INSTRUCTION_RDID, 0, readIdResponse, 4);
+            break;
+        case TRY_4LINE:
+            status = quadSpiReceive4LINES(hqspi, FLASH_INSTRUCTION_RDID, 2, readIdResponse, 3);
+            break;
+        default:
+            break;
+        }
+
+        if (!status) {
+            phase++;
+            continue;
+        }
+
+        flashDevice.io.handle.quadSpi = hqspi;
+        flashDevice.io.mode = FLASHIO_QUADSPI;
+
+        quadSpiSetDivisor(hqspi, QUADSPI_CLOCK_ULTRAFAST);
+
+
+        for (uint8_t offset = 0; offset <= 1 && !detected; offset++) {
+
+            uint32_t chipID = (readIdResponse[offset + 0] << 16) | (readIdResponse[offset + 1] << 8) | (readIdResponse[offset + 2]);
+
+            if (offset == 0) {
+#ifdef USE_FLASH_W25Q128FV
+                if (!detected && w25q128fv_detect(&flashDevice, chipID)) {
+                    detected = true;
+                }
 #endif
+            }
 
+            if (offset == 1) {
+#ifdef USE_FLASH_W25N01G
+                if (!detected && w25n01g_detect(&flashDevice, chipID)) {
+                    detected = true;
+                }
+#endif
 #if defined(USE_FLASH_W25M02G)
-    if (w25m_detect(&flashDevice, chipID)) {
-        return true;
-    }
+                if (!detected && w25m_detect(&flashDevice, chipID)) {
+                    detected = true;
+                }
 #endif
+            }
+        }
+        phase++;
+    } while (phase != BAIL && !detected);
 
-#endif
-
-    return false;
+    return detected;
 }
 #endif  // USE_QUADSPI
 

@@ -34,7 +34,7 @@
 #include "rx/rx.h"
 #include "rx/rx_spi.h"
 
-PG_REGISTER_WITH_RESET_FN(rxConfig_t, rxConfig, PG_RX_CONFIG, 2);
+PG_REGISTER_WITH_RESET_FN(rxConfig_t, rxConfig, PG_RX_CONFIG, 3);
 void pgResetFn_rxConfig(rxConfig_t *rxConfig)
 {
     RESET_CONFIG_2(rxConfig_t, rxConfig,
@@ -56,17 +56,16 @@ void pgResetFn_rxConfig(rxConfig_t *rxConfig)
         .rssi_offset = 0,
         .rssi_invert = 0,
         .rssi_src_frame_lpf_period = 30,
-        .rcInterpolation = RC_SMOOTHING_AUTO,
-        .rcInterpolationChannels = INTERPOLATION_CHANNELS_RPYT,
-        .rcInterpolationInterval = 19,
         .fpvCamAngleDegrees = 0,
         .airModeActivateThreshold = 25,
         .max_aux_channel = DEFAULT_AUX_CHANNEL_COUNT,
-        .rc_smoothing_type = RC_SMOOTHING_TYPE_FILTER,
-        .rc_smoothing_input_cutoff = 0,      // automatically calculate the cutoff by default
-        .rc_smoothing_derivative_cutoff = 0, // automatically calculate the cutoff by default
-        .rc_smoothing_debug_axis = ROLL,     // default to debug logging for the roll axis
-        .rc_smoothing_auto_factor = 30,
+        .rc_smoothing_mode = 1,
+        .rc_smoothing_setpoint_cutoff = 0,
+        .rc_smoothing_feedforward_cutoff = 0,
+        .rc_smoothing_throttle_cutoff = 0,
+        .rc_smoothing_debug_axis = ROLL,
+        .rc_smoothing_auto_factor_rpy = 30,
+        .rc_smoothing_auto_factor_throttle = 30,
         .srxl2_unit_id = 1,
         .srxl2_baud_fast = true,
         .sbus_baud_fast = false,

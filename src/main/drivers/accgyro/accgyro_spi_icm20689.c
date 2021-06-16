@@ -44,7 +44,7 @@
 // 10 MHz max SPI frequency for intialisation
 #define ICM20689_MAX_SPI_INIT_CLK_HZ 1000000
 
-static void icm20689SpiInit(extDevice_t *dev)
+static void icm20689SpiInit(const extDevice_t *dev)
 {
     static bool hardwareInitialised = false;
 
@@ -58,7 +58,7 @@ static void icm20689SpiInit(extDevice_t *dev)
     hardwareInitialised = true;
 }
 
-uint8_t icm20689SpiDetect(extDevice_t *dev)
+uint8_t icm20689SpiDetect(const extDevice_t *dev)
 {
     icm20689SpiInit(dev);
 

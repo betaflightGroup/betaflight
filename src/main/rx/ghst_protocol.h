@@ -63,6 +63,9 @@ typedef enum {
     GHST_DL_LINK_STAT           = 0x21,
     GHST_DL_VTX_STAT            = 0x22,
     GHST_DL_PACK_STAT           = 0x23,     // Battery (Pack) Status
+    GHST_DL_GPS_PRIMARY         = 0x25,     // Primary GPS data (position)
+    GHST_DL_GPS_SECONDARY       = 0x26,
+    GHST_DL_MAGBARO             = 0x27
 } ghstDl_e;
 
 #define GHST_RC_CTR_VAL_12BIT       0x7C0   // servo center for 12 bit values (0x3e0 << 1)
@@ -70,9 +73,16 @@ typedef enum {
 
 #define GHST_FRAME_SIZE             14      // including addr, type, len, crc, and payload
 
-#define GHST_PAYLOAD_SIZE_MAX           14
+#define GHST_PAYLOAD_SIZE_MAX       14
 
-#define GHST_FRAME_SIZE_MAX             24
+#define GHST_FRAME_SIZE_MAX         24
+
+#define GPS_FLAGS_FIX               0x01
+#define GPS_FLAGS_FIX_HOME          0x02
+
+#define MISC_FLAGS_MAGHEAD          0x01
+#define MISC_FLAGS_BAROALT          0x02
+#define MISC_FLAGS_VARIO            0x04
 
 typedef struct ghstFrameDef_s {
     uint8_t addr;

@@ -29,7 +29,7 @@
 
 
 // Access routines where the register is accessed directly
-bool busRawWriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data)
+bool busRawWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
 #ifdef USE_SPI
     if (dev->bus->busType ==  BUSTYPE_SPI) {
@@ -41,7 +41,7 @@ bool busRawWriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data)
     }
 }
 
-bool busRawWriteRegisterStart(extDevice_t *dev, uint8_t reg, uint8_t data)
+bool busRawWriteRegisterStart(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
 #ifdef USE_SPI
     if (dev->bus->busType ==  BUSTYPE_SPI) {
@@ -53,7 +53,7 @@ bool busRawWriteRegisterStart(extDevice_t *dev, uint8_t reg, uint8_t data)
     }
 }
 
-bool busRawReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
+bool busRawReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
 {
 #ifdef USE_SPI
     if (dev->bus->busType ==  BUSTYPE_SPI) {
@@ -65,7 +65,7 @@ bool busRawReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *data, uint
     }
 }
 
-bool busRawReadRegisterBufferStart(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
+bool busRawReadRegisterBufferStart(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
 {
 #ifdef USE_SPI
     if (dev->bus->busType ==  BUSTYPE_SPI) {
@@ -79,7 +79,7 @@ bool busRawReadRegisterBufferStart(extDevice_t *dev, uint8_t reg, uint8_t *data,
 
 
 // Write routines where the register is masked with 0x7f
-bool busWriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data)
+bool busWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
 #if !defined(USE_SPI) && !defined(USE_I2C)
     UNUSED(reg);
@@ -99,7 +99,7 @@ bool busWriteRegister(extDevice_t *dev, uint8_t reg, uint8_t data)
     }
 }
 
-bool busWriteRegisterStart(extDevice_t *dev, uint8_t reg, uint8_t data)
+bool busWriteRegisterStart(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
 #if !defined(USE_SPI) && !defined(USE_I2C)
     UNUSED(reg);
@@ -120,7 +120,7 @@ bool busWriteRegisterStart(extDevice_t *dev, uint8_t reg, uint8_t data)
 }
 
 // Read routines where the register is ORed with 0x80
-bool busReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
+bool busReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
 {
 #if !defined(USE_SPI) && !defined(USE_I2C)
     UNUSED(reg);
@@ -142,7 +142,7 @@ bool busReadRegisterBuffer(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t
 }
 
 // Start the I2C read, but do not wait for completion
-bool busReadRegisterBufferStart(extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
+bool busReadRegisterBufferStart(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
 {
 #if !defined(USE_SPI) && !defined(USE_I2C)
     UNUSED(reg);
@@ -166,7 +166,7 @@ bool busReadRegisterBufferStart(extDevice_t *dev, uint8_t reg, uint8_t *data, ui
 }
 
 // Returns true if bus is still busy
-bool busBusy(extDevice_t *dev, bool *error)
+bool busBusy(const extDevice_t *dev, bool *error)
 {
 #if !defined(USE_I2C)
     UNUSED(error);
@@ -188,7 +188,7 @@ bool busBusy(extDevice_t *dev, bool *error)
     }
 }
 
-uint8_t busReadRegister(extDevice_t *dev, uint8_t reg)
+uint8_t busReadRegister(const extDevice_t *dev, uint8_t reg)
 {
 #if !defined(USE_SPI) && !defined(USE_I2C)
     UNUSED(dev);
@@ -201,7 +201,7 @@ uint8_t busReadRegister(extDevice_t *dev, uint8_t reg)
 #endif
 }
 
-void busDeviceRegister(extDevice_t *dev)
+void busDeviceRegister(const extDevice_t *dev)
 {
 #if !defined(USE_SPI) && !defined(USE_I2C)
     UNUSED(dev);

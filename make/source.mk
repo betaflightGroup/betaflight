@@ -93,7 +93,7 @@ COMMON_SRC = \
             flight/gps_rescue.c \
             flight/gyroanalyse.c \
             flight/imu.c \
-            flight/interpolated_setpoint.c \
+            flight/feedforward.c \
             flight/mixer.c \
             flight/mixer_init.c \
             flight/mixer_tricopter.c \
@@ -294,6 +294,7 @@ SIZE_OPTIMISED_SRC := $(SIZE_OPTIMISED_SRC) \
             drivers/barometer/barometer_lps.c \
             drivers/barometer/barometer_qmp6988.c \
             drivers/bus_i2c_config.c \
+            drivers/bus_i2c_timing.c \
             drivers/bus_spi_config.c \
             drivers/bus_spi_pinconfig.c \
             drivers/compass/compass_ak8963.c \
@@ -406,6 +407,7 @@ SRC += \
             drivers/flash.c \
             drivers/flash_m25p16.c \
             drivers/flash_w25n01g.c \
+            drivers/flash_w25q128fv.c \
             drivers/flash_w25m.c \
             io/flashfs.c \
             $(MSC_SRC)

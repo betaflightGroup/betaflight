@@ -417,8 +417,8 @@ static int applyStepAdjustment(controlRateConfig_t *controlRateConfig, uint8_t a
         blackboxLogInflightAdjustmentEvent(ADJUSTMENT_YAW_F, newValue);
         break;
     case ADJUSTMENT_FEEDFORWARD_TRANSITION:
-        newValue = constrain(currentPidProfile->feedForwardTransition + delta, 1, 100); // FIXME magic numbers repeated in cli.c
-        currentPidProfile->feedForwardTransition = newValue;
+        newValue = constrain(currentPidProfile->feedforwardTransition + delta, 1, 100); // FIXME magic numbers repeated in cli.c
+        currentPidProfile->feedforwardTransition = newValue;
         blackboxLogInflightAdjustmentEvent(ADJUSTMENT_FEEDFORWARD_TRANSITION, newValue);
         break;
     default:
@@ -579,7 +579,7 @@ static int applyAbsoluteAdjustment(controlRateConfig_t *controlRateConfig, adjus
         break;
     case ADJUSTMENT_FEEDFORWARD_TRANSITION:
         newValue = constrain(value, 1, 100); // FIXME magic numbers repeated in cli.c
-        currentPidProfile->feedForwardTransition = newValue;
+        currentPidProfile->feedforwardTransition = newValue;
         blackboxLogInflightAdjustmentEvent(ADJUSTMENT_FEEDFORWARD_TRANSITION, newValue);
         break;
     default:

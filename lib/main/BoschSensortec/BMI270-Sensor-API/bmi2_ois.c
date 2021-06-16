@@ -1,40 +1,42 @@
 /**
-* Copyright (c) 2020 Bosch Sensortec GmbH. All rights reserved.
-*
-* BSD-3-Clause
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its
-*    contributors may be used to endorse or promote products derived from
-*    this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-* FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-* COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-* STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-* IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-* POSSIBILITY OF SUCH DAMAGE.
-*
-* @file bmi2_ois.c
-* @date 2020-01-10
-* @version  v2.46.1
-*
-*//******************************************************************************/
+ * Copyright (c) 2020 Bosch Sensortec GmbH. All rights reserved.
+ *
+ * BSD-3-Clause
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * @file       bmi2_ois.c
+ * @date       2020-05-05
+ * @version    v2.23.2
+ *
+ */
+
+/******************************************************************************/
 
 /*!  @name          Header Files                                  */
 /******************************************************************************/
@@ -55,11 +57,12 @@
  * bmi2xy_init(), refer the example ois_accel_gyro.c for more info"
  *
  * @return Result of API execution status
- * @retval zero -> Success / +ve value -> Warning / -ve value -> Error
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
  */
 static int8_t get_ois_acc_gyr_data(struct bmi2_ois_sens_axes_data *ois_data,
                                    uint8_t reg_addr,
-                                   const struct bmi2_ois_dev *ois_dev,
+                                   struct bmi2_ois_dev *ois_dev,
                                    int16_t ois_gyr_cross_sens_zx);
 
 /*!
@@ -69,7 +72,8 @@ static int8_t get_ois_acc_gyr_data(struct bmi2_ois_sens_axes_data *ois_data,
  * @param[in] ois_dev : Structure instance of bmi2_ois_dev.
  *
  * @return Result of API execution status
- * @retval zero -> Success / +ve value -> Warning / -ve value -> Error
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
  */
 static int8_t null_ptr_check(const struct bmi2_ois_dev *ois_dev);
 
@@ -92,10 +96,7 @@ static void comp_gyro_cross_axis_sensitivity(struct bmi2_ois_sens_axes_data *ois
  * @brief This API reads the data from the given OIS register address of bmi2
  * sensor.
  */
-int8_t bmi2_ois_get_regs(uint8_t ois_reg_addr,
-                         uint8_t *ois_reg_data,
-                         uint16_t data_len,
-                         const struct bmi2_ois_dev *ois_dev)
+int8_t bmi2_ois_get_regs(uint8_t ois_reg_addr, uint8_t *ois_reg_data, uint16_t data_len, struct bmi2_ois_dev *ois_dev)
 {
     /* Variable to define error */
     int8_t rslt;
@@ -120,8 +121,8 @@ int8_t bmi2_ois_get_regs(uint8_t ois_reg_addr,
         ois_reg_addr = (ois_reg_addr | BMI2_OIS_SPI_RD_MASK);
 
         /* Read from OIS register through OIS interface */
-        rslt = ois_dev->ois_read(ois_dev->dev_id, ois_reg_addr, temp_buf, temp_len);
-        if (rslt == BMI2_OIS_OK)
+        ois_dev->intf_rslt = ois_dev->ois_read(ois_reg_addr, temp_buf, temp_len, ois_dev->intf_ptr);
+        if (ois_dev->intf_rslt == BMI2_INTF_RET_SUCCESS)
         {
             /* Read the data from the position next to dummy byte */
             while (index < data_len)
@@ -147,9 +148,9 @@ int8_t bmi2_ois_get_regs(uint8_t ois_reg_addr,
  * @brief This API writes data to the given OIS register address of bmi2 sensor.
  */
 int8_t bmi2_ois_set_regs(uint8_t ois_reg_addr,
-                         uint8_t *ois_reg_data,
+                         const uint8_t *ois_reg_data,
                          uint16_t data_len,
-                         const struct bmi2_ois_dev *ois_dev)
+                         struct bmi2_ois_dev *ois_dev)
 {
     /* Variable to define error */
     int8_t rslt;
@@ -162,8 +163,8 @@ int8_t bmi2_ois_set_regs(uint8_t ois_reg_addr,
         ois_reg_addr = (ois_reg_addr & BMI2_OIS_SPI_WR_MASK);
 
         /* Burst write to OIS register through OIS interface */
-        rslt = ois_dev->ois_write(ois_dev->dev_id, ois_reg_addr, ois_reg_data, data_len);
-        if (rslt != BMI2_OIS_OK)
+        ois_dev->intf_rslt = ois_dev->ois_write(ois_reg_addr, ois_reg_data, data_len, ois_dev->intf_ptr);
+        if (ois_dev->intf_rslt != BMI2_INTF_RET_SUCCESS)
         {
             rslt = BMI2_OIS_E_COM_FAIL;
         }
@@ -180,7 +181,7 @@ int8_t bmi2_ois_set_regs(uint8_t ois_reg_addr,
  * @brief This API enables/disables accelerometer/gyroscope data read through
  * OIS interface.
  */
-int8_t bmi2_ois_set_config(const struct bmi2_ois_dev *ois_dev)
+int8_t bmi2_ois_set_config(struct bmi2_ois_dev *ois_dev)
 {
     /* Variable to define error */
     int8_t rslt;
@@ -324,12 +325,17 @@ int8_t bmi2_ois_read_data(const uint8_t *sens_sel,
 /*!         Local Function Definitions
  ****************************************************************************/
 
+/*! @cond DOXYGEN_SUPRESS */
+
+/* Suppressing doxygen warnings triggered for same static function names present across various sensor variant
+ * directories */
+
 /*!
  * @brief This internal API gets the accelerometer and the gyroscope data.
  */
 static int8_t get_ois_acc_gyr_data(struct bmi2_ois_sens_axes_data *ois_data,
                                    uint8_t reg_addr,
-                                   const struct bmi2_ois_dev *ois_dev,
+                                   struct bmi2_ois_dev *ois_dev,
                                    int16_t ois_gyr_cross_sens_zx)
 {
     /* Variable to define error */
@@ -388,7 +394,7 @@ static int8_t null_ptr_check(const struct bmi2_ois_dev *ois_dev)
     int8_t rslt = BMI2_OIS_OK;
 
     if ((ois_dev == NULL) || (ois_dev->ois_read == NULL) || (ois_dev->ois_write == NULL) ||
-        (ois_dev->ois_delay_ms == NULL))
+        (ois_dev->ois_delay_us == NULL))
     {
         /* Device structure pointer is NULL */
         rslt = BMI2_OIS_E_NULL_PTR;
@@ -407,3 +413,5 @@ static void comp_gyro_cross_axis_sensitivity(struct bmi2_ois_sens_axes_data *ois
     /* Get the compensated gyroscope x-axis */
     ois_data->x = ois_data->x - (int16_t)(((int32_t)ois_gyr_cross_sens_zx * (int32_t)ois_data->z) / 512);
 }
+
+/*! @endcond */

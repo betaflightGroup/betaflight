@@ -26,7 +26,7 @@
 
 #ifdef USE_SPI
 
-// STM32F405 can't DMA to/from the stack in FASTRAM (CCM SRAM)
+// STM32F405 can't DMA to/from FASTRAM (CCM SRAM)
 #define IS_CCM(p) (((uint32_t)p & 0xffff0000) == 0x10000000)
 
 #include "common/maths.h"
@@ -98,7 +98,7 @@ void spiInitDevice(SPIDevice device)
     SPI_Cmd(spi->dev, ENABLE);
 }
 
-void spiResetDescriptors(busDevice_t *bus)
+void spiInternalResetDescriptors(busDevice_t *bus)
 {
     DMA_InitTypeDef *initTx = bus->initTx;
     DMA_InitTypeDef *initRx = bus->initRx;
@@ -123,7 +123,7 @@ void spiResetDescriptors(busDevice_t *bus)
     initRx->DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
 }
 
-void spiResetStream(dmaChannelDescriptor_t *descriptor)
+void spiInternalResetStream(dmaChannelDescriptor_t *descriptor)
 {
     DMA_Stream_TypeDef *streamRegs = (DMA_Stream_TypeDef *)descriptor->ref;
 
@@ -134,7 +134,7 @@ void spiResetStream(dmaChannelDescriptor_t *descriptor)
     DMA_CLEAR_FLAG(descriptor, DMA_IT_HTIF | DMA_IT_TEIF | DMA_IT_TCIF);
 }
 
-static bool spiPrivReadWriteBufPolled(SPI_TypeDef *instance, const uint8_t *txData, uint8_t *rxData, int len)
+static bool spiInternalReadWriteBufPolled(SPI_TypeDef *instance, const uint8_t *txData, uint8_t *rxData, int len)
 {
     uint8_t b;
 
@@ -153,7 +153,7 @@ static bool spiPrivReadWriteBufPolled(SPI_TypeDef *instance, const uint8_t *txDa
     return true;
 }
 
-void spiPrivInitStream(extDevice_t *dev, bool preInit)
+void spiInternalInitStream(const extDevice_t *dev, bool preInit)
 {
     static uint8_t dummyTxByte = 0xff;
     static uint8_t dummyRxByte;
@@ -204,7 +204,7 @@ void spiPrivInitStream(extDevice_t *dev, bool preInit)
     initRx->DMA_BufferSize = len;
 }
 
-void spiPrivStartDMA(extDevice_t *dev)
+void spiInternalStartDMA(const extDevice_t *dev)
 {
     // Assert Chip Select
     IOLo(dev->busType_u.spi.csnPin);
@@ -250,7 +250,7 @@ void spiPrivStartDMA(extDevice_t *dev)
 }
 
 
-void spiPrivStopDMA (extDevice_t *dev)
+void spiInternalStopDMA (const extDevice_t *dev)
 {
     dmaChannelDescriptor_t *dmaTx = dev->bus->dmaTx;
     dmaChannelDescriptor_t *dmaRx = dev->bus->dmaRx;
@@ -266,7 +266,7 @@ void spiPrivStopDMA (extDevice_t *dev)
 }
 
 // DMA transfer setup and start
-void spiSequence(extDevice_t *dev, busSegment_t *segments)
+void spiSequence(const extDevice_t *dev, busSegment_t *segments)
 {
     busDevice_t *bus = dev->bus;
     SPI_TypeDef *instance = bus->busType_u.spi.instance;
@@ -285,7 +285,7 @@ void spiSequence(extDevice_t *dev, busSegment_t *segments)
         bus->busType_u.spi.speed = dev->busType_u.spi.speed;
     }
 
-    if (dev->busType_u.spi.leadingEdge |= bus->busType_u.spi.leadingEdge) {
+    if (dev->busType_u.spi.leadingEdge != bus->busType_u.spi.leadingEdge) {
         // Switch SPI clock polarity/phase
         instance->CR1 &= ~(SPI_CPOL_High | SPI_CPHA_2Edge);
 
@@ -315,17 +315,17 @@ void spiSequence(extDevice_t *dev, busSegment_t *segments)
     // Use DMA if possible
     if (bus->useDMA && dmaSafe && ((segmentCount > 1) || (xferLen > 8))) {
         // Intialise the init structures for the first transfer
-        spiPrivInitStream(dev, false);
+        spiInternalInitStream(dev, false);
 
         // Start the transfers
-        spiPrivStartDMA(dev);
+        spiInternalStartDMA(dev);
     } else {
         // Manually work through the segment list performing a transfer for each
         while (bus->curSegment->len) {
             // Assert Chip Select
             IOLo(dev->busType_u.spi.csnPin);
 
-            spiPrivReadWriteBufPolled(
+            spiInternalReadWriteBufPolled(
                     bus->busType_u.spi.instance,
                     bus->curSegment->txData,
                     bus->curSegment->rxData,

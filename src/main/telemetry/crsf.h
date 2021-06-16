@@ -31,14 +31,21 @@
 #define CRSF_MSP_TX_BUF_SIZE 128
 
 void initCrsfTelemetry(void);
+uint32_t getCrsfDesiredSpeed(void);
+void setCrsfDefaultSpeed(void);
 bool checkCrsfTelemetryState(void);
 void handleCrsfTelemetry(timeUs_t currentTimeUs);
 void crsfScheduleDeviceInfoResponse(void);
 void crsfScheduleMspResponse(void);
+int getCrsfFrame(uint8_t *frame, crsfFrameType_e frameType);
+void crsfProcessCommand(uint8_t *frameStart);
 #if defined(USE_CRSF_CMS_TELEMETRY)
 void crsfProcessDisplayPortCmd(uint8_t *frameStart);
 #endif
 #if defined(USE_MSP_OVER_TELEMETRY)
 void initCrsfMspBuffer(void);
 bool bufferCrsfMspFrame(uint8_t *frameStart, int frameLength);
+#endif
+#if defined(USE_CRSF_V3)
+void speedNegotiationProcess(uint32_t currentTime);
 #endif

@@ -263,7 +263,7 @@ serial 1 1024 115200 57600 115200 115200
 
 CLI setting to determine if the voltage reported is Vbatt or calculated average cell voltage
 ```
-set ibus_report_cell_voltage=[ON/OFF]
+set report_cell_voltage=[ON/OFF]
 ```
 
 ### Available sensors

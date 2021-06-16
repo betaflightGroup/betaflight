@@ -160,6 +160,7 @@ MCU_COMMON_SRC = \
             drivers/adc_stm32g4xx.c \
             drivers/bus_i2c_hal.c \
             drivers/bus_i2c_hal_init.c \
+            drivers/bus_i2c_timing.c \
             drivers/bus_spi_hal.c \
             drivers/dma_stm32g4xx.c \
             drivers/dshot_bitbang.c \

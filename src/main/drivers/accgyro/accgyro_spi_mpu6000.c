@@ -129,7 +129,7 @@ void mpu6000SpiAccInit(accDev_t *acc)
     acc->acc_1G = 512 * 4;
 }
 
-uint8_t mpu6000SpiDetect(extDevice_t *dev)
+uint8_t mpu6000SpiDetect(const extDevice_t *dev)
 {
 
     spiSetClkDivisor(dev, spiCalculateDivider(MPU6000_MAX_SPI_INIT_CLK_HZ));

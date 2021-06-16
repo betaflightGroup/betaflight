@@ -169,7 +169,7 @@ SECTIONS
   .fastram_data :
   {
     . = ALIGN(4);
-    _sfastram_data = .;        /* create a global symbol at data start */
+     _sfastram_data = .;        /* create a global symbol at data start */
     *(.fastram_data)           /* .data sections */
     *(.fastram_data*)          /* .data* sections */
 

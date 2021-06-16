@@ -237,7 +237,7 @@ static uint8_t cmsx_simplified_i_gain;
 static uint8_t cmsx_simplified_pd_ratio;
 static uint8_t cmsx_simplified_pd_gain;
 static uint8_t cmsx_simplified_dmin_ratio;
-static uint8_t cmsx_simplified_ff_gain;
+static uint8_t cmsx_simplified_feedforward_gain;
 
 static uint8_t cmsx_simplified_dterm_filter;
 static uint8_t cmsx_simplified_dterm_filter_multiplier;
@@ -257,7 +257,7 @@ static const void *cmsx_simplifiedTuningOnEnter(displayPort_t *pDisp)
     cmsx_simplified_pd_ratio = pidProfile->simplified_pd_ratio;
     cmsx_simplified_pd_gain = pidProfile->simplified_pd_gain;
     cmsx_simplified_dmin_ratio = pidProfile->simplified_dmin_ratio;
-    cmsx_simplified_ff_gain = pidProfile->simplified_ff_gain;
+    cmsx_simplified_feedforward_gain = pidProfile->simplified_feedforward_gain;
 
     cmsx_simplified_dterm_filter = pidProfile->simplified_dterm_filter;
     cmsx_simplified_dterm_filter_multiplier = pidProfile->simplified_dterm_filter_multiplier;
@@ -281,7 +281,7 @@ static const void *cmsx_simplifiedTuningOnExit(displayPort_t *pDisp, const OSD_E
     pidProfile->simplified_pd_ratio = cmsx_simplified_pd_ratio;
     pidProfile->simplified_pd_gain = cmsx_simplified_pd_gain;
     pidProfile->simplified_dmin_ratio = cmsx_simplified_dmin_ratio;
-    pidProfile->simplified_ff_gain = cmsx_simplified_ff_gain;
+    pidProfile->simplified_feedforward_gain = cmsx_simplified_feedforward_gain;
 
     pidProfile->simplified_dterm_filter = cmsx_simplified_dterm_filter;
     pidProfile->simplified_dterm_filter_multiplier = cmsx_simplified_dterm_filter_multiplier;
@@ -305,7 +305,7 @@ static const void *cmsx_applySimplifiedTuning(displayPort_t *pDisp, const void *
     pidProfile->simplified_pd_ratio = cmsx_simplified_pd_ratio;
     pidProfile->simplified_pd_gain = cmsx_simplified_pd_gain;
     pidProfile->simplified_dmin_ratio = cmsx_simplified_dmin_ratio;
-    pidProfile->simplified_ff_gain = cmsx_simplified_ff_gain;
+    pidProfile->simplified_feedforward_gain = cmsx_simplified_feedforward_gain;
 
     pidProfile->simplified_dterm_filter = cmsx_simplified_dterm_filter;
     pidProfile->simplified_dterm_filter_multiplier = cmsx_simplified_dterm_filter_multiplier;
@@ -327,7 +327,7 @@ static const OSD_Entry cmsx_menuSimplifiedTuningEntries[] =
     { "PD RATIO",       OME_FLOAT, NULL, &(OSD_FLOAT_t) { &cmsx_simplified_pd_ratio,          SIMPLIFIED_TUNING_MIN, SIMPLIFIED_TUNING_MAX, 5, 10 }, 0 },
     { "PD GAIN",        OME_FLOAT, NULL, &(OSD_FLOAT_t) { &cmsx_simplified_pd_gain,           SIMPLIFIED_TUNING_MIN, SIMPLIFIED_TUNING_MAX, 5, 10 }, 0 },
     { "DMIN RATIO",     OME_FLOAT, NULL, &(OSD_FLOAT_t) { &cmsx_simplified_dmin_ratio,        SIMPLIFIED_TUNING_MIN, SIMPLIFIED_TUNING_MAX, 5, 10 }, 0 },
-    { "FF GAIN",        OME_FLOAT, NULL, &(OSD_FLOAT_t) { &cmsx_simplified_ff_gain,           SIMPLIFIED_TUNING_MIN, SIMPLIFIED_TUNING_MAX, 5, 10 }, 0 },
+    { "FF GAIN",        OME_FLOAT, NULL, &(OSD_FLOAT_t) { &cmsx_simplified_feedforward_gain,  SIMPLIFIED_TUNING_MIN, SIMPLIFIED_TUNING_MAX, 5, 10 }, 0 },
 
     { "-- SIMPLIFIED FILTER --", OME_Label, NULL, NULL, 0},
     { "GYRO TUNING",    OME_TAB,   NULL, &(OSD_TAB_t)   { &cmsx_simplified_gyro_filter,  1, lookupTableOffOn }, 0 },
@@ -489,8 +489,8 @@ static CMS_Menu cmsx_menuLaunchControl = {
 };
 #endif
 
-static uint8_t  cmsx_feedForwardTransition;
-static uint8_t  cmsx_ff_boost;
+static uint8_t  cmsx_feedforwardTransition;
+static uint8_t  cmsx_feedforward_boost;
 static uint8_t  cmsx_angleStrength;
 static uint8_t  cmsx_horizonStrength;
 static uint8_t  cmsx_horizonTransition;
@@ -516,10 +516,10 @@ static uint8_t cmsx_iterm_relax_type;
 static uint8_t cmsx_iterm_relax_cutoff;
 #endif
 
-#ifdef USE_INTERPOLATED_SP
-static uint8_t cmsx_ff_interpolate_sp;
-static uint8_t cmsx_ff_smooth_factor;
-static uint8_t cmsx_ff_jitter_factor;
+#ifdef USE_FEEDFORWARD
+static uint8_t cmsx_feedforward_averaging;
+static uint8_t cmsx_feedforward_smooth_factor;
+static uint8_t cmsx_feedforward_jitter_factor;
 #endif
 
 static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
@@ -530,8 +530,8 @@ static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
 
     const pidProfile_t *pidProfile = pidProfiles(pidProfileIndex);
 
-    cmsx_feedForwardTransition  = pidProfile->feedForwardTransition;
-    cmsx_ff_boost = pidProfile->ff_boost;
+    cmsx_feedforwardTransition  = pidProfile->feedforwardTransition;
+    cmsx_feedforward_boost = pidProfile->feedforward_boost;
 
     cmsx_angleStrength =     pidProfile->pid[PID_LEVEL].P;
     cmsx_horizonStrength =   pidProfile->pid[PID_LEVEL].I;
@@ -559,10 +559,10 @@ static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
     cmsx_iterm_relax_cutoff = pidProfile->iterm_relax_cutoff;
 #endif
 
-#ifdef USE_INTERPOLATED_SP
-    cmsx_ff_interpolate_sp = pidProfile->ff_interpolate_sp;
-    cmsx_ff_smooth_factor = pidProfile->ff_smooth_factor;
-    cmsx_ff_jitter_factor = pidProfile->ff_jitter_factor;
+#ifdef USE_FEEDFORWARD
+    cmsx_feedforward_averaging = pidProfile->feedforward_averaging;
+    cmsx_feedforward_smooth_factor = pidProfile->feedforward_smooth_factor;
+    cmsx_feedforward_jitter_factor = pidProfile->feedforward_jitter_factor;
 #endif
 
 #ifdef USE_BATTERY_VOLTAGE_SAG_COMPENSATION
@@ -577,9 +577,9 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
     UNUSED(self);
 
     pidProfile_t *pidProfile = pidProfilesMutable(pidProfileIndex);
-    pidProfile->feedForwardTransition = cmsx_feedForwardTransition;
+    pidProfile->feedforwardTransition = cmsx_feedforwardTransition;
     pidInitConfig(currentPidProfile);
-    pidProfile->ff_boost = cmsx_ff_boost;
+    pidProfile->feedforward_boost = cmsx_feedforward_boost;
 
     pidProfile->pid[PID_LEVEL].P = cmsx_angleStrength;
     pidProfile->pid[PID_LEVEL].I = cmsx_horizonStrength;
@@ -607,10 +607,10 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
     pidProfile->iterm_relax_cutoff = cmsx_iterm_relax_cutoff;
 #endif
 
-#ifdef USE_INTERPOLATED_SP
-    pidProfile->ff_interpolate_sp = cmsx_ff_interpolate_sp;
-    pidProfile->ff_smooth_factor = cmsx_ff_smooth_factor;
-    pidProfile->ff_jitter_factor = cmsx_ff_jitter_factor;
+#ifdef USE_FEEDFORWARD
+    pidProfile->feedforward_averaging = cmsx_feedforward_averaging;
+    pidProfile->feedforward_smooth_factor = cmsx_feedforward_smooth_factor;
+    pidProfile->feedforward_jitter_factor = cmsx_feedforward_jitter_factor;
 #endif
 
 #ifdef USE_BATTERY_VOLTAGE_SAG_COMPENSATION
@@ -624,13 +624,13 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
 static const OSD_Entry cmsx_menuProfileOtherEntries[] = {
     { "-- OTHER PP --", OME_Label, NULL, pidProfileIndexString, 0 },
 
-    { "FF TRANS",      OME_FLOAT,  NULL, &(OSD_FLOAT_t)  { &cmsx_feedForwardTransition,  0,    100,   1, 10 }, 0 },
-#ifdef USE_INTERPOLATED_SP
-    { "FF MODE",       OME_TAB,    NULL, &(OSD_TAB_t)    { &cmsx_ff_interpolate_sp,  4, lookupTableInterpolatedSetpoint}, 0 },
-    { "FF SMOOTHNESS", OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_ff_smooth_factor,     0,     75,   1  }   , 0 },
-    { "FF JITTER",     OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_ff_jitter_factor,     0,     20,   1  }   , 0 },
+    { "FF TRANSITION", OME_FLOAT,  NULL, &(OSD_FLOAT_t)  { &cmsx_feedforwardTransition,  0,    100,   1, 10 }, 0 },
+#ifdef USE_FEEDFORWARD
+    { "FF AVERAGING",  OME_TAB,    NULL, &(OSD_TAB_t)    { &cmsx_feedforward_averaging,         4, lookupTableFeedforwardAveraging}, 0 },
+    { "FF SMOOTHNESS", OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_feedforward_smooth_factor,     0,     75,   1  }   , 0 },
+    { "FF JITTER",     OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_feedforward_jitter_factor,     0,     20,   1  }   , 0 },
 #endif
-    { "FF BOOST",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_ff_boost,               0,     50,   1  }   , 0 },
+    { "FF BOOST",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_feedforward_boost,               0,     50,   1  }   , 0 },
     { "ANGLE STR",   OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_angleStrength,          0,    200,   1  }   , 0 },
     { "HORZN STR",   OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_horizonStrength,        0,    200,   1  }   , 0 },
     { "HORZN TRS",   OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_horizonTransition,      0,    200,   1  }   , 0 },

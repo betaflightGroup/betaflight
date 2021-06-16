@@ -40,10 +40,10 @@
 
 #define BMI270_FIFO_FRAME_SIZE 6
 
-#define BMI270_CONFIG_SIZE 8192
+#define BMI270_CONFIG_SIZE 328
 
 // Declaration for the device config (microcode) that must be uploaded to the sensor
-extern const uint8_t bmi270_config_file[BMI270_CONFIG_SIZE];
+extern const uint8_t bmi270_maximum_fifo_config_file[BMI270_CONFIG_SIZE];
 
 #define BMI270_CHIP_ID 0x24
 
@@ -125,7 +125,7 @@ typedef enum {
 
 // BMI270 register reads are 16bits with the first byte a "dummy" value 0
 // that must be ignored. The result is in the second byte.
-static uint8_t bmi270RegisterRead(extDevice_t *dev, bmi270Register_e registerId)
+static uint8_t bmi270RegisterRead(const extDevice_t *dev, bmi270Register_e registerId)
 {
     uint8_t data[2] = { 0, 0 };
 
@@ -136,7 +136,7 @@ static uint8_t bmi270RegisterRead(extDevice_t *dev, bmi270Register_e registerId)
     }
 }
 
-static void bmi270RegisterWrite(extDevice_t *dev, bmi270Register_e registerId, uint8_t value, unsigned delayMs)
+static void bmi270RegisterWrite(const extDevice_t *dev, bmi270Register_e registerId, uint8_t value, unsigned delayMs)
 {
     spiWriteReg(dev, registerId, value);
     if (delayMs) {
@@ -146,7 +146,7 @@ static void bmi270RegisterWrite(extDevice_t *dev, bmi270Register_e registerId, u
 
 // Toggle the CS to switch the device into SPI mode.
 // Device switches initializes as I2C and switches to SPI on a low to high CS transition
-static void bmi270EnableSPI(extDevice_t *dev)
+static void bmi270EnableSPI(const extDevice_t *dev)
 {
     IOLo(dev->busType_u.spi.csnPin);
     delay(1);
@@ -154,7 +154,7 @@ static void bmi270EnableSPI(extDevice_t *dev)
     delay(10);
 }
 
-uint8_t bmi270Detect(extDevice_t *dev)
+uint8_t bmi270Detect(const extDevice_t *dev)
 {
     spiSetClkDivisor(dev, spiCalculateDivider(BMI270_MAX_SPI_CLK_HZ));
     bmi270EnableSPI(dev);
@@ -166,13 +166,13 @@ uint8_t bmi270Detect(extDevice_t *dev)
     return MPU_NONE;
 }
 
-static void bmi270UploadConfig(extDevice_t *dev)
+static void bmi270UploadConfig(const extDevice_t *dev)
 {
     bmi270RegisterWrite(dev, BMI270_REG_PWR_CONF, 0, 1);
     bmi270RegisterWrite(dev, BMI270_REG_INIT_CTRL, 0, 1);
 
     // Transfer the config file
-    spiWriteRegBuf(dev, BMI270_REG_INIT_DATA, (uint8_t *)bmi270_config_file, sizeof(bmi270_config_file));
+    spiWriteRegBuf(dev, BMI270_REG_INIT_DATA, (uint8_t *)bmi270_maximum_fifo_config_file, sizeof(bmi270_maximum_fifo_config_file));
 
     delay(10);
     bmi270RegisterWrite(dev, BMI270_REG_INIT_CTRL, 1, 1);

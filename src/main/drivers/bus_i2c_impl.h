@@ -82,8 +82,8 @@ typedef struct i2cDevice_s {
     uint8_t sclAF;
     uint8_t sdaAF;
 #endif
-    bool overClock;
     bool pullUp;
+    uint16_t clockSpeed;
 
     // MCU/Driver dependent member follows
 #if defined(STM32F1) || defined(STM32F4)

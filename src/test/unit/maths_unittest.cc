@@ -202,29 +202,6 @@ void expectVectorsAreEqual(struct fp_vector *a, struct fp_vector *b, float absTo
     EXPECT_NEAR(a->Z, b->Z, absTol);
 }
 
-TEST(MathsUnittest, TestRotateVectorWithNoAngle)
-{
-    fp_vector vector = {1.0f, 0.0f, 0.0f};
-    fp_angles_t euler_angles = {.raw={0.0f, 0.0f, 0.0f}};
-
-    rotateV(&vector, &euler_angles);
-    fp_vector expected_result = {1.0f, 0.0f, 0.0f};
-
-    expectVectorsAreEqual(&vector, &expected_result, 1e-5);
-}
-
-TEST(MathsUnittest, TestRotateVectorAroundAxis)
-{
-    // Rotate a vector <1, 0, 0> around an each axis x y and z.
-    fp_vector vector = {1.0f, 0.0f, 0.0f};
-    fp_angles_t euler_angles = {.raw={90.0f, 0.0f, 0.0f}};
-
-    rotateV(&vector, &euler_angles);
-    fp_vector expected_result = {1.0f, 0.0f, 0.0f};
-
-    expectVectorsAreEqual(&vector, &expected_result, 1e-5);
-}
-
 #if defined(FAST_MATH) || defined(VERY_FAST_MATH)
 TEST(MathsUnittest, TestFastTrigonometrySinCos)
 {

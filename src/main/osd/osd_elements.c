@@ -1057,16 +1057,24 @@ static void osdElementGpsCoordinate(osdElementParms_t *element)
 
 static void osdElementGpsSats(osdElementParms_t *element)
 {
-    int pos = tfp_sprintf(element->buff, "%c%c%2d", SYM_SAT_L, SYM_SAT_R, gpsSol.numSat);
-    if (osdConfig()->gps_sats_show_hdop) { // add on the GPS module HDOP estimate
-        element->buff[pos++] = ' ';
-        osdPrintFloat(element->buff + pos, SYM_NONE, gpsSol.hdop / 100.0f, "", 1, true, SYM_NONE);
+    if (!gpsIsHealthy()) {
+        tfp_sprintf(element->buff, "%c%cNC", SYM_SAT_L, SYM_SAT_R);
+    } else {
+        int pos = tfp_sprintf(element->buff, "%c%c%2d", SYM_SAT_L, SYM_SAT_R, gpsSol.numSat);
+        if (osdConfig()->gps_sats_show_hdop) { // add on the GPS module HDOP estimate
+            element->buff[pos++] = ' ';
+            osdPrintFloat(element->buff + pos, SYM_NONE, gpsSol.hdop / 100.0f, "", 1, true, SYM_NONE);
+        }
     }
 }
 
 static void osdElementGpsSpeed(osdElementParms_t *element)
 {
-    tfp_sprintf(element->buff, "%c%3d%c", SYM_SPEED, osdGetSpeedToSelectedUnit(gpsConfig()->gps_use_3d_speed ? gpsSol.speed3d : gpsSol.groundSpeed), osdGetSpeedToSelectedUnitSymbol());
+    if (STATE(GPS_FIX)) {
+        tfp_sprintf(element->buff, "%c%3d%c", SYM_SPEED, osdGetSpeedToSelectedUnit(gpsConfig()->gps_use_3d_speed ? gpsSol.speed3d : gpsSol.groundSpeed), osdGetSpeedToSelectedUnitSymbol());
+    } else {
+        tfp_sprintf(element->buff, "%c%c%c", SYM_SPEED, SYM_HYPHEN, osdGetSpeedToSelectedUnitSymbol());
+    }
 }
 
 static void osdElementEfficiency(osdElementParms_t *element)

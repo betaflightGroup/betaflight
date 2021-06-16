@@ -291,6 +291,7 @@ MCU_COMMON_SRC = \
             drivers/adc_stm32h7xx.c \
             drivers/bus_i2c_hal.c \
             drivers/bus_i2c_hal_init.c \
+            drivers/bus_i2c_timing.c \
             drivers/pwm_output_dshot_hal.c \
             drivers/pwm_output_dshot_shared.c \
             drivers/persistent.c \

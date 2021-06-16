@@ -83,8 +83,6 @@ void targetConfiguration(void)
     rxConfigMutable()->spektrum_sat_bind = 5; // DSM2 11ms
     rxConfigMutable()->spektrum_sat_bind_autoreset = 1;
     rxConfigMutable()->mincheck = 1025;
-    rxConfigMutable()->rcInterpolation = RC_SMOOTHING_MANUAL;
-    rxConfigMutable()->rcInterpolationInterval = 14;
     parseRcChannels("TAER1234", rxConfigMutable());
 
     mixerConfigMutable()->yaw_motors_reversed = true;
@@ -133,7 +131,7 @@ void targetConfiguration(void)
         pidProfile->dterm_notch_hz = 0;
         pidProfile->pid[PID_PITCH].F = 100;
         pidProfile->pid[PID_ROLL].F = 100;
-        pidProfile->feedForwardTransition = 0;
+        pidProfile->feedforwardTransition = 0;
 
     /* Anti-Gravity */
     pidProfile->itermThrottleThreshold = 500;

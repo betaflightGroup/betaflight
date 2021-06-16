@@ -30,11 +30,13 @@
 * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 *
-* @file bmi270.c
-* @date 2020-01-10
-* @version  v2.46.1
+* @file       bmi270.c
+* @date       2020-11-04
+* @version    v2.63.1
 *
-*//***************************************************************************/
+*/
+
+/***************************************************************************/
 
 /*!             Header files
  ****************************************************************************/
@@ -483,6 +485,7 @@ const uint8_t bmi270_config_file[] = {
 
 /*! @name  Global array that stores the feature input configuration of BMI270 */
 const struct bmi2_feature_config bmi270_feat_in[BMI270_MAX_FEAT_IN] = {
+    { .type = BMI2_CONFIG_ID, .page = BMI2_PAGE_1, .start_addr = BMI270_CONFIG_ID_STRT_ADDR },
     { .type = BMI2_MAX_BURST_LEN, .page = BMI2_PAGE_1, .start_addr = BMI270_MAX_BURST_LEN_STRT_ADDR },
     { .type = BMI2_CRT_GYRO_SELF_TEST, .page = BMI2_PAGE_1, .start_addr = BMI270_CRT_GYRO_SELF_TEST_STRT_ADDR },
     { .type = BMI2_ABORT_CRT_GYRO_SELF_TEST, .page = BMI2_PAGE_1, .start_addr = BMI270_ABORT_STRT_ADDR },
@@ -512,6 +515,18 @@ const struct bmi2_feature_config bmi270_feat_out[BMI270_MAX_FEAT_OUT] = {
     { .type = BMI2_VFRM_STATUS, .page = BMI2_PAGE_0, .start_addr = BMI270_NVM_VFRM_OUT_STRT_ADDR }
 };
 
+/*! @name  Global array that stores the feature interrupts of BMI270 */
+struct bmi2_map_int bmi270_map_int[BMI270_MAX_INT_MAP] = {
+    { .type = BMI2_SIG_MOTION, .sens_map_int = BMI270_INT_SIG_MOT_MASK },
+    { .type = BMI2_STEP_COUNTER, .sens_map_int = BMI270_INT_STEP_COUNTER_MASK },
+    { .type = BMI2_STEP_DETECTOR, .sens_map_int = BMI270_INT_STEP_DETECTOR_MASK },
+    { .type = BMI2_STEP_ACTIVITY, .sens_map_int = BMI270_INT_STEP_ACT_MASK },
+    { .type = BMI2_WRIST_GESTURE, .sens_map_int = BMI270_INT_WRIST_GEST_MASK },
+    { .type = BMI2_WRIST_WEAR_WAKE_UP, .sens_map_int = BMI270_INT_WRIST_WEAR_WAKEUP_MASK },
+    { .type = BMI2_ANY_MOTION, .sens_map_int = BMI270_INT_ANY_MOT_MASK },
+    { .type = BMI2_NO_MOTION, .sens_map_int = BMI270_INT_NO_MOT_MASK },
+};
+
 /******************************************************************************/
 
 /*!         Local Function Prototypes
@@ -524,9 +539,696 @@ const struct bmi2_feature_config bmi270_feat_out[BMI270_MAX_FEAT_OUT] = {
  * @param[in] dev : Structure instance of bmi2_dev.
  *
  * @return Result of API execution status
- * @retval zero -> Success / +ve value -> Warning / -ve value -> Error
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
  */
 static int8_t null_ptr_check(const struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API enables the selected sensor/features.
+ *
+ * @param[in]       sensor_sel    : Selects the desired sensor.
+ * @param[in, out]  dev           : Structure instance of bmi2_dev.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t sensor_enable(uint64_t sensor_sel, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API disables the selected sensor/features.
+ *
+ * @param[in]       sensor_sel    : Selects the desired sensor.
+ * @param[in, out]  dev           : Structure instance of bmi2_dev.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t sensor_disable(uint64_t sensor_sel, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API selects the sensors/features to be enabled or
+ * disabled.
+ *
+ * @param[in]  sens_list    : Pointer to select the sensor.
+ * @param[in]  n_sens       : Number of sensors selected.
+ * @param[out] sensor_sel   : Gets the selected sensor.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t select_sensor(const uint8_t *sens_list, uint8_t n_sens, uint64_t *sensor_sel);
+
+/*!
+ * @brief This internal API is used to enable/disable any-motion feature.
+ *
+ * @param[in] dev            : Structure instance of bmi2_dev.
+ * @param[in] enable         : Enables/Disables any-motion.
+ *
+ * Enable       |  Description
+ * -------------|---------------
+ * BMI2_DISABLE | Disables any-motion.
+ * BMI2_ENABLE  | Enables any-motion.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_any_motion(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API is used to enable/disable no-motion feature.
+ *
+ * @param[in] dev            : Structure instance of bmi2_dev.
+ * @param[in] enable         : Enables/Disables no-motion.
+ *
+ * Enable       |  Description
+ * -------------|---------------
+ * BMI2_DISABLE | Disables no-motion.
+ * BMI2_ENABLE  | Enables no-motion.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_no_motion(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API is used to enable/disable sig-motion feature.
+ *
+ * @param[in] dev            : Structure instance of bmi2_dev.
+ * @param[in] enable         : Enables/Disables sig-motion.
+ *
+ * Enable       |  Description
+ * -------------|---------------
+ * BMI2_DISABLE | Disables sig-motion.
+ * BMI2_ENABLE  | Enables sig-motion.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_sig_motion(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API is used to enable/disable step detector feature.
+ *
+ * @param[in] dev            : Structure instance of bmi2_dev.
+ * @param[in] enable         : Enables/Disables step-detector.
+ *
+ * Enable       |  Description
+ * -------------|---------------
+ * BMI2_DISABLE | Disables step detector
+ * BMI2_ENABLE  | Enables step detector
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_step_detector(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API is used to enable/disable step counter feature.
+ *
+ * @param[in] dev            : Structure instance of bmi2_dev.
+ * @param[in] enable         : Enables/Disables step counter.
+ *
+ * Enable       |  Description
+ * -------------|---------------
+ * BMI2_DISABLE | Disables step counter
+ * BMI2_ENABLE  | Enables step counter
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_step_counter(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API is used to enable/disable step activity detection.
+ *
+ * @param[in] dev            : Structure instance of bmi2_dev.
+ * @param[in] enable         : Enables/Disables step activity.
+ *
+ * Enable       |  Description
+ * -------------|---------------
+ * BMI2_DISABLE | Disables step activity
+ * BMI2_ENABLE  | Enables step activity
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_step_activity(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gives an option to enable offset correction
+ * feature of gyroscope, either internally or by the host.
+ *
+ * @param[in] enable    : Enables/Disables self-offset correction.
+ * @param[in] dev       : Structure instance of bmi2_dev.
+ *
+ *  enable      |  Description
+ * -------------|---------------
+ * BMI2_ENABLE  | gyroscope offset correction values are set internally
+ * BMI2_DISABLE | gyroscope offset correction values has to be set by host
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_gyro_self_offset_corr(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API is used to enable/disable gyroscope user gain
+ * feature.
+ *
+ * @param[in] dev            : Structure instance of bmi2_dev.
+ * @param[in] enable         : Enables/Disables gyroscope user gain.
+ *
+ * Enable       |  Description
+ * -------------|---------------
+ * BMI2_DISABLE | Disables gyroscope user gain
+ * BMI2_ENABLE  | Enables gyroscope user gain
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_gyro_user_gain(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API enables the wrist gesture feature.
+ *
+ * @param[in] dev            : Structure instance of bmi2_dev.
+ * @param[in] enable         : Enables/Disables wrist gesture.
+ *
+ * Enable       |  Description
+ * -------------|---------------
+ * BMI2_DISABLE | Disables wrist gesture
+ * BMI2_ENABLE  | Enables wrist gesture
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_wrist_gesture(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API enables the wrist wear wake up feature.
+ *
+ * @param[in] dev            : Structure instance of bmi2_dev.
+ * @param[in] enable         : Enables/Disables wrist wear wake up.
+ *
+ * Enable       |  Description
+ * -------------|---------------
+ * BMI2_DISABLE | Disables wrist wear wake up
+ * BMI2_ENABLE  | Enables wrist wear wake up
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_wrist_wear_wake_up(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API sets any-motion configurations like axes select,
+ * duration, threshold and output-configuration.
+ *
+ * @param[in]      config      : Structure instance of bmi2_any_motion_config.
+ * @param[in, out] dev         : Structure instance of bmi2_dev.
+ *
+ * @verbatim
+ *----------------------------------------------------------------------------
+ *  bmi2_any_motion_config  |
+ *  Structure parameters    |                   Description
+ *--------------------------|--------------------------------------------------
+ *                          | Defines the number of  consecutive data points for
+ *                          | which the threshold condition must be respected,
+ *                          | for interrupt assertion. It is expressed in  50 Hz
+ *  duration                | samples (20 msec).
+ *                          | Range is 0 to 163sec.
+ *                          | Default value is 5 = 100ms.
+ * -------------------------|---------------------------------------------------
+ *                          | Slope threshold value for in 5.11g format.
+ *  threshold               | Range is 0 to 1g.
+ *                          | Default value is 0xAA = 83mg.
+ * -------------------------|---------------------------------------------------
+ *  x_sel, y_sel, z_sel     |  Selects the feature on a per-axis basis
+ * -------------------------|---------------------------------------------------
+ * @endverbatim
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_any_motion_config(const struct bmi2_any_motion_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API sets no-motion configurations like axes select,
+ * duration, threshold and output-configuration.
+ *
+ * @param[in]      config       : Structure instance of bmi2_no_motion_config.
+ * @param[in, out] dev          : Structure instance of bmi2_dev.
+ *
+ * @verbatim
+ *----------------------------------------------------------------------------
+ *  bmi2_no_motion_config   |
+ *  Structure parameters    |                   Description
+ *--------------------------|--------------------------------------------------
+ *                          | Defines the number of  consecutive data points for
+ *                          | which the threshold condition must be respected,
+ *                          | for interrupt assertion. It is expressed in  50 Hz
+ *  duration                | samples (20 msec).
+ *                          | Range is 0 to 163sec.
+ *                          | Default value is 5 = 100ms.
+ * -------------------------|---------------------------------------------------
+ *                          | Slope threshold value for in 5.11g format.
+ *  threshold               | Range is 0 to 1g.
+ *                          | Default value is 0xAA = 83mg.
+ * -------------------------|---------------------------------------------------
+ *  x_sel, y_sel, z_sel     |  Selects the feature on a per-axis basis
+ * -------------------------|---------------------------------------------------
+ * @endverbatim
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_no_motion_config(const struct bmi2_no_motion_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API sets sig-motion configurations like block-size,
+ * output-configuration and other parameters.
+ *
+ * @param[in]      config        : Structure instance of bmi2_sig_motion_config.
+ * @param[in, out] dev           : Structure instance of bmi2_dev.
+ *
+ *----------------------------------------------------------------------------
+ *  bmi2_sig_motion_config  |
+ *  Structure parameters    |                   Description
+ * -------------------------|---------------------------------------------------
+ *                          | Defines the duration after which the significant
+ *  block_size              | motion interrupt is triggered. It is expressed in
+ *                          | 50 Hz samples (20 ms). Default value is 0xFA=5sec.
+ *--------------------------|---------------------------------------------------
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_sig_motion_config(const struct bmi2_sig_motion_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API sets step counter parameter configurations.
+ *
+ * @param[in] step_count_params : Array that stores parameters 1 to 25.
+ * @param[in] dev               : Structure instance of bmi2_dev.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_step_count_params_config(const uint16_t *step_count_params, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API sets step counter/detector/activity configurations.
+ *
+ * @param[in] config      : Structure instance of bmi2_step_config.
+ * @param[in] dev         : Structure instance of bmi2_dev.
+ *
+ *---------------------------------------------------------------------------
+ *    bmi2_step_config      |
+ *  Structure parameters    |                 Description
+ *--------------------------|--------------------------------------------------
+ *                          | The Step-counter will trigger output every time
+ *                          | the number of steps are counted. Holds implicitly
+ *  water-mark level        | a 20x factor, so the range is 0 to 10230,
+ *                          | with resolution of 20 steps.
+ * -------------------------|---------------------------------------------------
+ *  reset counter           | Flag to reset the counted steps.
+ * -------------------------|---------------------------------------------------
+ * @endverbatim
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_step_config(const struct bmi2_step_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API sets wrist gesture configurations like wearable-arm,
+ * and output-configuration.
+ *
+ * @param[in]       config    : Structure instance of bmi2_wrist_gest_config.
+ * @param[in, out]  dev       : Structure instance of bmi2_dev.
+ *
+ * @verbatim
+ *-----------------------------------------------------------------------------
+ *  bmi2_wrist_gest_config  |
+ *  Structure parameters    |               Description
+ *--------------------------|--------------------------------------------------
+ *                          | Device in left (0) or right (1) arm. By default,
+ *  wear_arm                | the wearable device is assumed to be in left arm
+ *                          | i.e. default value is 0.
+ * -------------------------|---------------------------------------------------
+ * @endverbatim
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_wrist_gest_config(const struct bmi2_wrist_gest_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API sets wrist wear wake-up configurations like
+ * output-configuration.
+ *
+ * @param[in]       config    : Structure instance of
+ *                              bmi2_wrist_wear_wake_up_config.
+ * @param[in, out]  dev       : Structure instance of bmi2_dev.
+ *
+ * @verbatim
+ *-----------------------------------------------------------------------------
+ * bmi2_wrist_wear_wake_up_config   |
+ *  Structure parameters            |               Description
+ *----------------------------------|-------------------------------------------
+ *                                  | To set the wrist wear wake-up parameters like
+ *                                  | min_angle_focus, min_angle_nonfocus,
+ *  wrist_wear_wakeup_params            | angle_landscape_left, angle_landscape_right,
+ *                                  | angle_potrait_up and down.
+ * ---------------------------------|-------------------------------------------
+ * @endverbatim
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t set_wrist_wear_wake_up_config(const struct bmi2_wrist_wear_wake_up_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets any-motion configurations like axes select,
+ * duration, threshold and output-configuration.
+ *
+ * @param[out] config        : Structure instance of bmi2_any_motion_config.
+ * @param[in, out]  dev      : Structure instance of bmi2_dev.
+ *
+ * @verbatim
+ *----------------------------------------------------------------------------
+ *  bmi2_any_motion_config  |
+ *  Structure parameters    |                   Description
+ *--------------------------|--------------------------------------------------
+ *                          | Defines the number of  consecutive data points for
+ *                          | which the threshold condition must be respected,
+ *                          | for interrupt assertion. It is expressed in  50 Hz
+ *  duration                | samples (20 msec).
+ *                          | Range is 0 to 163sec.
+ *                          | Default value is 5 = 100ms.
+ * -------------------------|---------------------------------------------------
+ *                          | Slope threshold value for in 5.11g format.
+ *  threshold               | Range is 0 to 1g.
+ *                          | Default value is 0xAA = 83mg.
+ * -------------------------|---------------------------------------------------
+ *  x_sel, y_sel, z_sel     |  Selects the feature on a per-axis basis
+ * -------------------------|---------------------------------------------------
+ * @endverbatim
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_any_motion_config(struct bmi2_any_motion_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets no-motion configurations like axes select,
+ * duration, threshold and output-configuration.
+ *
+ * @param[out]      config    : Structure instance of bmi2_no_motion_config.
+ * @param[in, out]  dev       : Structure instance of bmi2_dev.
+ *
+ * @verbatim
+ *----------------------------------------------------------------------------
+ *  bmi2_no_motion_config   |
+ *  Structure parameters    |                   Description
+ *--------------------------|--------------------------------------------------
+ *                          | Defines the number of  consecutive data points for
+ *                          | which the threshold condition must be respected,
+ *                          | for interrupt assertion. It is expressed in  50 Hz
+ *  duration                | samples (20 msec).
+ *                          | Range is 0 to 163sec.
+ *                          | Default value is 5 = 100ms.
+ * -------------------------|---------------------------------------------------
+ *                          | Slope threshold value for in 5.11g format.
+ *  threshold               | Range is 0 to 1g.
+ *                          | Default value is 0xAA = 83mg.
+ * -------------------------|---------------------------------------------------
+ *  x_sel, y_sel, z_sel     |  Selects the feature on a per-axis basis
+ * -------------------------|---------------------------------------------------
+ * @endverbatim
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_no_motion_config(struct bmi2_no_motion_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets sig-motion configurations like block-size,
+ * output-configuration and other parameters.
+ *
+ * @param[out]      config    : Structure instance of bmi2_sig_motion_config.
+ * @param[in, out]  dev       : Structure instance of bmi2_dev.
+ *
+ *----------------------------------------------------------------------------
+ *  bmi2_sig_motion_config  |
+ *  Structure parameters    |                   Description
+ * -------------------------|---------------------------------------------------
+ *                          | Defines the duration after which the significant
+ *  block_size              | motion interrupt is triggered. It is expressed in
+ *                          | 50 Hz samples (20 ms). Default value is 0xFA=5sec.
+ *--------------------------|---------------------------------------------------
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_sig_motion_config(struct bmi2_sig_motion_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets step counter parameter configurations.
+ *
+ * @param[in] step_count_params : Array that stores parameters 1 to 25.
+ * @param[in] dev               : Structure instance of bmi2_dev.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_step_count_params_config(uint16_t *step_count_params, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets step counter/detector/activity configurations.
+ *
+ * @param[out] config      : Structure instance of bmi2_step_config.
+ * @param[in]  dev         : Structure instance of bmi2_dev.
+ *
+ * @verbatim
+ *----------------------------------------------------------------------------
+ *    bmi2_step_config      |
+ *  Structure parameters    |                 Description
+ *--------------------------|--------------------------------------------------
+ *                          | The Step-counter will trigger output every time
+ *                          | the number of steps are counted. Holds implicitly
+ *  water-mark level        | a 20x factor, so the range is 0 to 10230,
+ *                          | with resolution of 20 steps.
+ * -------------------------|---------------------------------------------------
+ *  reset counter           | Flag to reset the counted steps.
+ * -------------------------|---------------------------------------------------
+ * @endverbatim
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_step_config(struct bmi2_step_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets wrist gesture configurations like wearable-arm,
+ * and output-configuration.
+ *
+ * @param[out]      config    : Structure instance of bmi2_wrist_gest_config.
+ * @param[in, out]  dev       : Structure instance of bmi2_dev.
+ *
+ * @verbatim
+ *-----------------------------------------------------------------------------
+ *  bmi2_wrist_gest_config  |
+ *  Structure parameters    |               Description
+ *--------------------------|--------------------------------------------------
+ *                          | Device in left (0) or right (1) arm. By default,
+ *  wear_arm                | the wearable device is assumed to be in left arm
+ *                          | i.e. default value is 0.
+ * -------------------------|---------------------------------------------------
+ * @endverbatim
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_wrist_gest_config(struct bmi2_wrist_gest_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets wrist wear wake-up configurations like
+ * output-configuration.
+ *
+ * @param[out]      config    : Structure instance of
+ *                              bmi2_wrist_wear_wake_up_config.
+ * @param[in, out]  dev       : Structure instance of bmi2_dev.
+ *
+ * @verbatim
+ *------------------------------------|---------------------------------------
+ * bmi2_wrist_wear_wake_up_wh_config  |
+ *  Structure parameters              |               Description
+ *------------------------------------|-------------------------------------------
+ *                                    | To get the wrist wear wake-up parameters like
+ *                                    | min_angle_focus, min_angle_nonfocus,
+ *  wrist_wear_wake_params            | angle_landscape_left, angle_landscape_right,
+ *                                    | angle_potrait_up and down.
+ * -----------------------------------|-------------------------------------------
+ * @endverbatim
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_wrist_wear_wake_up_config(struct bmi2_wrist_wear_wake_up_config *config, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets the output values of wrist gesture.
+ *
+ * @param[out] wrist_gest   : Pointer to the stored wrist gesture.
+ * @param[in]  dev          : Structure instance of bmi2_dev.
+ *
+ * *wrist_gest  |  Output
+ * -------------|------------
+ * 0x00         |  UNKNOWN
+ * 0x01         |  PUSH_ARM_DOWN
+ * 0x02         |  PIVOT_UP
+ * 0x03         |  WRIST_SHAKE_JIGGLE
+ * 0x04         |  FLICK_IN
+ * 0x05         |  FLICK_OUT
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_wrist_gest_status(uint8_t *wrist_gest, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets the output values of step activity.
+ *
+ * @param[out] step_act         : Pointer to the stored step activity data.
+ * @param[in]  dev      : Structure instance of bmi2_dev.
+ *
+ * *step_act  |  Output
+ * -----------|------------
+ * 0x00       |  STILL
+ * 0x01       |  WALKING
+ * 0x02       |  RUNNING
+ * 0x03       |  UNKNOWN
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fails
+ */
+static int8_t get_step_activity_output(uint8_t *step_act, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets the output values of step counter.
+ *
+ * @param[out] step_count       : Pointer to the stored step counter data.
+ * @param[in]  dev              : Structure instance of bmi2_dev.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_step_counter_output(uint32_t *step_count, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets the error status related to NVM.
+ *
+ * @param[out] nvm_err_stat     : Stores the NVM error status.
+ * @param[in]  dev              : Structure instance of bmi2_dev.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_nvm_error_status(struct bmi2_nvm_err_status *nvm_err_stat, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API gets the error status related to virtual frames.
+ *
+ * @param[out] vfrm_err_stat    : Stores the VFRM related error status.
+ * @param[in]  dev              : Structure instance of bmi2_dev.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_vfrm_error_status(struct bmi2_vfrm_err_status *vfrm_err_stat, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API is used to get enable status of gyroscope user gain
+ * update.
+ *
+ * @param[out] status         : Stores status of gyroscope user gain update.
+ * @param[in]  dev            : Structure instance of bmi2_dev.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t get_user_gain_upd_status(uint8_t *status, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API enables/disables compensation of the gain defined
+ * in the GAIN register.
+ *
+ * @param[in] enable    : Enables/Disables gain compensation
+ * @param[in] dev       : Structure instance of bmi2_dev.
+ *
+ *  enable      |  Description
+ * -------------|---------------
+ * BMI2_ENABLE  | Enable gain compensation.
+ * BMI2_DISABLE | Disable gain compensation.
+ *
+ * @return Result of API execution status
+ * @retval 0 -> Success
+ * @retval < 0 -> Fail
+ */
+static int8_t enable_gyro_gain(uint8_t enable, struct bmi2_dev *dev);
+
+/*!
+ * @brief This internal API is used to extract the output feature configuration
+ * details like page and start address from the look-up table.
+ *
+ * @param[out] feat_output      : Structure that stores output feature
+ *                              configurations.
+ * @param[in] type              : Type of feature or sensor.
+ * @param[in] dev               : Structure instance of bmi2_dev.
+ *
+ * @return Returns the feature found flag.
+ *
+ * @retval  BMI2_FALSE : Feature not found
+ *          BMI2_TRUE  : Feature found
+ */
+static uint8_t extract_output_feat_config(struct bmi2_feature_config *feat_output,
+                                          uint8_t type,
+                                          const struct bmi2_dev *dev);
 
 /***************************************************************************/
 
@@ -560,7 +1262,7 @@ int8_t bmi270_init(struct bmi2_dev *dev)
         dev->variant_feature = BMI2_GYRO_CROSS_SENS_ENABLE | BMI2_CRT_RTOSK_ENABLE;
 
         /* An extra dummy byte is read during SPI read */
-        if (dev->intf == BMI2_SPI_INTERFACE)
+        if (dev->intf == BMI2_SPI_INTF)
         {
             dev->dummy_byte = 1;
         }
@@ -607,10 +1309,596 @@ int8_t bmi270_init(struct bmi2_dev *dev)
              */
             dev->out_sens = BMI270_MAX_FEAT_OUT;
 
+            /* Assign the offsets of the feature interrupt
+             * to the device structure
+             */
+            dev->map_int = bmi270_map_int;
+
+            /* Assign maximum number of feature interrupts
+             * to device structure
+             */
+            dev->sens_int_map = BMI270_MAX_INT_MAP;
+
             /* Get the gyroscope cross axis sensitivity */
             rslt = bmi2_get_gyro_cross_sense(dev);
-
         }
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This API selects the sensors/features to be enabled.
+ */
+int8_t bmi270_sensor_enable(const uint8_t *sens_list, uint8_t n_sens, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to select sensor */
+    uint64_t sensor_sel = 0;
+
+    /* Null-pointer check */
+    rslt = null_ptr_check(dev);
+    if ((rslt == BMI2_OK) && (sens_list != NULL))
+    {
+        /* Get the selected sensors */
+        rslt = select_sensor(sens_list, n_sens, &sensor_sel);
+        if (rslt == BMI2_OK)
+        {
+            /* Enable the selected sensors */
+            rslt = sensor_enable(sensor_sel, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_NULL_PTR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This API selects the sensors/features to be disabled.
+ */
+int8_t bmi270_sensor_disable(const uint8_t *sens_list, uint8_t n_sens, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to select sensor */
+    uint64_t sensor_sel = 0;
+
+    /* Null-pointer check */
+    rslt = null_ptr_check(dev);
+    if ((rslt == BMI2_OK) && (sens_list != NULL))
+    {
+        /* Get the selected sensors */
+        rslt = select_sensor(sens_list, n_sens, &sensor_sel);
+        if (rslt == BMI2_OK)
+        {
+            /* Disable the selected sensors */
+            rslt = sensor_disable(sensor_sel, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_NULL_PTR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This API sets the sensor/feature configuration.
+ */
+int8_t bmi270_set_sensor_config(struct bmi2_sens_config *sens_cfg, uint8_t n_sens, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to define loop */
+    uint8_t loop;
+
+    /* Variable to get the status of advance power save */
+    uint8_t aps_stat = 0;
+
+    /* Null-pointer check */
+    rslt = null_ptr_check(dev);
+    if ((rslt == BMI2_OK) && (sens_cfg != NULL))
+    {
+        /* Get status of advance power save mode */
+        aps_stat = dev->aps_status;
+
+        for (loop = 0; loop < n_sens; loop++)
+        {
+            if ((sens_cfg[loop].type == BMI2_ACCEL) || (sens_cfg[loop].type == BMI2_GYRO) ||
+                (sens_cfg[loop].type == BMI2_AUX) || (sens_cfg[loop].type == BMI2_GYRO_GAIN_UPDATE))
+            {
+                rslt = bmi2_set_sensor_config(&sens_cfg[loop], 1, dev);
+            }
+            else
+            {
+                /* Disable Advance power save if enabled for auxiliary
+                 * and feature configurations
+                 */
+                if (aps_stat == BMI2_ENABLE)
+                {
+                    /* Disable advance power save if
+                     * enabled
+                     */
+                    rslt = bmi2_set_adv_power_save(BMI2_DISABLE, dev);
+                }
+
+                if (rslt == BMI2_OK)
+                {
+                    switch (sens_cfg[loop].type)
+                    {
+                        /* Set any motion configuration */
+                        case BMI2_ANY_MOTION:
+                            rslt = set_any_motion_config(&sens_cfg[loop].cfg.any_motion, dev);
+                            break;
+
+                        /* Set no motion configuration */
+                        case BMI2_NO_MOTION:
+                            rslt = set_no_motion_config(&sens_cfg[loop].cfg.no_motion, dev);
+                            break;
+
+                        /* Set sig-motion configuration */
+                        case BMI2_SIG_MOTION:
+                            rslt = set_sig_motion_config(&sens_cfg[loop].cfg.sig_motion, dev);
+                            break;
+
+                        /* Set the step counter parameters */
+                        case BMI2_STEP_COUNTER_PARAMS:
+                            rslt = set_step_count_params_config(sens_cfg[loop].cfg.step_counter_params, dev);
+                            break;
+
+                        /* Set step counter/detector/activity configuration */
+                        case BMI2_STEP_DETECTOR:
+                        case BMI2_STEP_COUNTER:
+                        case BMI2_STEP_ACTIVITY:
+                            rslt = set_step_config(&sens_cfg[loop].cfg.step_counter, dev);
+                            break;
+
+                        /* Set the wrist gesture configuration */
+                        case BMI2_WRIST_GESTURE:
+                            rslt = set_wrist_gest_config(&sens_cfg[loop].cfg.wrist_gest, dev);
+                            break;
+
+                        /* Set the wrist wear wake-up configuration */
+                        case BMI2_WRIST_WEAR_WAKE_UP:
+                            rslt = set_wrist_wear_wake_up_config(&sens_cfg[loop].cfg.wrist_wear_wake_up, dev);
+                            break;
+
+                        default:
+                            rslt = BMI2_E_INVALID_SENSOR;
+                            break;
+                    }
+                }
+
+                /* Return error if any of the set configurations fail */
+                if (rslt != BMI2_OK)
+                {
+                    break;
+                }
+            }
+        }
+
+        /* Enable Advance power save if disabled while configuring and
+         * not when already disabled
+         */
+        if ((aps_stat == BMI2_ENABLE) && (rslt == BMI2_OK))
+        {
+            rslt = bmi2_set_adv_power_save(BMI2_ENABLE, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_NULL_PTR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This API gets the sensor/feature configuration.
+ */
+int8_t bmi270_get_sensor_config(struct bmi2_sens_config *sens_cfg, uint8_t n_sens, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to define loop */
+    uint8_t loop;
+
+    /* Variable to get the status of advance power save */
+    uint8_t aps_stat = 0;
+
+    /* Null-pointer check */
+    rslt = null_ptr_check(dev);
+    if ((rslt == BMI2_OK) && (sens_cfg != NULL))
+    {
+        /* Get status of advance power save mode */
+        aps_stat = dev->aps_status;
+        for (loop = 0; loop < n_sens; loop++)
+        {
+            if ((sens_cfg[loop].type == BMI2_ACCEL) || (sens_cfg[loop].type == BMI2_GYRO) ||
+                (sens_cfg[loop].type == BMI2_AUX) || (sens_cfg[loop].type == BMI2_GYRO_GAIN_UPDATE))
+            {
+                rslt = bmi2_get_sensor_config(&sens_cfg[loop], 1, dev);
+            }
+            else
+            {
+                /* Disable Advance power save if enabled for auxiliary
+                 * and feature configurations
+                 */
+                if ((sens_cfg[loop].type >= BMI2_MAIN_SENS_MAX_NUM) || (sens_cfg[loop].type == BMI2_AUX))
+                {
+
+                    if (aps_stat == BMI2_ENABLE)
+                    {
+                        /* Disable advance power save if
+                         * enabled
+                         */
+                        rslt = bmi2_set_adv_power_save(BMI2_DISABLE, dev);
+                    }
+                }
+
+                if (rslt == BMI2_OK)
+                {
+                    switch (sens_cfg[loop].type)
+                    {
+                        /* Get sig-motion configuration */
+                        case BMI2_SIG_MOTION:
+                            rslt = get_sig_motion_config(&sens_cfg[loop].cfg.sig_motion, dev);
+                            break;
+
+                        /* Get any motion configuration */
+                        case BMI2_ANY_MOTION:
+                            rslt = get_any_motion_config(&sens_cfg[loop].cfg.any_motion, dev);
+                            break;
+
+                        /* Get no motion configuration */
+                        case BMI2_NO_MOTION:
+                            rslt = get_no_motion_config(&sens_cfg[loop].cfg.no_motion, dev);
+                            break;
+
+                        /* Set the step counter parameters */
+                        case BMI2_STEP_COUNTER_PARAMS:
+                            rslt = get_step_count_params_config(sens_cfg[loop].cfg.step_counter_params, dev);
+                            break;
+
+                        /* Get step counter/detector/activity configuration */
+                        case BMI2_STEP_DETECTOR:
+                        case BMI2_STEP_COUNTER:
+                        case BMI2_STEP_ACTIVITY:
+                            rslt = get_step_config(&sens_cfg[loop].cfg.step_counter, dev);
+                            break;
+
+                        /* Get the wrist gesture configuration */
+                        case BMI2_WRIST_GESTURE:
+                            rslt = get_wrist_gest_config(&sens_cfg[loop].cfg.wrist_gest, dev);
+                            break;
+
+                        /* Get the wrist wear wake-up configuration */
+                        case BMI2_WRIST_WEAR_WAKE_UP:
+                            rslt = get_wrist_wear_wake_up_config(&sens_cfg[loop].cfg.wrist_wear_wake_up, dev);
+                            break;
+
+                        default:
+                            rslt = BMI2_E_INVALID_SENSOR;
+                            break;
+                    }
+                }
+
+                /* Return error if any of the get configurations fail */
+                if (rslt != BMI2_OK)
+                {
+                    break;
+                }
+            }
+        }
+
+        /* Enable Advance power save if disabled while configuring and
+         * not when already disabled
+         */
+        if ((aps_stat == BMI2_ENABLE) && (rslt == BMI2_OK))
+        {
+            rslt = bmi2_set_adv_power_save(BMI2_ENABLE, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_NULL_PTR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This API gets the sensor/feature data for accelerometer, gyroscope,
+ * auxiliary sensor, step counter, high-g, gyroscope user-gain update,
+ * orientation, gyroscope cross sensitivity and error status for NVM and VFRM.
+ */
+int8_t bmi270_get_sensor_data(struct bmi2_sensor_data *sensor_data, uint8_t n_sens, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to define loop */
+    uint8_t loop;
+
+    /* Variable to get the status of advance power save */
+    uint8_t aps_stat = 0;
+
+    /* Null-pointer check */
+    rslt = null_ptr_check(dev);
+    if ((rslt == BMI2_OK) && (sensor_data != NULL))
+    {
+        /* Get status of advance power save mode */
+        aps_stat = dev->aps_status;
+        for (loop = 0; loop < n_sens; loop++)
+        {
+            if ((sensor_data[loop].type == BMI2_ACCEL) || (sensor_data[loop].type == BMI2_GYRO) ||
+                (sensor_data[loop].type == BMI2_AUX) || (sensor_data[loop].type == BMI2_GYRO_GAIN_UPDATE) ||
+                (sensor_data[loop].type == BMI2_GYRO_CROSS_SENSE))
+            {
+                rslt = bmi2_get_sensor_data(&sensor_data[loop], 1, dev);
+            }
+            else
+            {
+                /* Disable Advance power save if enabled for feature
+                 * configurations
+                 */
+                if (sensor_data[loop].type >= BMI2_MAIN_SENS_MAX_NUM)
+                {
+                    if (aps_stat == BMI2_ENABLE)
+                    {
+                        /* Disable advance power save if
+                         * enabled
+                         */
+                        rslt = bmi2_set_adv_power_save(BMI2_DISABLE, dev);
+                    }
+                }
+
+                if (rslt == BMI2_OK)
+                {
+                    switch (sensor_data[loop].type)
+                    {
+                        case BMI2_STEP_COUNTER:
+
+                            /* Get step counter output */
+                            rslt = get_step_counter_output(&sensor_data[loop].sens_data.step_counter_output, dev);
+                            break;
+                        case BMI2_STEP_ACTIVITY:
+
+                            /* Get step activity output */
+                            rslt = get_step_activity_output(&sensor_data[loop].sens_data.activity_output, dev);
+                            break;
+                        case BMI2_NVM_STATUS:
+
+                            /* Get NVM error status  */
+                            rslt = get_nvm_error_status(&sensor_data[loop].sens_data.nvm_status, dev);
+                            break;
+                        case BMI2_VFRM_STATUS:
+
+                            /* Get VFRM error status  */
+                            rslt = get_vfrm_error_status(&sensor_data[loop].sens_data.vfrm_status, dev);
+                            break;
+                        case BMI2_WRIST_GESTURE:
+
+                            /* Get wrist gesture status  */
+                            rslt = get_wrist_gest_status(&sensor_data[loop].sens_data.wrist_gesture_output, dev);
+                            break;
+                        default:
+                            rslt = BMI2_E_INVALID_SENSOR;
+                            break;
+                    }
+
+                    /* Return error if any of the get sensor data fails */
+                    if (rslt != BMI2_OK)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            /* Enable Advance power save if disabled while
+             * configuring and not when already disabled
+             */
+            if ((aps_stat == BMI2_ENABLE) && (rslt == BMI2_OK))
+            {
+                rslt = bmi2_set_adv_power_save(BMI2_ENABLE, dev);
+            }
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_NULL_PTR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This API updates the gyroscope user-gain.
+ */
+int8_t bmi270_update_gyro_user_gain(const struct bmi2_gyro_user_gain_config *user_gain, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to select sensor */
+    uint8_t sens_sel[2] = { BMI2_GYRO, BMI2_GYRO_GAIN_UPDATE };
+
+    /* Structure to define sensor configurations */
+    struct bmi2_sens_config sens_cfg;
+
+    /* Variable to store status of user-gain update module */
+    uint8_t status = 0;
+
+    /* Variable to define count */
+    uint8_t count = 100;
+
+    /* Null-pointer check */
+    rslt = null_ptr_check(dev);
+    if ((rslt == BMI2_OK) && (user_gain != NULL))
+    {
+        /* Select type of feature */
+        sens_cfg.type = BMI2_GYRO_GAIN_UPDATE;
+
+        /* Get the user gain configurations */
+        rslt = bmi270_get_sensor_config(&sens_cfg, 1, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Get the user-defined ratio */
+            sens_cfg.cfg.gyro_gain_update = *user_gain;
+
+            /* Set rate ratio for all axes */
+            rslt = bmi270_set_sensor_config(&sens_cfg, 1, dev);
+        }
+
+        /* Disable gyroscope */
+        if (rslt == BMI2_OK)
+        {
+            rslt = bmi270_sensor_disable(&sens_sel[0], 1, dev);
+        }
+
+        /* Enable gyroscope user-gain update module */
+        if (rslt == BMI2_OK)
+        {
+            rslt = bmi270_sensor_enable(&sens_sel[1], 1, dev);
+        }
+
+        /* Set the command to trigger the computation */
+        if (rslt == BMI2_OK)
+        {
+            rslt = bmi2_set_command_register(BMI2_USR_GAIN_CMD, dev);
+        }
+
+        if (rslt == BMI2_OK)
+        {
+            /* Poll until enable bit of user-gain update is 0 */
+            while (count--)
+            {
+                rslt = get_user_gain_upd_status(&status, dev);
+                if ((rslt == BMI2_OK) && (status == 0))
+                {
+                    /* Enable compensation of gain defined
+                     * in the GAIN register
+                     */
+                    rslt = enable_gyro_gain(BMI2_ENABLE, dev);
+
+                    /* Enable gyroscope */
+                    if (rslt == BMI2_OK)
+                    {
+                        rslt = bmi270_sensor_enable(&sens_sel[0], 1, dev);
+                    }
+
+                    break;
+                }
+
+                dev->delay_us(10000, dev->intf_ptr);
+            }
+
+            /* Return error if user-gain update is failed */
+            if ((rslt == BMI2_OK) && (status != 0))
+            {
+                rslt = BMI2_E_GYR_USER_GAIN_UPD_FAIL;
+            }
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_NULL_PTR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This API reads the compensated gyroscope user-gain values.
+ */
+int8_t bmi270_read_gyro_user_gain(struct bmi2_gyro_user_gain_data *gyr_usr_gain, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to define register data */
+    uint8_t reg_data[3] = { 0 };
+
+    /* Null-pointer check */
+    rslt = null_ptr_check(dev);
+    if ((rslt == BMI2_OK) && (gyr_usr_gain != NULL))
+    {
+        /* Get the gyroscope compensated gain values */
+        rslt = bmi2_get_regs(BMI2_GYR_USR_GAIN_0_ADDR, reg_data, 3, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Gyroscope user gain correction X-axis */
+            gyr_usr_gain->x = (int8_t)BMI2_GET_BIT_POS0(reg_data[0], BMI2_GYR_USR_GAIN_X);
+
+            /* Gyroscope user gain correction Y-axis */
+            gyr_usr_gain->y = (int8_t)BMI2_GET_BIT_POS0(reg_data[1], BMI2_GYR_USR_GAIN_Y);
+
+            /* Gyroscope user gain correction z-axis */
+            gyr_usr_gain->z = (int8_t)BMI2_GET_BIT_POS0(reg_data[2], BMI2_GYR_USR_GAIN_Z);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_NULL_PTR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This API maps/unmaps feature interrupts to that of interrupt pins.
+ */
+int8_t bmi270_map_feat_int(const struct bmi2_sens_int_config *sens_int, uint8_t n_sens, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to define loop */
+    uint8_t loop;
+
+    /* Null-pointer check */
+    rslt = null_ptr_check(dev);
+    if ((rslt == BMI2_OK) && (sens_int != NULL))
+    {
+        for (loop = 0; loop < n_sens; loop++)
+        {
+            switch (sens_int[loop].type)
+            {
+                case BMI2_SIG_MOTION:
+                case BMI2_WRIST_GESTURE:
+                case BMI2_ANY_MOTION:
+                case BMI2_NO_MOTION:
+                case BMI2_STEP_COUNTER:
+                case BMI2_STEP_DETECTOR:
+                case BMI2_STEP_ACTIVITY:
+                case BMI2_WRIST_WEAR_WAKE_UP:
+
+                    rslt = bmi2_map_feat_int(sens_int[loop].type, sens_int[loop].hw_int_pin, dev);
+                    break;
+                default:
+                    rslt = BMI2_E_INVALID_SENSOR;
+                    break;
+            }
+
+            /* Return error if interrupt mapping fails */
+            if (rslt != BMI2_OK)
+            {
+                break;
+            }
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_NULL_PTR;
     }
 
     return rslt;
@@ -637,4 +1925,2527 @@ static int8_t null_ptr_check(const struct bmi2_dev *dev)
     }
 
     return rslt;
+}
+
+/*!
+ * @brief This internal API selects the sensor/features to be enabled or
+ * disabled.
+ */
+static int8_t select_sensor(const uint8_t *sens_list, uint8_t n_sens, uint64_t *sensor_sel)
+{
+    /* Variable to define error */
+    int8_t rslt = BMI2_OK;
+
+    /* Variable to define loop */
+    uint8_t count;
+
+    for (count = 0; count < n_sens; count++)
+    {
+        switch (sens_list[count])
+        {
+            case BMI2_ACCEL:
+                *sensor_sel |= BMI2_ACCEL_SENS_SEL;
+                break;
+            case BMI2_GYRO:
+                *sensor_sel |= BMI2_GYRO_SENS_SEL;
+                break;
+            case BMI2_AUX:
+                *sensor_sel |= BMI2_AUX_SENS_SEL;
+                break;
+            case BMI2_TEMP:
+                *sensor_sel |= BMI2_TEMP_SENS_SEL;
+                break;
+            case BMI2_SIG_MOTION:
+                *sensor_sel |= BMI2_SIG_MOTION_SEL;
+                break;
+            case BMI2_ANY_MOTION:
+                *sensor_sel |= BMI2_ANY_MOT_SEL;
+                break;
+            case BMI2_NO_MOTION:
+                *sensor_sel |= BMI2_NO_MOT_SEL;
+                break;
+            case BMI2_STEP_DETECTOR:
+                *sensor_sel |= BMI2_STEP_DETECT_SEL;
+                break;
+            case BMI2_STEP_COUNTER:
+                *sensor_sel |= BMI2_STEP_COUNT_SEL;
+                break;
+            case BMI2_STEP_ACTIVITY:
+                *sensor_sel |= BMI2_STEP_ACT_SEL;
+                break;
+            case BMI2_GYRO_GAIN_UPDATE:
+                *sensor_sel |= BMI2_GYRO_GAIN_UPDATE_SEL;
+                break;
+            case BMI2_GYRO_SELF_OFF:
+                *sensor_sel |= BMI2_GYRO_SELF_OFF_SEL;
+                break;
+            case BMI2_WRIST_GESTURE:
+                *sensor_sel |= BMI2_WRIST_GEST_SEL;
+                break;
+            case BMI2_WRIST_WEAR_WAKE_UP:
+                *sensor_sel |= BMI2_WRIST_WEAR_WAKE_UP_SEL;
+                break;
+            default:
+                rslt = BMI2_E_INVALID_SENSOR;
+                break;
+        }
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API enables the selected sensor/features.
+ */
+static int8_t sensor_enable(uint64_t sensor_sel, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to store register values */
+    uint8_t reg_data = 0;
+
+    /* Variable to define loop */
+    uint8_t loop = 1;
+
+    /* Variable to get the status of advance power save */
+    uint8_t aps_stat = 0;
+
+    rslt = bmi2_get_regs(BMI2_PWR_CTRL_ADDR, &reg_data, 1, dev);
+    if (rslt == BMI2_OK)
+    {
+        /* Enable accelerometer */
+        if (sensor_sel & BMI2_ACCEL_SENS_SEL)
+        {
+            reg_data = BMI2_SET_BITS(reg_data, BMI2_ACC_EN, BMI2_ENABLE);
+        }
+
+        /* Enable gyroscope */
+        if (sensor_sel & BMI2_GYRO_SENS_SEL)
+        {
+            reg_data = BMI2_SET_BITS(reg_data, BMI2_GYR_EN, BMI2_ENABLE);
+        }
+
+        /* Enable auxiliary sensor */
+        if (sensor_sel & BMI2_AUX_SENS_SEL)
+        {
+            reg_data = BMI2_SET_BIT_POS0(reg_data, BMI2_AUX_EN, BMI2_ENABLE);
+        }
+
+        /* Enable temperature sensor */
+        if (sensor_sel & BMI2_TEMP_SENS_SEL)
+        {
+            reg_data = BMI2_SET_BITS(reg_data, BMI2_TEMP_EN, BMI2_ENABLE);
+        }
+
+        /* Enable the sensors that are set in the power control register */
+        if (sensor_sel & BMI2_MAIN_SENSORS)
+        {
+            rslt = bmi2_set_regs(BMI2_PWR_CTRL_ADDR, &reg_data, 1, dev);
+        }
+    }
+
+    if ((rslt == BMI2_OK) && (sensor_sel & ~(BMI2_MAIN_SENSORS)))
+    {
+        /* Get status of advance power save mode */
+        aps_stat = dev->aps_status;
+        if (aps_stat == BMI2_ENABLE)
+        {
+            /* Disable advance power save if enabled */
+            rslt = bmi2_set_adv_power_save(BMI2_DISABLE, dev);
+        }
+
+        if (rslt == BMI2_OK)
+        {
+            while (loop--)
+            {
+                /* Enable sig-motion feature */
+                if (sensor_sel & BMI2_SIG_MOTION_SEL)
+                {
+                    rslt = set_sig_motion(BMI2_ENABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat |= BMI2_SIG_MOTION_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable any motion feature */
+                if (sensor_sel & BMI2_ANY_MOT_SEL)
+                {
+                    rslt = set_any_motion(BMI2_ENABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat |= BMI2_ANY_MOT_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable no motion feature */
+                if (sensor_sel & BMI2_NO_MOT_SEL)
+                {
+                    rslt = set_no_motion(BMI2_ENABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat |= BMI2_NO_MOT_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable step detector feature */
+                if (sensor_sel & BMI2_STEP_DETECT_SEL)
+                {
+                    rslt = set_step_detector(BMI2_ENABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat |= BMI2_STEP_DETECT_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable step counter feature */
+                if (sensor_sel & BMI2_STEP_COUNT_SEL)
+                {
+                    rslt = set_step_counter(BMI2_ENABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat |= BMI2_STEP_COUNT_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable step activity feature */
+                if (sensor_sel & BMI2_STEP_ACT_SEL)
+                {
+                    rslt = set_step_activity(BMI2_ENABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat |= BMI2_STEP_ACT_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable gyroscope user gain */
+                if (sensor_sel & BMI2_GYRO_GAIN_UPDATE_SEL)
+                {
+                    rslt = set_gyro_user_gain(BMI2_ENABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat |= BMI2_GYRO_GAIN_UPDATE_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable gyroscope self-offset correction feature */
+                if (sensor_sel & BMI2_GYRO_SELF_OFF_SEL)
+                {
+                    rslt = set_gyro_self_offset_corr(BMI2_ENABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat |= BMI2_GYRO_SELF_OFF_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable wrist gesture feature for wearable variant */
+                if (sensor_sel & BMI2_WRIST_GEST_SEL)
+                {
+                    rslt = set_wrist_gesture(BMI2_ENABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat |= BMI2_WRIST_GEST_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable wrist wear wake-up feature */
+                if (sensor_sel & BMI2_WRIST_WEAR_WAKE_UP_SEL)
+                {
+                    rslt = set_wrist_wear_wake_up(BMI2_ENABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat |= BMI2_WRIST_WEAR_WAKE_UP_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+
+            /* Enable Advance power save if disabled while
+             * configuring and not when already disabled
+             */
+            if ((aps_stat == BMI2_ENABLE) && (rslt == BMI2_OK))
+            {
+                rslt = bmi2_set_adv_power_save(BMI2_ENABLE, dev);
+            }
+        }
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API disables the selected sensors/features.
+ */
+static int8_t sensor_disable(uint64_t sensor_sel, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to store register values */
+    uint8_t reg_data = 0;
+
+    /* Variable to define loop */
+    uint8_t loop = 1;
+
+    /* Variable to get the status of advance power save */
+    uint8_t aps_stat = 0;
+
+    rslt = bmi2_get_regs(BMI2_PWR_CTRL_ADDR, &reg_data, 1, dev);
+    if (rslt == BMI2_OK)
+    {
+        /* Disable accelerometer */
+        if (sensor_sel & BMI2_ACCEL_SENS_SEL)
+        {
+            reg_data = BMI2_SET_BIT_VAL0(reg_data, BMI2_ACC_EN);
+        }
+
+        /* Disable gyroscope */
+        if (sensor_sel & BMI2_GYRO_SENS_SEL)
+        {
+            reg_data = BMI2_SET_BIT_VAL0(reg_data, BMI2_GYR_EN);
+        }
+
+        /* Disable auxiliary sensor */
+        if (sensor_sel & BMI2_AUX_SENS_SEL)
+        {
+            reg_data = BMI2_SET_BIT_VAL0(reg_data, BMI2_AUX_EN);
+        }
+
+        /* Disable temperature sensor */
+        if (sensor_sel & BMI2_TEMP_SENS_SEL)
+        {
+            reg_data = BMI2_SET_BIT_VAL0(reg_data, BMI2_TEMP_EN);
+        }
+
+        /* Disable the sensors that are set in the power control register */
+        if (sensor_sel & BMI2_MAIN_SENSORS)
+        {
+            rslt = bmi2_set_regs(BMI2_PWR_CTRL_ADDR, &reg_data, 1, dev);
+        }
+    }
+
+    if ((rslt == BMI2_OK) && (sensor_sel & ~(BMI2_MAIN_SENSORS)))
+    {
+        /* Get status of advance power save mode */
+        aps_stat = dev->aps_status;
+        if (aps_stat == BMI2_ENABLE)
+        {
+            /* Disable advance power save if enabled */
+            rslt = bmi2_set_adv_power_save(BMI2_DISABLE, dev);
+        }
+
+        if (rslt == BMI2_OK)
+        {
+            while (loop--)
+            {
+                /* Disable sig-motion feature */
+                if (sensor_sel & BMI2_SIG_MOTION_SEL)
+                {
+                    rslt = set_sig_motion(BMI2_DISABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat &= ~BMI2_SIG_MOTION_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Disable any-motion feature */
+                if (sensor_sel & BMI2_ANY_MOT_SEL)
+                {
+                    rslt = set_any_motion(BMI2_DISABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat &= ~BMI2_ANY_MOT_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Disable no-motion feature */
+                if (sensor_sel & BMI2_NO_MOT_SEL)
+                {
+                    rslt = set_no_motion(BMI2_DISABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat &= ~BMI2_NO_MOT_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Disable step detector feature */
+                if (sensor_sel & BMI2_STEP_DETECT_SEL)
+                {
+                    rslt = set_step_detector(BMI2_DISABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat &= ~BMI2_STEP_DETECT_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Disable step counter feature */
+                if (sensor_sel & BMI2_STEP_COUNT_SEL)
+                {
+                    rslt = set_step_counter(BMI2_DISABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat &= ~BMI2_STEP_COUNT_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Disable step activity feature */
+                if (sensor_sel & BMI2_STEP_ACT_SEL)
+                {
+                    rslt = set_step_activity(BMI2_DISABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat &= ~BMI2_STEP_ACT_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Disable gyroscope user gain */
+                if (sensor_sel & BMI2_GYRO_GAIN_UPDATE_SEL)
+                {
+                    rslt = set_gyro_user_gain(BMI2_DISABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat &= ~BMI2_GYRO_GAIN_UPDATE_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Disable gyroscope self-offset correction feature */
+                if (sensor_sel & BMI2_GYRO_SELF_OFF_SEL)
+                {
+                    rslt = set_gyro_self_offset_corr(BMI2_DISABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat &= ~BMI2_GYRO_SELF_OFF_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Disable wrist gesture feature for wearable variant*/
+                if (sensor_sel & BMI2_WRIST_GEST_SEL)
+                {
+                    rslt = set_wrist_gesture(BMI2_DISABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat &= ~BMI2_WRIST_GEST_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable wrist wear wake-up feature */
+                if (sensor_sel & BMI2_WRIST_WEAR_WAKE_UP_SEL)
+                {
+                    rslt = set_wrist_wear_wake_up(BMI2_DISABLE, dev);
+                    if (rslt == BMI2_OK)
+                    {
+                        dev->sens_en_stat &= ~BMI2_WRIST_WEAR_WAKE_UP_SEL;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Enable Advance power save if disabled while
+                 * configuring and not when already disabled
+                 */
+                if ((aps_stat == BMI2_ENABLE) && (rslt == BMI2_OK))
+                {
+                    rslt = bmi2_set_adv_power_save(BMI2_ENABLE, dev);
+                }
+            }
+        }
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API is used to enable/disable any motion feature.
+ */
+static int8_t set_any_motion(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for any-motion */
+    struct bmi2_feature_config any_mot_config = { 0, 0, 0 };
+
+    /* Search for any-motion feature and extract its configurations details */
+    feat_found = bmi2_extract_input_feat_config(&any_mot_config, BMI2_ANY_MOTION, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where any-motion feature resides */
+        rslt = bmi2_get_feat_config(any_mot_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for enable/disable of any-motion axes */
+            idx = any_mot_config.start_addr + BMI2_ANY_MOT_FEAT_EN_OFFSET;
+
+            /* Set the feature enable bit */
+            feat_config[idx] = BMI2_SET_BITS(feat_config[idx], BMI2_ANY_NO_MOT_EN, enable);
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API is used to enable/disable no-motion feature.
+ */
+static int8_t set_no_motion(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for no-motion */
+    struct bmi2_feature_config no_mot_config = { 0, 0, 0 };
+
+    /* Search for no-motion feature and extract its configurations details */
+    feat_found = bmi2_extract_input_feat_config(&no_mot_config, BMI2_NO_MOTION, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where any/no-motion feature resides */
+        rslt = bmi2_get_feat_config(no_mot_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for enable/disable of no-motion axes */
+            idx = no_mot_config.start_addr + BMI2_NO_MOT_FEAT_EN_OFFSET;
+
+            /* Set the feature enable bit */
+            feat_config[idx] = BMI2_SET_BITS(feat_config[idx], BMI2_ANY_NO_MOT_EN, enable);
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API is used to enable/disable step detector feature.
+ */
+static int8_t set_step_detector(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for step detector */
+    struct bmi2_feature_config step_det_config = { 0, 0, 0 };
+
+    /* Search for step detector feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&step_det_config, BMI2_STEP_DETECTOR, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where step detector feature resides */
+        rslt = bmi2_get_feat_config(step_det_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for enable/disable of step detector */
+            idx = step_det_config.start_addr + BMI2_STEP_COUNT_FEAT_EN_OFFSET;
+
+            /* Set the feature enable bit */
+            feat_config[idx] = BMI2_SET_BITS(feat_config[idx], BMI2_STEP_DET_FEAT_EN, enable);
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API is used to enable/disable step counter feature.
+ */
+static int8_t set_step_counter(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for step counter */
+    struct bmi2_feature_config step_count_config = { 0, 0, 0 };
+
+    /* Search for step counter feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&step_count_config, BMI2_STEP_COUNTER, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where step-counter feature resides */
+        rslt = bmi2_get_feat_config(step_count_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for enable/disable of step counter */
+            idx = step_count_config.start_addr + BMI2_STEP_COUNT_FEAT_EN_OFFSET;
+
+            /* Set the feature enable bit */
+            feat_config[idx] = BMI2_SET_BITS(feat_config[idx], BMI2_STEP_COUNT_FEAT_EN, enable);
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API is used to enable/disable sig-motion feature.
+ */
+static int8_t set_sig_motion(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for sig-motion */
+    struct bmi2_feature_config sig_mot_config = { 0, 0, 0 };
+
+    /* Search for sig-motion feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&sig_mot_config, BMI2_SIG_MOTION, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where sig-motion feature resides */
+        rslt = bmi2_get_feat_config(sig_mot_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for enable/disable of sig-motion */
+            idx = sig_mot_config.start_addr + BMI2_SIG_MOT_FEAT_EN_OFFSET;
+
+            /* Set the feature enable bit */
+            feat_config[idx] = BMI2_SET_BIT_POS0(feat_config[idx], BMI2_SIG_MOT_FEAT_EN, enable);
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API is used to enable/disable step activity detection.
+ */
+static int8_t set_step_activity(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for step activity */
+    struct bmi2_feature_config step_act_config = { 0, 0, 0 };
+
+    /* Search for step activity feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&step_act_config, BMI2_STEP_ACTIVITY, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where step-activity
+         * feature resides
+         */
+        rslt = bmi2_get_feat_config(step_act_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for enable/disable of step activity */
+            idx = step_act_config.start_addr + BMI2_STEP_COUNT_FEAT_EN_OFFSET;
+
+            /* Set the feature enable bit */
+            feat_config[idx] = BMI2_SET_BITS(feat_config[idx], BMI2_STEP_ACT_FEAT_EN, enable);
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gives an option to enable self-offset correction
+ * feature of gyroscope, either internally or by the host.
+ */
+static int8_t set_gyro_self_offset_corr(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for self-offset correction */
+    struct bmi2_feature_config self_off_corr_cfg = { 0, 0, 0 };
+
+    /* Search for self-offset correction and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&self_off_corr_cfg, BMI2_GYRO_SELF_OFF, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where self-offset
+         * correction feature resides
+         */
+        rslt = bmi2_get_feat_config(self_off_corr_cfg.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for enable/disable of self-offset correction */
+            idx = self_off_corr_cfg.start_addr;
+
+            /* Set the feature enable bit */
+            feat_config[idx] = BMI2_SET_BITS(feat_config[idx], BMI2_GYR_SELF_OFF_CORR_FEAT_EN, enable);
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API enables the wrist gesture feature.
+ */
+static int8_t set_wrist_gesture(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for wrist gesture */
+    struct bmi2_feature_config wrist_gest_cfg = { 0, 0, 0 };
+
+    /* Search for wrist gesture and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&wrist_gest_cfg, BMI2_WRIST_GESTURE, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where wrist gesture feature resides */
+        rslt = bmi2_get_feat_config(wrist_gest_cfg.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for enable/disable of wrist gesture */
+            idx = wrist_gest_cfg.start_addr;
+
+            /* Set the feature enable bit */
+            feat_config[idx] = BMI2_SET_BITS(feat_config[idx], BMI2_WRIST_GEST_FEAT_EN, enable);
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API enables the wrist wear wake up feature.
+ */
+static int8_t set_wrist_wear_wake_up(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for wrist wear wake up */
+    struct bmi2_feature_config wrist_wake_up_cfg = { 0, 0, 0 };
+
+    /* Search for wrist wear wake up and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&wrist_wake_up_cfg, BMI2_WRIST_WEAR_WAKE_UP, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where wrist wear wake up
+         * feature resides
+         */
+        rslt = bmi2_get_feat_config(wrist_wake_up_cfg.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for enable/disable of wrist wear wake up */
+            idx = wrist_wake_up_cfg.start_addr;
+
+            /* Set the feature enable bit */
+            feat_config[idx] = BMI2_SET_BITS(feat_config[idx], BMI2_WRIST_WEAR_WAKE_UP_FEAT_EN, enable);
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API is used to enable/disable gyroscope user gain
+ * feature.
+ */
+static int8_t set_gyro_user_gain(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for gyroscope user gain */
+    struct bmi2_feature_config gyr_user_gain_cfg = { 0, 0, 0 };
+
+    /* Search for user gain feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&gyr_user_gain_cfg, BMI2_GYRO_GAIN_UPDATE, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where user gain feature resides */
+        rslt = bmi2_get_feat_config(gyr_user_gain_cfg.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for enable/disable of user gain */
+            idx = gyr_user_gain_cfg.start_addr + BMI2_GYR_USER_GAIN_FEAT_EN_OFFSET;
+
+            /* Set the feature enable bit */
+            feat_config[idx] = BMI2_SET_BITS(feat_config[idx], BMI2_GYR_USER_GAIN_FEAT_EN, enable);
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API sets any-motion configurations like axes select,
+ * duration, threshold and output-configuration.
+ */
+static int8_t set_any_motion_config(const struct bmi2_any_motion_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to define count */
+    uint8_t index = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for any motion */
+    struct bmi2_feature_config any_mot_config = { 0, 0, 0 };
+
+    /* Copy the feature configuration address to a local pointer */
+    uint16_t *data_p = (uint16_t *) (void *)feat_config;
+
+    /* Search for any-motion feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&any_mot_config, BMI2_ANY_MOTION, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where any-motion feature resides */
+        rslt = bmi2_get_feat_config(any_mot_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for any-motion select */
+            idx = any_mot_config.start_addr;
+
+            /* Get offset in words since all the features are set in words length */
+            idx = idx / 2;
+
+            /* Set duration */
+            *(data_p + idx) = BMI2_SET_BIT_POS0(*(data_p + idx), BMI2_ANY_NO_MOT_DUR, config->duration);
+
+            /* Set x-select */
+            *(data_p + idx) = BMI2_SET_BITS(*(data_p + idx), BMI2_ANY_NO_MOT_X_SEL, config->select_x);
+
+            /* Set y-select */
+            *(data_p + idx) = BMI2_SET_BITS(*(data_p + idx), BMI2_ANY_NO_MOT_Y_SEL, config->select_y);
+
+            /* Set z-select */
+            *(data_p + idx) = BMI2_SET_BITS(*(data_p + idx), BMI2_ANY_NO_MOT_Z_SEL, config->select_z);
+
+            /* Increment offset by 1 word to set threshold and output configuration */
+            idx++;
+
+            /* Set threshold */
+            *(data_p + idx) = BMI2_SET_BIT_POS0(*(data_p + idx), BMI2_ANY_NO_MOT_THRES, config->threshold);
+
+            /* Increment offset by 1 more word to get the total length in words */
+            idx++;
+
+            /* Get total length in bytes to copy from local pointer to the array */
+            idx = (uint8_t)(idx * 2) - any_mot_config.start_addr;
+
+            /* Copy the bytes to be set back to the array */
+            for (index = 0; index < idx; index++)
+            {
+                feat_config[any_mot_config.start_addr +
+                            index] = *((uint8_t *) data_p + any_mot_config.start_addr + index);
+            }
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API sets no-motion configurations like axes select,
+ * duration, threshold and output-configuration.
+ */
+static int8_t set_no_motion_config(const struct bmi2_no_motion_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to define count */
+    uint8_t index = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for no-motion */
+    struct bmi2_feature_config no_mot_config = { 0, 0, 0 };
+
+    /* Copy the feature configuration address to a local pointer */
+    uint16_t *data_p = (uint16_t *) (void *)feat_config;
+
+    /* Search for no-motion feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&no_mot_config, BMI2_NO_MOTION, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where no-motion feature resides */
+        rslt = bmi2_get_feat_config(no_mot_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for no-motion select */
+            idx = no_mot_config.start_addr;
+
+            /* Get offset in words since all the features are set in words length */
+            idx = idx / 2;
+
+            /* Set duration */
+            *(data_p + idx) = BMI2_SET_BIT_POS0(*(data_p + idx), BMI2_ANY_NO_MOT_DUR, config->duration);
+
+            /* Set x-select */
+            *(data_p + idx) = BMI2_SET_BITS(*(data_p + idx), BMI2_ANY_NO_MOT_X_SEL, config->select_x);
+
+            /* Set y-select */
+            *(data_p + idx) = BMI2_SET_BITS(*(data_p + idx), BMI2_ANY_NO_MOT_Y_SEL, config->select_y);
+
+            /* Set z-select */
+            *(data_p + idx) = BMI2_SET_BITS(*(data_p + idx), BMI2_ANY_NO_MOT_Z_SEL, config->select_z);
+
+            /* Increment offset by 1 word to set threshold and output configuration */
+            idx++;
+
+            /* Set threshold */
+            *(data_p + idx) = BMI2_SET_BIT_POS0(*(data_p + idx), BMI2_ANY_NO_MOT_THRES, config->threshold);
+
+            /* Increment offset by 1 more word to get the total length in words */
+            idx++;
+
+            /* Get total length in bytes to copy from local pointer to the array */
+            idx = (uint8_t)(idx * 2) - no_mot_config.start_addr;
+
+            /* Copy the bytes to be set back to the array */
+            for (index = 0; index < idx; index++)
+            {
+                feat_config[no_mot_config.start_addr +
+                            index] = *((uint8_t *) data_p + no_mot_config.start_addr + index);
+            }
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API sets sig-motion configurations like block-size,
+ * output-configuration and other parameters.
+ */
+static int8_t set_sig_motion_config(const struct bmi2_sig_motion_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to define index */
+    uint8_t index = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for sig-motion */
+    struct bmi2_feature_config sig_mot_config = { 0, 0, 0 };
+
+    /* Copy the feature configuration address to a local pointer */
+    uint16_t *data_p = (uint16_t *) (void *)feat_config;
+
+    /* Search for sig-motion feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&sig_mot_config, BMI2_SIG_MOTION, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where sig-motion feature resides */
+        rslt = bmi2_get_feat_config(sig_mot_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for sig-motion select */
+            idx = sig_mot_config.start_addr;
+
+            /* Get offset in words since all the features are set in words length */
+            idx = idx / 2;
+
+            /* Set parameter 1 */
+            *(data_p + idx) = BMI2_SET_BIT_POS0(*(data_p + idx), BMI2_SIG_MOT_PARAM_1, config->block_size);
+
+            /* Increment offset by 1 word to set parameter 2 */
+            idx++;
+
+            /* Set parameter 2 */
+            *(data_p + idx) = BMI2_SET_BIT_POS0(*(data_p + idx), BMI2_SIG_MOT_PARAM_2, config->param_2);
+
+            /* Increment offset by 1 word to set parameter 3 */
+            idx++;
+
+            /* Set parameter 3 */
+            *(data_p + idx) = BMI2_SET_BIT_POS0(*(data_p + idx), BMI2_SIG_MOT_PARAM_3, config->param_3);
+
+            /* Increment offset by 1 word to set parameter 4 */
+            idx++;
+
+            /* Set parameter 4 */
+            *(data_p + idx) = BMI2_SET_BIT_POS0(*(data_p + idx), BMI2_SIG_MOT_PARAM_4, config->param_4);
+
+            /* Increment offset by 1 word to set parameter 5 */
+            idx++;
+
+            /* Set parameter 5 */
+            *(data_p + idx) = BMI2_SET_BIT_POS0(*(data_p + idx), BMI2_SIG_MOT_PARAM_5, config->param_5);
+
+            /* Increment offset by 1 word  to set output- configuration */
+            idx++;
+
+            /* Get total length in bytes to copy from local pointer to the array */
+            idx = (uint8_t)(idx * 2) - sig_mot_config.start_addr;
+
+            /* Copy the bytes to be set back to the array */
+            for (index = 0; index < idx; index++)
+            {
+                feat_config[sig_mot_config.start_addr +
+                            index] = *((uint8_t *) data_p + sig_mot_config.start_addr + index);
+            }
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API sets step counter parameter configurations.
+ */
+static int8_t set_step_count_params_config(const uint16_t *step_count_params, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt = BMI2_OK;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define index */
+    uint8_t index = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for step counter parameters */
+    struct bmi2_feature_config step_params_config = { 0, 0, 0 };
+
+    /* Variable to index the page number */
+    uint8_t page_idx;
+
+    /* Variable to define the start page */
+    uint8_t start_page;
+
+    /* Variable to define start address of the parameters */
+    uint8_t start_addr;
+
+    /* Variable to define number of bytes */
+    uint8_t n_bytes = (BMI2_STEP_CNT_N_PARAMS * 2);
+
+    /* Variable to store number of pages */
+    uint8_t n_pages = (n_bytes / 16);
+
+    /* Variable to define the end page */
+    uint8_t end_page;
+
+    /* Variable to define the remaining bytes to be read */
+    uint8_t remain_len;
+
+    /* Variable to define the maximum words(16 bytes or 8 words) to be read in a page */
+    uint8_t max_len = 8;
+
+    /* Variable index bytes in a page */
+    uint8_t page_byte_idx;
+
+    /* Variable to index the parameters */
+    uint8_t param_idx = 0;
+
+    /* Copy the feature configuration address to a local pointer */
+    uint16_t *data_p = (uint16_t *) (void *)feat_config;
+
+    /* Search for step counter parameter feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&step_params_config, BMI2_STEP_COUNTER_PARAMS, dev);
+    if (feat_found)
+    {
+        /* Get the start page for the step counter parameters */
+        start_page = step_params_config.page;
+
+        /* Get the end page for the step counter parameters */
+        end_page = start_page + n_pages;
+
+        /* Get the start address for the step counter parameters */
+        start_addr = step_params_config.start_addr;
+
+        /* Get the remaining length of bytes to be read */
+        remain_len = (uint8_t)((n_bytes - (n_pages * 16)) + start_addr);
+        for (page_idx = start_page; page_idx <= end_page; page_idx++)
+        {
+            /* Get the configuration from the respective page */
+            rslt = bmi2_get_feat_config(page_idx, feat_config, dev);
+            if (rslt == BMI2_OK)
+            {
+                /* Start from address 0x00 when switched to next page */
+                if (page_idx > start_page)
+                {
+                    start_addr = 0;
+                }
+
+                /* Remaining number of words to be read in the page  */
+                if (page_idx == end_page)
+                {
+                    max_len = (remain_len / 2);
+                }
+
+                /* Get offset in words since all the features are set in words length */
+                page_byte_idx = start_addr / 2;
+                for (; page_byte_idx < max_len;)
+                {
+                    /* Set parameters 1 to 25 */
+                    *(data_p + page_byte_idx) = BMI2_SET_BIT_POS0(*(data_p + page_byte_idx),
+                                                                  BMI2_STEP_COUNT_PARAMS,
+                                                                  step_count_params[param_idx]);
+
+                    /* Increment offset by 1 word to set to the next parameter */
+                    page_byte_idx++;
+
+                    /* Increment to next parameter */
+                    param_idx++;
+                }
+
+                /* Get total length in bytes to copy from local pointer to the array */
+                page_byte_idx = (uint8_t)(page_byte_idx * 2) - step_params_config.start_addr;
+
+                /* Copy the bytes to be set back to the array */
+                for (index = 0; index < page_byte_idx; index++)
+                {
+                    feat_config[step_params_config.start_addr +
+                                index] = *((uint8_t *) data_p + step_params_config.start_addr + index);
+                }
+
+                /* Set the configuration back to the page */
+                rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+            }
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/* @brief This internal API sets step counter configurations like water-mark
+ * level, reset-counter and output-configuration step detector and activity.
+ */
+static int8_t set_step_config(const struct bmi2_step_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to define index */
+    uint8_t index = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for step counter 4 */
+    struct bmi2_feature_config step_count_config = { 0, 0, 0 };
+
+    /* Copy the feature configuration address to a local pointer */
+    uint16_t *data_p = (uint16_t *) (void *)feat_config;
+
+    /* Search for step counter feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&step_count_config, BMI2_STEP_COUNTER, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where step counter resides */
+        rslt = bmi2_get_feat_config(step_count_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes */
+            idx = step_count_config.start_addr;
+
+            /* Get offset in words since all the features are set in words length */
+            idx = idx / 2;
+
+            /* Set water-mark level */
+            *(data_p + idx) = BMI2_SET_BIT_POS0(*(data_p + idx), BMI2_STEP_COUNT_WM_LEVEL, config->watermark_level);
+
+            /* Set reset-counter */
+            *(data_p + idx) = BMI2_SET_BITS(*(data_p + idx), BMI2_STEP_COUNT_RST_CNT, config->reset_counter);
+
+            /* Increment offset by 1 word  to set output
+             * configuration of step detector and step activity
+             */
+            idx++;
+
+            /* Set step buffer size */
+            *(data_p + idx) = BMI2_SET_BITS(*(data_p + idx), BMI2_STEP_BUFFER_SIZE, config->step_buffer_size);
+
+            /* Increment offset by 1 more word to get the total length in words */
+            idx++;
+
+            /* Get total length in bytes to copy from local pointer to the array */
+            idx = (uint8_t)(idx * 2) - step_count_config.start_addr;
+
+            /* Copy the bytes to be set back to the array */
+            for (index = 0; index < idx; index++)
+            {
+                feat_config[step_count_config.start_addr +
+                            index] = *((uint8_t *) data_p + step_count_config.start_addr + index);
+            }
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API sets wrist gesture configurations like wearable-arm,
+ * and output-configuration.
+ */
+static int8_t set_wrist_gest_config(const struct bmi2_wrist_gest_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to define index */
+    uint8_t index = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for wrist gesture */
+    struct bmi2_feature_config wrist_gest_config = { 0, 0, 0 };
+
+    /* Copy the feature configuration address to a local pointer */
+    uint16_t *data_p = (uint16_t *) (void *)feat_config;
+
+    /* Search for wrist gesture feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&wrist_gest_config, BMI2_WRIST_GESTURE, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where wrist gesture feature resides */
+        rslt = bmi2_get_feat_config(wrist_gest_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for gesture select */
+            idx = wrist_gest_config.start_addr;
+
+            /* Get offset in words since all the features are set in words length */
+            idx = idx / 2;
+
+            /* Set wearable arm */
+            *(data_p + idx) = BMI2_SET_BITS(*(data_p + idx), BMI2_WRIST_GEST_WEAR_ARM, config->wearable_arm);
+
+            /* Increment offset by 1 more word to set minimum tilt angle (min_flick_peak) */
+            idx++;
+            *(data_p + idx) = config->min_flick_peak;
+
+            /* Increment offset by 1 more word to set min_flick_samples */
+            idx++;
+            *(data_p + idx) = config->min_flick_samples;
+
+            /* Increment offset by 1 more word to set max time within gesture moment has to be completed */
+            idx++;
+            *(data_p + idx) = config->max_duration;
+
+            /* Increment offset by 1 more word to get the total length in words */
+            idx++;
+
+            /* Get total length in bytes to copy from local pointer to the array */
+            idx = (uint8_t)(idx * 2) - wrist_gest_config.start_addr;
+
+            /* Copy the bytes to be set back to the array */
+            for (index = 0; index < idx; index++)
+            {
+                feat_config[wrist_gest_config.start_addr +
+                            index] = *((uint8_t *) data_p + wrist_gest_config.start_addr + index);
+            }
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API sets wrist wear wake-up configurations like
+ * output-configuration.
+ */
+static int8_t set_wrist_wear_wake_up_config(const struct bmi2_wrist_wear_wake_up_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to define index */
+    uint8_t index = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for wrist wear wake-up */
+    struct bmi2_feature_config wrist_wake_up_config = { 0, 0, 0 };
+
+    /* Copy the feature configuration address to a local pointer */
+    uint16_t *data_p = (uint16_t *) (void *)feat_config;
+
+    /* Search for wrist wear wake-up feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&wrist_wake_up_config, BMI2_WRIST_WEAR_WAKE_UP, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where wrist wear wake-up feature resides */
+        rslt = bmi2_get_feat_config(wrist_wake_up_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for wrist wear wake-up select */
+            idx = wrist_wake_up_config.start_addr;
+
+            /* Get offset in words since all the features are set in words length */
+            idx = idx / 2;
+
+            *(data_p + idx) = config->min_angle_focus;
+
+            /* Increment offset by 1 more word to set min_angle_nonfocus */
+            idx++;
+            *(data_p + idx) = config->min_angle_nonfocus;
+
+            /* Increment offset by 1 more word to set max_tilt_lr */
+            idx++;
+            *(data_p + idx) = config->max_tilt_lr;
+
+            /* Increment offset by 1 more word to set max_tilt_ll */
+            idx++;
+            *(data_p + idx) = config->max_tilt_ll;
+
+            /* Increment offset by 1 more word to set max_tilt_pd */
+            idx++;
+            *(data_p + idx) = config->max_tilt_pd;
+
+            /* Increment offset by 1 more word to set max_tilt_pu */
+            idx++;
+            *(data_p + idx) = config->max_tilt_pu;
+
+            /* Increment offset by 1 more word to get the total length in words */
+            idx++;
+
+            /* Get total length in bytes to copy from local pointer to the array */
+            idx = (uint8_t)(idx * 2) - wrist_wake_up_config.start_addr;
+
+            /* Copy the bytes to be set back to the array */
+            for (index = 0; index < idx; index++)
+            {
+                feat_config[wrist_wake_up_config.start_addr +
+                            index] = *((uint8_t *) data_p + wrist_wake_up_config.start_addr + index);
+            }
+
+            /* Set the configuration back to the page */
+            rslt = bmi2_set_regs(BMI2_FEATURES_REG_ADDR, feat_config, BMI2_FEAT_SIZE_IN_BYTES, dev);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets any-motion configurations like axes select,
+ * duration, threshold and output-configuration.
+ */
+static int8_t get_any_motion_config(struct bmi2_any_motion_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to define LSB */
+    uint16_t lsb;
+
+    /* Variable to define MSB */
+    uint16_t msb;
+
+    /* Variable to define a word */
+    uint16_t lsb_msb;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for any-motion */
+    struct bmi2_feature_config any_mot_config = { 0, 0, 0 };
+
+    /* Search for any-motion feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&any_mot_config, BMI2_ANY_MOTION, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where any-motion feature resides */
+        rslt = bmi2_get_feat_config(any_mot_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for feature enable for any-motion */
+            idx = any_mot_config.start_addr;
+
+            /* Get word to calculate duration, x, y and z select */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            /* Get duration */
+            config->duration = lsb_msb & BMI2_ANY_NO_MOT_DUR_MASK;
+
+            /* Get x-select */
+            config->select_x = (lsb_msb & BMI2_ANY_NO_MOT_X_SEL_MASK) >> BMI2_ANY_NO_MOT_X_SEL_POS;
+
+            /* Get y-select */
+            config->select_y = (lsb_msb & BMI2_ANY_NO_MOT_Y_SEL_MASK) >> BMI2_ANY_NO_MOT_Y_SEL_POS;
+
+            /* Get z-select */
+            config->select_z = (lsb_msb & BMI2_ANY_NO_MOT_Z_SEL_MASK) >> BMI2_ANY_NO_MOT_Z_SEL_POS;
+
+            /* Get word to calculate threshold, output configuration from the same word */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            /* Get threshold */
+            config->threshold = lsb_msb & BMI2_ANY_NO_MOT_THRES_MASK;
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets no-motion configurations like axes select,
+ * duration, threshold and output-configuration.
+ */
+static int8_t get_no_motion_config(struct bmi2_no_motion_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to define LSB */
+    uint16_t lsb = 0;
+
+    /* Variable to define MSB */
+    uint16_t msb = 0;
+
+    /* Variable to define a word */
+    uint16_t lsb_msb = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for no-motion */
+    struct bmi2_feature_config no_mot_config = { 0, 0, 0 };
+
+    /* Search for no-motion feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&no_mot_config, BMI2_NO_MOTION, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where no-motion feature resides */
+        rslt = bmi2_get_feat_config(no_mot_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for feature enable for no-motion */
+            idx = no_mot_config.start_addr;
+
+            /* Get word to calculate duration, x, y and z select */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            /* Get duration */
+            config->duration = lsb_msb & BMI2_ANY_NO_MOT_DUR_MASK;
+
+            /* Get x-select */
+            config->select_x = (lsb_msb & BMI2_ANY_NO_MOT_X_SEL_MASK) >> BMI2_ANY_NO_MOT_X_SEL_POS;
+
+            /* Get y-select */
+            config->select_y = (lsb_msb & BMI2_ANY_NO_MOT_Y_SEL_MASK) >> BMI2_ANY_NO_MOT_Y_SEL_POS;
+
+            /* Get z-select */
+            config->select_z = (lsb_msb & BMI2_ANY_NO_MOT_Z_SEL_MASK) >> BMI2_ANY_NO_MOT_Z_SEL_POS;
+
+            /* Get word to calculate threshold, output configuration from the same word */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            /* Get threshold */
+            config->threshold = lsb_msb & BMI2_ANY_NO_MOT_THRES_MASK;
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets sig-motion configurations like block-size,
+ * output-configuration and other parameters.
+ */
+static int8_t get_sig_motion_config(struct bmi2_sig_motion_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to define LSB */
+    uint16_t lsb = 0;
+
+    /* Variable to define MSB */
+    uint16_t msb = 0;
+
+    /* Variable to define a word */
+    uint16_t lsb_msb = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration sig-motion */
+    struct bmi2_feature_config sig_mot_config = { 0, 0, 0 };
+
+    /* Search for sig-motion feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&sig_mot_config, BMI2_SIG_MOTION, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where sig-motion feature resides */
+        rslt = bmi2_get_feat_config(sig_mot_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for feature enable for sig-motion */
+            idx = sig_mot_config.start_addr;
+
+            /* Get word to calculate parameter 1 */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            /* Get parameter 1  */
+            config->block_size = lsb_msb & BMI2_SIG_MOT_PARAM_1_MASK;
+
+            /* Get word to calculate parameter 2 */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            /* Get parameter 2  */
+            config->param_2 = lsb_msb & BMI2_SIG_MOT_PARAM_2_MASK;
+
+            /* Get word to calculate parameter 3 */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            /* Get parameter 3  */
+            config->param_3 = lsb_msb & BMI2_SIG_MOT_PARAM_3_MASK;
+
+            /* Get word to calculate parameter 4 */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            /* Get parameter 4  */
+            config->param_4 = lsb_msb & BMI2_SIG_MOT_PARAM_4_MASK;
+
+            /* Get word to calculate parameter 5 */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            /* Get parameter 5  */
+            config->param_5 = lsb_msb & BMI2_SIG_MOT_PARAM_5_MASK;
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets step counter parameter configurations.
+ */
+static int8_t get_step_count_params_config(uint16_t *step_count_params, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt = BMI2_OK;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Variable to define LSB */
+    uint16_t lsb = 0;
+
+    /* Variable to define MSB */
+    uint16_t msb = 0;
+
+    /* Variable to define a word */
+    uint16_t lsb_msb = 0;
+
+    /* Initialize feature configuration for step counter 1 */
+    struct bmi2_feature_config step_params_config = { 0, 0, 0 };
+
+    /* Variable to index the page number */
+    uint8_t page_idx;
+
+    /* Variable to define the start page */
+    uint8_t start_page;
+
+    /* Variable to define start address of the parameters */
+    uint8_t start_addr;
+
+    /* Variable to define number of bytes */
+    uint8_t n_bytes = (BMI2_STEP_CNT_N_PARAMS * 2);
+
+    /* Variable to store number of pages */
+    uint8_t n_pages = (n_bytes / 16);
+
+    /* Variable to define the end page */
+    uint8_t end_page;
+
+    /* Variable to define the remaining bytes to be read */
+    uint8_t remain_len;
+
+    /* Variable to define the maximum words to be read in a page */
+    uint8_t max_len = BMI2_FEAT_SIZE_IN_BYTES;
+
+    /* Variable index bytes in a page */
+    uint8_t page_byte_idx;
+
+    /* Variable to index the parameters */
+    uint8_t param_idx = 0;
+
+    /* Search for step counter parameter feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&step_params_config, BMI2_STEP_COUNTER_PARAMS, dev);
+    if (feat_found)
+    {
+        /* Get the start page for the step counter parameters */
+        start_page = step_params_config.page;
+
+        /* Get the end page for the step counter parameters */
+        end_page = start_page + n_pages;
+
+        /* Get the start address for the step counter parameters */
+        start_addr = step_params_config.start_addr;
+
+        /* Get the remaining length of bytes to be read */
+        remain_len = (uint8_t)((n_bytes - (n_pages * 16)) + start_addr);
+        for (page_idx = start_page; page_idx <= end_page; page_idx++)
+        {
+            /* Get the configuration from the respective page */
+            rslt = bmi2_get_feat_config(page_idx, feat_config, dev);
+            if (rslt == BMI2_OK)
+            {
+                /* Start from address 0x00 when switched to next page */
+                if (page_idx > start_page)
+                {
+                    start_addr = 0;
+                }
+
+                /* Remaining number of bytes to be read in the page  */
+                if (page_idx == end_page)
+                {
+                    max_len = remain_len;
+                }
+
+                /* Get the offset */
+                page_byte_idx = start_addr;
+                while (page_byte_idx < max_len)
+                {
+                    /* Get word to calculate the parameter*/
+                    lsb = (uint16_t) feat_config[page_byte_idx++];
+                    if (page_byte_idx < max_len)
+                    {
+                        msb = ((uint16_t) feat_config[page_byte_idx++] << 8);
+                    }
+
+                    lsb_msb = lsb | msb;
+
+                    /* Get parameters 1 to 25 */
+                    step_count_params[param_idx] = lsb_msb & BMI2_STEP_COUNT_PARAMS_MASK;
+
+                    /* Increment to next parameter */
+                    param_idx++;
+                }
+            }
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets step counter/detector/activity configurations.
+ */
+static int8_t get_step_config(struct bmi2_step_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to define LSB */
+    uint16_t lsb = 0;
+
+    /* Variable to define MSB */
+    uint16_t msb = 0;
+
+    /* Variable to define a word */
+    uint16_t lsb_msb = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for step counter */
+    struct bmi2_feature_config step_count_config = { 0, 0, 0 };
+
+    /* Search for step counter 4 feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&step_count_config, BMI2_STEP_COUNTER, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where step counter 4 parameter resides */
+        rslt = bmi2_get_feat_config(step_count_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset for feature enable for step counter/detector/activity */
+            idx = step_count_config.start_addr;
+
+            /* Get word to calculate water-mark level and reset counter */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            /* Get water-mark level */
+            config->watermark_level = lsb_msb & BMI2_STEP_COUNT_WM_LEVEL_MASK;
+
+            /* Get reset counter */
+            config->reset_counter = (lsb_msb & BMI2_STEP_COUNT_RST_CNT_MASK) >> BMI2_STEP_COUNT_RST_CNT_POS;
+
+            /* Get word to calculate output configuration of step detector and activity */
+            lsb = (uint16_t) feat_config[idx++];
+            msb = ((uint16_t) feat_config[idx++] << 8);
+            lsb_msb = lsb | msb;
+
+            config->step_buffer_size = (lsb_msb & BMI2_STEP_BUFFER_SIZE_MASK) >> BMI2_STEP_BUFFER_SIZE_POS;
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets wrist gesture configurations like wearable-arm,
+ * and output-configuration.
+ */
+static int8_t get_wrist_gest_config(struct bmi2_wrist_gest_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for wrist gesture */
+    struct bmi2_feature_config wrist_gest_config = { 0, 0, 0 };
+
+    /* Copy the feature configuration address to a local pointer */
+    uint16_t *data_p = (uint16_t *) (void *)feat_config;
+
+    /* Search for wrist gesture feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&wrist_gest_config, BMI2_WRIST_GESTURE, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where wrist gesture feature  resides */
+        rslt = bmi2_get_feat_config(wrist_gest_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for wrist gesture select */
+            idx = wrist_gest_config.start_addr;
+
+            /* Get offset in words since all the features are set in words length */
+            idx = idx / 2;
+
+            /* Get wearable arm */
+            config->wearable_arm = (*(data_p + idx) & BMI2_WRIST_GEST_WEAR_ARM_MASK) >> BMI2_WRIST_GEST_WEAR_ARM_POS;
+
+            /* Increment the offset by 1 word to get min_flick_peak */
+            idx++;
+            config->min_flick_peak = *(data_p + idx);
+
+            /* Increment the offset by 1 word to get min_flick_samples */
+            idx++;
+            config->min_flick_samples = *(data_p + idx);
+
+            /* Increment the offset by 1 word to get max_duration */
+            idx++;
+            config->max_duration = *(data_p + idx);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets wrist wear wake-up configurations like
+ * output-configuration.
+ */
+static int8_t get_wrist_wear_wake_up_config(struct bmi2_wrist_wear_wake_up_config *config, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature configuration for wrist wear wake-up */
+    struct bmi2_feature_config wrist_wake_up_config = { 0, 0, 0 };
+
+    /* Copy the feature configuration address to a local pointer */
+    uint16_t *data_p = (uint16_t *) (void *)feat_config;
+
+    /* Search for wrist wear wake-up feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&wrist_wake_up_config, BMI2_WRIST_WEAR_WAKE_UP, dev);
+    if (feat_found)
+    {
+        /* Get the configuration from the page where wrist wear wake-up feature  resides */
+        rslt = bmi2_get_feat_config(wrist_wake_up_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for wrist wear wake-up select */
+            idx = wrist_wake_up_config.start_addr;
+
+            /* Get offset in words since all the features are set in words length */
+            idx = idx / 2;
+
+            config->min_angle_focus = *(data_p + idx);
+
+            /* Increment the offset value by 1 word to get min_angle_nonfocus */
+            idx++;
+            config->min_angle_nonfocus = *(data_p + idx);
+
+            /* Increment the offset value by 1 word to get max_tilt_lr */
+            idx++;
+            config->max_tilt_lr = *(data_p + idx);
+
+            /* Increment the offset value by 1 word to get max_tilt_ll */
+            idx++;
+            config->max_tilt_ll = *(data_p + idx);
+
+            /* Increment the offset value by 1 word to get max_tilt_pd */
+            idx++;
+            config->max_tilt_pd = *(data_p + idx);
+
+            /* Increment the offset value by 1 word to get max_tilt_pu */
+            idx++;
+            config->max_tilt_pu = *(data_p + idx);
+
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets the output values of the wrist gesture.
+ */
+static int8_t get_wrist_gest_status(uint8_t *wrist_gest, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variables to define index */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature output for wrist gesture */
+    struct bmi2_feature_config wrist_gest_out_config = { 0, 0, 0 };
+
+    /* Search for wrist gesture feature and extract its configuration details */
+    feat_found = extract_output_feat_config(&wrist_gest_out_config, BMI2_WRIST_GESTURE, dev);
+    if (feat_found)
+    {
+        /* Get the feature output configuration for wrist gesture */
+        rslt = bmi2_get_feat_config(wrist_gest_out_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for wrist gesture output */
+            idx = wrist_gest_out_config.start_addr;
+
+            /* Get the wrist gesture output */
+            *wrist_gest = feat_config[idx];
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets the output values of step counter.
+ */
+static int8_t get_step_counter_output(uint32_t *step_count, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variables to define index */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature output for step counter */
+    struct bmi2_feature_config step_cnt_out_config = { 0, 0, 0 };
+
+    /* Search for step counter output feature and extract its configuration details */
+    feat_found = extract_output_feat_config(&step_cnt_out_config, BMI2_STEP_COUNTER, dev);
+    if (feat_found)
+    {
+        /* Get the feature output configuration for step-counter */
+        rslt = bmi2_get_feat_config(step_cnt_out_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for step counter output */
+            idx = step_cnt_out_config.start_addr;
+
+            /* Get the step counter output in 4 bytes */
+            *step_count = (uint32_t) feat_config[idx++];
+            *step_count |= ((uint32_t) feat_config[idx++] << 8);
+            *step_count |= ((uint32_t) feat_config[idx++] << 16);
+            *step_count |= ((uint32_t) feat_config[idx++] << 24);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets the error status related to NVM.
+ */
+static int8_t get_nvm_error_status(struct bmi2_nvm_err_status *nvm_err_stat, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variables to define index */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature output for NVM error status */
+    struct bmi2_feature_config nvm_err_cfg = { 0, 0, 0 };
+
+    /* Search for NVM error status feature and extract its configuration details */
+    feat_found = extract_output_feat_config(&nvm_err_cfg, BMI2_NVM_STATUS, dev);
+    if (feat_found)
+    {
+        /* Get the feature output configuration for NVM error status */
+        rslt = bmi2_get_feat_config(nvm_err_cfg.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for NVM error status */
+            idx = nvm_err_cfg.start_addr;
+
+            /* Increment index to get the error status */
+            idx++;
+
+            /* Error when NVM load action fails */
+            nvm_err_stat->load_error = BMI2_GET_BIT_POS0(feat_config[idx], BMI2_NVM_LOAD_ERR_STATUS);
+
+            /* Error when NVM program action fails */
+            nvm_err_stat->prog_error = BMI2_GET_BITS(feat_config[idx], BMI2_NVM_PROG_ERR_STATUS);
+
+            /* Error when NVM erase action fails */
+            nvm_err_stat->erase_error = BMI2_GET_BITS(feat_config[idx], BMI2_NVM_ERASE_ERR_STATUS);
+
+            /* Error when NVM program limit is exceeded */
+            nvm_err_stat->exceed_error = BMI2_GET_BITS(feat_config[idx], BMI2_NVM_END_EXCEED_STATUS);
+
+            /* Error when NVM privilege mode is not acquired */
+            nvm_err_stat->privil_error = BMI2_GET_BITS(feat_config[idx], BMI2_NVM_PRIV_ERR_STATUS);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API is used to get enable status of gyroscope user gain
+ * update.
+ */
+static int8_t get_user_gain_upd_status(uint8_t *status, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt = BMI2_OK;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variable to define the array offset */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Variable to check APS status */
+    uint8_t aps_stat = 0;
+
+    /* Initialize feature configuration for gyroscope user gain */
+    struct bmi2_feature_config gyr_user_gain_cfg = { 0, 0, 0 };
+
+    /* Search for user gain feature and extract its configuration details */
+    feat_found = bmi2_extract_input_feat_config(&gyr_user_gain_cfg, BMI2_GYRO_GAIN_UPDATE, dev);
+    if (feat_found)
+    {
+        /* Disable advance power save */
+        aps_stat = dev->aps_status;
+        if (aps_stat == BMI2_ENABLE)
+        {
+            rslt = bmi2_set_adv_power_save(BMI2_DISABLE, dev);
+        }
+
+        if (rslt == BMI2_OK)
+        {
+            /* Get the configuration from the page where user gain feature resides */
+            rslt = bmi2_get_feat_config(gyr_user_gain_cfg.page, feat_config, dev);
+            if (rslt == BMI2_OK)
+            {
+                /* Define the offset for enable/disable of user gain */
+                idx = gyr_user_gain_cfg.start_addr + BMI2_GYR_USER_GAIN_FEAT_EN_OFFSET;
+
+                /* Set the feature enable status */
+                *status = BMI2_GET_BITS(feat_config[idx], BMI2_GYR_USER_GAIN_FEAT_EN);
+            }
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    /* Enable Advance power save if disabled while configuring and not when already disabled */
+    if ((rslt == BMI2_OK) && (aps_stat == BMI2_ENABLE))
+    {
+        rslt = bmi2_set_adv_power_save(BMI2_ENABLE, dev);
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets the output values of step activity.
+ */
+static int8_t get_step_activity_output(uint8_t *step_act, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variables to define index */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature output for step activity */
+    struct bmi2_feature_config step_act_out_config = { 0, 0, 0 };
+
+    /* Search for step activity output feature and extract its configuration details */
+    feat_found = extract_output_feat_config(&step_act_out_config, BMI2_STEP_ACTIVITY, dev);
+    if (feat_found)
+    {
+        /* Get the feature output configuration for step-activity */
+        rslt = bmi2_get_feat_config(step_act_out_config.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for step activity output */
+            idx = step_act_out_config.start_addr;
+
+            /* Get the step activity output */
+            *step_act = feat_config[idx];
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API gets the error status related to virtual frames.
+ */
+static int8_t get_vfrm_error_status(struct bmi2_vfrm_err_status *vfrm_err_stat, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Array to define the feature configuration */
+    uint8_t feat_config[BMI2_FEAT_SIZE_IN_BYTES] = { 0 };
+
+    /* Variables to define index */
+    uint8_t idx = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found;
+
+    /* Initialize feature output for VFRM error status */
+    struct bmi2_feature_config vfrm_err_cfg = { 0, 0, 0 };
+
+    /* Search for VFRM error status feature and extract its configuration details */
+    feat_found = extract_output_feat_config(&vfrm_err_cfg, BMI2_VFRM_STATUS, dev);
+    if (feat_found)
+    {
+        /* Get the feature output configuration for VFRM error status */
+        rslt = bmi2_get_feat_config(vfrm_err_cfg.page, feat_config, dev);
+        if (rslt == BMI2_OK)
+        {
+            /* Define the offset in bytes for VFRM error status */
+            idx = vfrm_err_cfg.start_addr;
+
+            /* Increment index to get the error status */
+            idx++;
+
+            /* Internal error while acquiring lock for FIFO */
+            vfrm_err_stat->lock_error = BMI2_GET_BITS(feat_config[idx], BMI2_VFRM_LOCK_ERR_STATUS);
+
+            /* Internal error while writing byte into FIFO */
+            vfrm_err_stat->write_error = BMI2_GET_BITS(feat_config[idx], BMI2_VFRM_WRITE_ERR_STATUS);
+
+            /* Internal error while writing into FIFO */
+            vfrm_err_stat->fatal_error = BMI2_GET_BITS(feat_config[idx], BMI2_VFRM_FATAL_ERR_STATUS);
+        }
+    }
+    else
+    {
+        rslt = BMI2_E_INVALID_SENSOR;
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API enables/disables compensation of the gain defined
+ * in the GAIN register.
+ */
+static int8_t enable_gyro_gain(uint8_t enable, struct bmi2_dev *dev)
+{
+    /* Variable to define error */
+    int8_t rslt;
+
+    /* Variable to define register data */
+    uint8_t reg_data = 0;
+
+    rslt = bmi2_get_regs(BMI2_GYR_OFF_COMP_6_ADDR, &reg_data, 1, dev);
+    if (rslt == BMI2_OK)
+    {
+        reg_data = BMI2_SET_BITS(reg_data, BMI2_GYR_GAIN_EN, enable);
+        rslt = bmi2_set_regs(BMI2_GYR_OFF_COMP_6_ADDR, &reg_data, 1, dev);
+    }
+
+    return rslt;
+}
+
+/*!
+ * @brief This internal API is used to extract the output feature configuration
+ * details from the look-up table.
+ */
+static uint8_t extract_output_feat_config(struct bmi2_feature_config *feat_output,
+                                          uint8_t type,
+                                          const struct bmi2_dev *dev)
+{
+    /* Variable to define loop */
+    uint8_t loop = 0;
+
+    /* Variable to set flag */
+    uint8_t feat_found = BMI2_FALSE;
+
+    /* Search for the output feature from the output configuration array */
+    while (loop < dev->out_sens)
+    {
+        if (dev->feat_output[loop].type == type)
+        {
+            *feat_output = dev->feat_output[loop];
+            feat_found = BMI2_TRUE;
+            break;
+        }
+
+        loop++;
+    }
+
+    /* Return flag */
+    return feat_found;
 }

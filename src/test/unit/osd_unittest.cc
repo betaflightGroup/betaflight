@@ -104,6 +104,7 @@ extern "C" {
     int32_t simulationAltitude;
     int32_t simulationVerticalSpeed;
     uint16_t simulationCoreTemperature;
+    bool simulationGpsHealthy;
 }
 
 uint32_t simulationFeatureFlags = FEATURE_GPS;
@@ -130,6 +131,7 @@ void setDefaultSimulationState()
     simulationAltitude = 0;
     simulationVerticalSpeed = 0;
     simulationCoreTemperature = 0;
+    simulationGpsHealthy = false;
 
     rcData[PITCH] = 1500;
 
@@ -1134,6 +1136,74 @@ TEST_F(OsdTest, TestConvertTemperatureUnits)
     EXPECT_EQ(osdConvertTemperatureToSelectedUnit(41), 106);
 }
 
+TEST_F(OsdTest, TestGpsElements)
+{
+    // given
+    osdElementConfigMutable()->item_pos[OSD_GPS_SATS] = OSD_POS(2, 4) | OSD_PROFILE_1_FLAG;
+
+    sensorsSet(SENSOR_GPS);
+    osdAnalyzeActiveElements();
+    
+    // when
+    simulationGpsHealthy = false;
+    gpsSol.numSat = 0;
+
+    displayClearScreen(&testDisplayPort);
+    osdRefresh(simulationTime);
+
+    // then
+    // Sat indicator should blink and show "NC"
+    for (int i = 0; i < 15; i++) {
+        // Blinking should happen at 5Hz
+        simulationTime += 0.2e6;
+        osdRefresh(simulationTime);
+
+        if (i % 2 == 0) {
+            displayPortTestBufferSubstring(2, 4, "%c%cNC", SYM_SAT_L, SYM_SAT_R);
+        } else {
+            displayPortTestBufferIsEmpty();
+        }
+    }
+
+    // when
+    simulationGpsHealthy = true;
+    gpsSol.numSat = 0;
+
+    displayClearScreen(&testDisplayPort);
+    osdRefresh(simulationTime);
+
+    // then
+    // Sat indicator should blink and show "0"
+    for (int i = 0; i < 15; i++) {
+        // Blinking should happen at 5Hz
+        simulationTime += 0.2e6;
+        osdRefresh(simulationTime);
+
+        if (i % 2 == 0) {
+            displayPortTestBufferSubstring(2, 4, "%c%c 0", SYM_SAT_L, SYM_SAT_R);
+        } else {
+            displayPortTestBufferIsEmpty();
+        }
+    }
+
+    // when
+    simulationGpsHealthy = true;
+    gpsSol.numSat = 10;
+
+    displayClearScreen(&testDisplayPort);
+    osdRefresh(simulationTime);
+
+    // then
+    // Sat indicator should show "10" without flashing
+    for (int i = 0; i < 15; i++) {
+        // Blinking should happen at 5Hz
+        simulationTime += 0.2e6;
+        osdRefresh(simulationTime);
+
+        displayPortTestBufferSubstring(2, 4, "%c%c10", SYM_SAT_L, SYM_SAT_R);
+    }
+}
+
 // STUBS
 extern "C" {
     bool featureIsEnabled(uint32_t f) { return simulationFeatureFlags & f; }
@@ -1242,6 +1312,7 @@ extern "C" {
     bool pidOsdAntiGravityActive(void) { return false; }
     bool failsafeIsActive(void) { return false; }
     bool gpsRescueIsConfigured(void) { return false; }
+    bool gpsIsHealthy(void) { return simulationGpsHealthy; }
     int8_t calculateThrottlePercent(void) { return 0; }
     uint32_t persistentObjectRead(persistentObjectId_e) { return 0; }
     void persistentObjectWrite(persistentObjectId_e, uint32_t) {}

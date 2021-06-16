@@ -191,17 +191,17 @@
 static uint32_t rawP = 0;
 static uint16_t rawT = 0;
 
-bool lpsWriteCommand(extDevice_t *dev, uint8_t cmd, uint8_t byte)
+bool lpsWriteCommand(const extDevice_t *dev, uint8_t cmd, uint8_t byte)
 {
     return spiWriteRegRB(dev, cmd, byte);
 }
 
-bool lpsReadCommand(extDevice_t *dev, uint8_t cmd, uint8_t *data, uint8_t len)
+bool lpsReadCommand(const extDevice_t *dev, uint8_t cmd, uint8_t *data, uint8_t len)
 {
     return spiReadRegMskBufRB(dev, cmd | 0x80 | 0x40, data, len);
 }
 
-bool lpsWriteVerify(extDevice_t *dev, uint8_t cmd, uint8_t byte)
+bool lpsWriteVerify(const extDevice_t *dev, uint8_t cmd, uint8_t byte)
 {
     uint8_t temp = 0xff;
     spiWriteReg(dev, cmd, byte);
@@ -210,13 +210,13 @@ bool lpsWriteVerify(extDevice_t *dev, uint8_t cmd, uint8_t byte)
     return false;
 }
 
-static void lpsOn(extDevice_t *dev, uint8_t CTRL1_val)
+static void lpsOn(const extDevice_t *dev, uint8_t CTRL1_val)
 {
     lpsWriteCommand(dev, LPS_CTRL1, CTRL1_val | 0x80);
     //Instead of delay let's ready status reg
 }
 
-static void lpsOff(extDevice_t *dev)
+static void lpsOff(const extDevice_t *dev)
 {
     lpsWriteCommand(dev, LPS_CTRL1, 0x00 | (0x01 << 2));
 }

@@ -35,8 +35,6 @@
 #include "drivers/bus_i2c.h"
 #include "drivers/bus_i2c_impl.h"
 
-#define CLOCKSPEED 800000    // i2c clockspeed 400kHz default (conform specs), 800kHz  and  1200kHz (Betaflight default)
-
 // Number of bits in I2C protocol phase
 #define LEN_ADDR 7
 #define LEN_RW 1
@@ -483,12 +481,7 @@ void i2cInit(I2CDevice device)
     i2cInit.I2C_OwnAddress1 = 0;
     i2cInit.I2C_Ack = I2C_Ack_Enable;
     i2cInit.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-
-    if (pDev->overClock) {
-        i2cInit.I2C_ClockSpeed = 800000; // 800khz Maximum speed tested on various boards without issues
-    } else {
-        i2cInit.I2C_ClockSpeed = 400000; // 400khz Operation according specs
-    }
+    i2cInit.I2C_ClockSpeed = pDev->clockSpeed * 1000;
 
     I2C_Cmd(I2Cx, ENABLE);
     I2C_Init(I2Cx, &i2cInit);

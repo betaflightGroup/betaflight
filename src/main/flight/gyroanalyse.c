@@ -118,16 +118,9 @@ static uint16_t FAST_DATA_ZERO_INIT   dynNotchMaxFFT;
 static float FAST_DATA_ZERO_INIT      smoothFactor;
 static uint8_t FAST_DATA_ZERO_INIT    numSamples;
 
-void gyroDataAnalyseInit(uint32_t targetLooptimeUs)
+void gyroDataAnalyseInit(gyroAnalyseState_t *state, uint32_t targetLooptimeUs)
 {
-#ifdef USE_MULTI_GYRO
-    static bool gyroAnalyseInitialized;
-    if (gyroAnalyseInitialized) {
-        return;
-    }
-    gyroAnalyseInitialized = true;
-#endif
-
+    // initialise even if FEATURE_DYNAMIC_FILTER not set, since it may be set later
     dynNotchBandwidthHz = gyroConfig()->dyn_notch_bandwidth_hz;
     dynNotchMinHz = gyroConfig()->dyn_notch_min_hz;
     dynNotchMaxHz = MAX(2 * dynNotchMinHz, gyroConfig()->dyn_notch_max_hz);
@@ -152,12 +145,7 @@ void gyroDataAnalyseInit(uint32_t targetLooptimeUs)
     for (uint8_t axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
         sdftInit(&sdft[axis], sdftStartBin, sdftEndBin, numSamples);
     }
-}
 
-void gyroDataAnalyseStateInit(gyroAnalyseState_t *state, uint32_t targetLooptimeUs)
-{
-    // initialise even if FEATURE_DYNAMIC_FILTER not set, since it may be set later
-    gyroDataAnalyseInit(targetLooptimeUs);
     state->maxSampleCount = numSamples;
     state->maxSampleCountRcp = 1.0f / state->maxSampleCount;
 
