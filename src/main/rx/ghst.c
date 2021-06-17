@@ -52,7 +52,7 @@
 #define GHST_PORT_MODE                  MODE_RXTX   // bidirectional on single pin
 
 #define GHST_MAX_FRAME_TIME_US          500         // 14 bytes @ 420k = ~450us
-#define GHST_TIME_BETWEEN_FRAMES_US     4500        // fastest frame rate = 222.22Hz, or 4500us
+#define GHST_TIME_BETWEEN_FRAMES_US     4000        // fastest frame rate = 250Hz, or 4000us
 
 #define GHST_RSSI_DBM_MIN (-117)            // Long Range mode value
 #define GHST_RSSI_DBM_MAX (-60)             // Typical RSSI with typical power levels, typical antennas, and a few feet/meters between Tx and Rx
@@ -180,7 +180,7 @@ STATIC_UNIT_TESTED void ghstDataReceive(uint16_t c, void *data)
 static bool shouldSendTelemetryFrame(void)
 {
     const timeUs_t now = micros();
-    const timeUs_t timeSinceRxFrameEndUs = cmpTimeUs(now, ghstRxFrameEndAtUs);
+    const timeDelta_t timeSinceRxFrameEndUs = cmpTimeUs(now, ghstRxFrameEndAtUs);
     return telemetryBufLen > 0 && timeSinceRxFrameEndUs > GHST_RX_TO_TELEMETRY_MIN_US && timeSinceRxFrameEndUs < GHST_RX_TO_TELEMETRY_MAX_US;
 }
 
@@ -229,6 +229,7 @@ static bool ghstProcessFrame(const rxRuntimeState_t *rxRuntimeState)
     }
 
     if (ghstValidatedFrameAvailable) {
+        ghstValidatedFrameAvailable = false;
         int startIdx = 0;
 
         if (ghstValidatedFrame.frame.type >= GHST_UL_RC_CHANS_HS4_FIRST &&
@@ -236,10 +237,10 @@ static bool ghstProcessFrame(const rxRuntimeState_t *rxRuntimeState)
             const ghstPayloadPulses_t* const rcChannels = (ghstPayloadPulses_t*)&ghstValidatedFrame.frame.payload;
 
             // all uplink frames contain CH1..4 data (12 bit)
-            ghstChannelData[0] = rcChannels->ch1to4.ch1 >> 1;
-            ghstChannelData[1] = rcChannels->ch1to4.ch2 >> 1;
-            ghstChannelData[2] = rcChannels->ch1to4.ch3 >> 1;
-            ghstChannelData[3] = rcChannels->ch1to4.ch4 >> 1;
+            ghstChannelData[0] = rcChannels->ch1to4.ch1;
+            ghstChannelData[1] = rcChannels->ch1to4.ch2;
+            ghstChannelData[2] = rcChannels->ch1to4.ch3;
+            ghstChannelData[3] = rcChannels->ch1to4.ch4;
 
             switch(ghstValidatedFrame.frame.type) {
                 case GHST_UL_RC_CHANS_HS4_RSSI: {
@@ -278,10 +279,10 @@ static bool ghstProcessFrame(const rxRuntimeState_t *rxRuntimeState)
             {
                 // remainder of uplink frame contains 4 more channels (8 bit), sent in a round-robin fashion
 
-                ghstChannelData[startIdx++] = rcChannels->cha << 3;
-                ghstChannelData[startIdx++] = rcChannels->chb << 3;
-                ghstChannelData[startIdx++] = rcChannels->chc << 3;
-                ghstChannelData[startIdx++] = rcChannels->chd << 3;
+                ghstChannelData[startIdx++] = rcChannels->cha;
+                ghstChannelData[startIdx++] = rcChannels->chb;
+                ghstChannelData[startIdx++] = rcChannels->chc;
+                ghstChannelData[startIdx++] = rcChannels->chd;
             }
         }
     }
@@ -293,16 +294,21 @@ STATIC_UNIT_TESTED float ghstReadRawRC(const rxRuntimeState_t *rxRuntimeState, u
 {
     UNUSED(rxRuntimeState);
 
-    // derived from original SBus scaling, with slight correction for offset (now symmetrical
-    // around OpenTx 0 value)
-    // scaling is:
-    //      OpenTx   RC     PWM
-    // min  -1024    172    988us
-    // ctr  0        992    1500us
-    // max  1024     1811   2012us
+    // Scaling 12bit channels (8bit channels in brackets)
+    //      OpenTx   RC         PWM
+    // min  -1024    1024(  0)   988us
+    // ctr  0        2048(128)  1500us
+    // max  1024     3072(255)  2012us
     //
 
-    return (5 * ((float)ghstChannelData[chan] + 1) / 8) + 880;
+    float pwm = 0.0;
+    if(chan < 4) {
+        pwm = 0.5f * (ghstChannelData[chan] + 952);
+    } else {
+        pwm = (ghstChannelData[chan] << 2) + 988;
+    }
+
+    return pwm;
 }
 
 static timeUs_t ghstFrameTimeUs(void)
@@ -320,10 +326,6 @@ static void ghstIdle()
 
 bool ghstRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 {
-    for (int iChan = 0; iChan < GHST_MAX_NUM_CHANNELS; ++iChan) {
-        ghstChannelData[iChan] = (16 * rxConfig->midrc) / 10 - 1408;
-    }
-
     rxRuntimeState->channelCount = GHST_MAX_NUM_CHANNELS;
     rxRuntimeState->rxRefreshRate = GHST_TIME_BETWEEN_FRAMES_US;
 
@@ -331,6 +333,14 @@ bool ghstRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
     rxRuntimeState->rcFrameStatusFn = ghstFrameStatus;
     rxRuntimeState->rcFrameTimeUsFn = ghstFrameTimeUs;
     rxRuntimeState->rcProcessFrameFn = ghstProcessFrame;
+
+    for (int iChan = 0; iChan < rxRuntimeState->channelCount; ++iChan) {
+        if (iChan < 4) {
+            ghstChannelData[iChan] = 2048;
+        } else {
+            ghstChannelData[iChan] = 128;
+        }
+    }
 
     const serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_RX_SERIAL);
     if (!portConfig) {
