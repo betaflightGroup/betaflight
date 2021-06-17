@@ -38,7 +38,7 @@ int main(void)
     return 0;
 }
 
-void FAST_CODE FAST_CODE_NOINLINE run(void)
+void run(void)
 {
     while (true) {
         scheduler();
