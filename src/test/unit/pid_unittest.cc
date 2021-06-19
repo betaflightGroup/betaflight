@@ -560,7 +560,6 @@ TEST(pidControllerTest, testFeedForward) {
     EXPECT_FLOAT_EQ(0, pidData[FD_ROLL].F);
     EXPECT_FLOAT_EQ(0, pidData[FD_PITCH].F);
     EXPECT_FLOAT_EQ(0, pidData[FD_YAW].F);
-
 }
 
 TEST(pidControllerTest, testItermRelax) {

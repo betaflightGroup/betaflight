@@ -4957,7 +4957,7 @@ static void cliRcSmoothing(const char *cmdName, char *cmdline)
     UNUSED(cmdline);
     rcSmoothingFilter_t *rcSmoothingData = getRcSmoothingData();
     cliPrint("# RC Smoothing Type: ");
-    if (rxConfig()->rc_smoothing_mode == ON) {
+    if (rxConfig()->rc_smoothing_mode) {
         cliPrintLine("FILTER");
         if (rcSmoothingAutoCalculate()) {
             const uint16_t avgRxFrameUs = rcSmoothingData->averageFrameTimeUs;
@@ -4969,22 +4969,22 @@ static void cliRcSmoothing(const char *cmdName, char *cmdline)
             }
         }
         cliPrintf("# Active setpoint cutoff: %dhz ", rcSmoothingData->setpointCutoffFrequency);
-        if (rcSmoothingData->setpointCutoffSetting == 0) {
-            cliPrintLine("(auto)");
-        } else {
+        if (rcSmoothingData->setpointCutoffSetting) {
             cliPrintLine("(manual)");
-        }
-        cliPrintf("# Active FF cutoff: %dhz (", rcSmoothingData->feedforwardCutoffFrequency);
-        if (rcSmoothingData->ffCutoffSetting == 0) {
-            cliPrintLine("auto)");
         } else {
-            cliPrintLine("manual)");
+            cliPrintLine("(auto)");
         }
-        cliPrintf("# Active throttle cutoff: %dhz (", rcSmoothingData->throttleCutoffFrequency);
-        if (rcSmoothingData->ffCutoffSetting == 0) {
-            cliPrintLine("auto)");
+        cliPrintf("# Active FF cutoff: %dhz ", rcSmoothingData->feedforwardCutoffFrequency);
+        if (rcSmoothingData->ffCutoffSetting) {
+            cliPrintLine("(manual)");
         } else {
-            cliPrintLine("manual)");
+            cliPrintLine("(auto)");
+        }
+        cliPrintf("# Active throttle cutoff: %dhz ", rcSmoothingData->throttleCutoffFrequency);
+        if (rcSmoothingData->ffCutoffSetting) {
+            cliPrintLine("(manual)");
+        } else {
+            cliPrintLine("(auto)");
         }
     } else {
         cliPrintLine("OFF");

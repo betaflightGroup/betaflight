@@ -152,7 +152,19 @@
 #define UARTDEV_COUNT_9 0
 #endif
 
-#define UARTDEV_COUNT (UARTDEV_COUNT_1 + UARTDEV_COUNT_2 + UARTDEV_COUNT_3 + UARTDEV_COUNT_4 + UARTDEV_COUNT_5 + UARTDEV_COUNT_6 + UARTDEV_COUNT_7 + UARTDEV_COUNT_8 + UARTDEV_COUNT_9)
+#ifdef USE_UART10
+#define UARTDEV_COUNT_10 1
+#else
+#define UARTDEV_COUNT_10 0
+#endif
+
+#ifdef USE_LPUART1
+#define LPUARTDEV_COUNT_1 1
+#else
+#define LPUARTDEV_COUNT_1 0
+#endif
+
+#define UARTDEV_COUNT (UARTDEV_COUNT_1 + UARTDEV_COUNT_2 + UARTDEV_COUNT_3 + UARTDEV_COUNT_4 + UARTDEV_COUNT_5 + UARTDEV_COUNT_6 + UARTDEV_COUNT_7 + UARTDEV_COUNT_8 + UARTDEV_COUNT_9 + UARTDEV_COUNT_10 + LPUARTDEV_COUNT_1)
 
 typedef struct uartPinDef_s {
     ioTag_t pin;
@@ -242,6 +254,12 @@ void uartDmaIrqHandler(dmaChannelDescriptor_t* descriptor);
     UART_BUFFER(extern, n, R); \
     UART_BUFFER(extern, n, T); struct dummy_s
 
+#define LPUART_BUFFER(type, n, rxtx) type volatile uint8_t lpuart ## n ## rxtx ## xBuffer[UART_ ## rxtx ## X_BUFFER_SIZE]
+
+#define LPUART_BUFFERS_EXTERN(n) \
+    LPUART_BUFFER(extern, n, R); \
+    LPUART_BUFFER(extern, n, T); struct dummy_s
+
 #ifdef USE_UART1
 UART_BUFFERS_EXTERN(1);
 #endif
@@ -276,6 +294,14 @@ UART_BUFFERS_EXTERN(8);
 
 #ifdef USE_UART9
 UART_BUFFERS_EXTERN(9);
+#endif
+
+#ifdef USE_UART10
+UART_BUFFERS_EXTERN(10);
+#endif
+
+#ifdef USE_LPUART1
+LPUART_BUFFERS_EXTERN(1);
 #endif
 
 #undef UART_BUFFERS_EXTERN

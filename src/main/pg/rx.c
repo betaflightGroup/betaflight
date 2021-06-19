@@ -59,7 +59,7 @@ void pgResetFn_rxConfig(rxConfig_t *rxConfig)
         .fpvCamAngleDegrees = 0,
         .airModeActivateThreshold = 25,
         .max_aux_channel = DEFAULT_AUX_CHANNEL_COUNT,
-        .rc_smoothing_mode = ON,
+        .rc_smoothing_mode = 1,
         .rc_smoothing_setpoint_cutoff = 0,
         .rc_smoothing_feedforward_cutoff = 0,
         .rc_smoothing_throttle_cutoff = 0,

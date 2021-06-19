@@ -1487,8 +1487,8 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
         sbufWriteU8(dst, rxConfig()->spektrum_sat_bind);
         sbufWriteU16(dst, rxConfig()->rx_min_usec);
         sbufWriteU16(dst, rxConfig()->rx_max_usec);
-        sbufWriteU8(dst, 0); // not required in API 1.44, was rxConfig()->rcInterpolation)
-        sbufWriteU8(dst, 0); // not required in API 1.44, was rxConfig()->rcInterpolationInterval)
+        sbufWriteU8(dst, 0); // not required in API 1.44, was rxConfig()->rcInterpolation
+        sbufWriteU8(dst, 0); // not required in API 1.44, was rxConfig()->rcInterpolationInterval
         sbufWriteU16(dst, rxConfig()->airModeActivateThreshold * 10 + 1000);
 #ifdef USE_RX_SPI
         sbufWriteU8(dst, rxSpiConfig()->rx_spi_protocol);
@@ -1502,7 +1502,7 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
         sbufWriteU8(dst, rxConfig()->fpvCamAngleDegrees);
         sbufWriteU8(dst, 0); // not required in API 1.44, was rxConfig()->rcSmoothingChannels
 #if defined(USE_RC_SMOOTHING_FILTER)
-        sbufWriteU8(dst, rxConfig()->rc_smoothing_mode);
+        sbufWriteU8(dst, 0); // not required in API 1.44, was rxConfig()->rc_smoothing_type
         sbufWriteU8(dst, rxConfig()->rc_smoothing_setpoint_cutoff);
         sbufWriteU8(dst, rxConfig()->rc_smoothing_feedforward_cutoff);
         sbufWriteU8(dst, 0); // not required in API 1.44, was rxConfig()->rc_smoothing_input_type
@@ -1522,6 +1522,12 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
         // Added in MSP API 1.42
 #if defined(USE_RC_SMOOTHING_FILTER)
         sbufWriteU8(dst, rxConfig()->rc_smoothing_auto_factor_rpy);
+#else
+        sbufWriteU8(dst, 0);
+#endif
+        // Added in MSP API 1.44
+#if defined(USE_RC_SMOOTHING_FILTER)
+        sbufWriteU8(dst, rxConfig()->rc_smoothing_mode);
 #else
         sbufWriteU8(dst, 0);
 #endif
@@ -3256,7 +3262,7 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             // Added in MSP API 1.40
             sbufReadU8(src); // not required in API 1.44, was rxConfigMutable()->rcSmoothingChannels
 #if defined(USE_RC_SMOOTHING_FILTER)
-            configRebootUpdateCheckU8(&rxConfigMutable()->rc_smoothing_mode, sbufReadU8(src));
+            sbufReadU8(src); // not required in API 1.44, was rc_smoothing_type
             configRebootUpdateCheckU8(&rxConfigMutable()->rc_smoothing_setpoint_cutoff, sbufReadU8(src));
             configRebootUpdateCheckU8(&rxConfigMutable()->rc_smoothing_feedforward_cutoff, sbufReadU8(src));
             sbufReadU8(src); // not required in API 1.44, was rc_smoothing_input_type
@@ -3290,7 +3296,14 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             sbufReadU8(src);
 #endif
         }
-
+        if (sbufBytesRemaining(src) >= 1) {
+            // Added in MSP API 1.44
+#if defined(USE_RC_SMOOTHING_FILTER)
+            configRebootUpdateCheckU8(&rxConfigMutable()->rc_smoothing_mode, sbufReadU8(src));
+#else
+            sbufReadU8(src);
+#endif
+        }
         break;
     case MSP_SET_FAILSAFE_CONFIG:
         failsafeConfigMutable()->failsafe_delay = sbufReadU8(src);

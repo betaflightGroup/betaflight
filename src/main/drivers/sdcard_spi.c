@@ -25,12 +25,11 @@
 
 #ifdef USE_SDCARD_SPI
 
-#include "drivers/nvic.h"
-#include "drivers/io.h"
+#include "drivers/bus_spi.h"
 #include "drivers/dma.h"
 #include "drivers/dma_reqmap.h"
-
-#include "drivers/bus_spi.h"
+#include "drivers/io.h"
+#include "drivers/nvic.h"
 #include "drivers/time.h"
 
 #include "pg/bus_spi.h"
@@ -299,9 +298,9 @@ static bool sdcard_sendDataBlockFinish(void)
 {
 #ifdef USE_HAL_DRIVER
     // Drain anything left in the Rx FIFO (we didn't read it during the write)
-    //This is necessary here as when using msc there is timing issue
-    while (LL_SPI_IsActiveFlag_RXNE(sdcard.busdev.busdev_u.spi.instance)) {
-        sdcard.busdev.busdev_u.spi.instance->DR;
+    // This is necessary here as when using msc there is timing issue
+    while (CHECK_SPI_RX_DATA_AVAILABLE(sdcard.busdev.busdev_u.spi.instance)) {
+        SPI_RX_DATA_REGISTER(sdcard.busdev.busdev_u.spi.instance);
     }
 #endif
 
@@ -342,11 +341,15 @@ static void sdcard_sendDataBlockBegin(const uint8_t *buffer, bool multiBlockWrit
 
         LL_DMA_StructInit(&init);
 
+#if defined(STM32G4) || defined(STM32H7)
+        init.PeriphRequest = dmaGetChannel(sdcard.dmaChannel);
+#else
         init.Channel = dmaGetChannel(sdcard.dmaChannel);
+#endif
         init.Mode = LL_DMA_MODE_NORMAL;
         init.Direction = LL_DMA_DIRECTION_MEMORY_TO_PERIPH;
 
-        init.PeriphOrM2MSrcAddress = (uint32_t)&sdcard.busdev.busdev_u.spi.instance->DR;
+        init.PeriphOrM2MSrcAddress = (uint32_t)&SPI_RX_DATA_REGISTER(sdcard.busdev.busdev_u.spi.instance);
         init.Priority = LL_DMA_PRIORITY_LOW;
         init.PeriphOrM2MSrcIncMode  = LL_DMA_PERIPH_NOINCREMENT;
         init.PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_BYTE;
@@ -360,7 +363,11 @@ static void sdcard_sendDataBlockBegin(const uint8_t *buffer, bool multiBlockWrit
         LL_DMA_DeInit(sdcard.dma->dma, sdcard.dma->stream);
         LL_DMA_Init(sdcard.dma->dma, sdcard.dma->stream, &init);
 
+#if defined(STM32G4)
+        LL_DMA_EnableChannel(sdcard.dma->dma, sdcard.dma->stream);
+#else
         LL_DMA_EnableStream(sdcard.dma->dma, sdcard.dma->stream);
+#endif
 
         LL_SPI_EnableDMAReq_TX(sdcard.busdev.busdev_u.spi.instance);
 
@@ -378,7 +385,7 @@ static void sdcard_sendDataBlockBegin(const uint8_t *buffer, bool multiBlockWrit
         init.DMA_MemoryBaseAddr = (uint32_t) buffer;
         init.DMA_DIR = DMA_DIR_PeripheralDST;
 #endif
-        init.DMA_PeripheralBaseAddr = (uint32_t) &sdcard.busdev.busdev_u.spi.instance->DR;
+        init.DMA_PeripheralBaseAddr = (uint32_t)&SPI_RX_DATA_REGISTER(sdcard.busdev.busdev_u.spi.instance);
         init.DMA_Priority = DMA_Priority_Low;
         init.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
         init.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
@@ -735,8 +742,8 @@ static bool sdcardSpi_poll(void)
                 DMA_CLEAR_FLAG(sdcard.dma, DMA_IT_TCIF);
                 DMA_CLEAR_FLAG(sdcard.dma, DMA_IT_HTIF);
                 // Drain anything left in the Rx FIFO (we didn't read it during the write)
-                while (LL_SPI_IsActiveFlag_RXNE(sdcard.busdev.busdev_u.spi.instance)) {
-                    sdcard.busdev.busdev_u.spi.instance->DR;
+                while (CHECK_SPI_RX_DATA_AVAILABLE(sdcard.busdev.busdev_u.spi.instance)) {
+                    SPI_RX_DATA_REGISTER(sdcard.busdev.busdev_u.spi.instance);
                 }
 
                 // Wait for the final bit to be transmitted
@@ -760,7 +767,7 @@ static bool sdcardSpi_poll(void)
 
                 // Drain anything left in the Rx FIFO (we didn't read it during the write)
                 while (SPI_I2S_GetFlagStatus(sdcard.busdev.busdev_u.spi.instance, SPI_I2S_FLAG_RXNE) == SET) {
-                    sdcard.busdev.busdev_u.spi.instance->DR;
+                    SPI_RX_DATA_REGISTER(sdcard.busdev.busdev_u.spi.instance);
                 }
 
                 // Wait for the final bit to be transmitted

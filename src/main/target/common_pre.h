@@ -182,6 +182,23 @@
 #define FAST_DATA
 #endif // USE_FAST_DATA
 
+#if defined(STM32F4)
+// F4 can't DMA to/from CCM (core coupled memory) SRAM (where the stack lives)
+#define DMA_DATA_ZERO_INIT
+#define DMA_DATA
+#define DMA_DATA_AUTO               static
+#elif defined (STM32F7)
+// F7 has no cache coherency issues DMAing to/from DTCM, otherwise buffers must be cache aligned
+#define DMA_DATA_ZERO_INIT          FAST_DATA_ZERO_INIT
+#define DMA_DATA                    FAST_DATA
+#define DMA_DATA_AUTO               static DMA_DATA
+#else
+// DMA to/from any memory
+#define DMA_DATA_ZERO_INIT          __attribute__ ((section(".dmaram_bss"), aligned(32)))
+#define DMA_DATA                    __attribute__ ((section(".dmaram_data"), aligned(32)))
+#define DMA_DATA_AUTO               static DMA_DATA
+#endif
+
 #if defined(STM32F4) || defined (STM32H7)
 // Data in RAM which is guaranteed to not be reset on hot reboot
 #define PERSISTENT                  __attribute__ ((section(".persistent_data"), aligned(4)))
@@ -189,8 +206,10 @@
 
 #ifdef USE_DMA_RAM
 #if defined(STM32H7)
-#define DMA_RAM __attribute__((section(".DMA_RAM")))
-#define DMA_RW_AXI __attribute__((section(".DMA_RW_AXI")))
+#define DMA_RAM __attribute__((section(".DMA_RAM"), aligned(32)))
+#define DMA_RW_AXI __attribute__((section(".DMA_RW_AXI"), aligned(32)))
+extern uint8_t _dmaram_start__;
+extern uint8_t _dmaram_end__;
 #elif defined(STM32G4)
 #define DMA_RAM_R __attribute__((section(".DMA_RAM_R")))
 #define DMA_RAM_W __attribute__((section(".DMA_RAM_W")))

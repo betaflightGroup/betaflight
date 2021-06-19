@@ -157,6 +157,8 @@ typedef enum {
 #define DMA_DEVICE_NO(x)    ((((x)-1) / 8) + 1)
 #define DMA_DEVICE_INDEX(x) ((((x)-1) % 8) + 1)
 
+uint32_t dmaGetChannel(const uint8_t channel);
+
 #else // !STM32G4
 
 typedef enum {

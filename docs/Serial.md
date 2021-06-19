@@ -85,10 +85,18 @@ Note: for Identifier see serialPortIdentifier_e in the source; for Function bitm
 | SERIAL_PORT_USART6         | 5     |
 | SERIAL_PORT_USART7         | 6     |
 | SERIAL_PORT_USART8         | 7     |
-| SERIAL_PORT_LPUART1        | 8     |
+| SERIAL_PORT_UART9          | 8     |
+| SERIAL_PORT_USART10        | 9     |
 | SERIAL_PORT_USB_VCP        | 20    |
 | SERIAL_PORT_SOFTSERIAL1    | 30    |
 | SERIAL_PORT_SOFTSERIAL2    | 31    |
+| SERIAL_PORT_LPUART1        | 40    |
+
+ID's 0-19 reserved for UARTS 1-20
+ID's 20-29 reserved for USB 1-10
+ID's 30-39 reserved for SoftSerial 1-10
+ID's 40-49 reserved for LPUART 1-10
+Other devices can be added starting from id 50.
 
 ### 2. Serial Port Function
 

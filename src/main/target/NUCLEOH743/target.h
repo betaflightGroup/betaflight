@@ -78,9 +78,9 @@
 #define UART8_RX_PIN            PE0
 #define UART8_TX_PIN            PE1
 
-#define USE_UART9 // LPUART1
-#define UART9_RX_PIN            PB7 // PA10 (Shared with UART1)
-#define UART9_TX_PIN            PB6 // PA9 (Shared with UART1)
+#define USE_LPUART1
+#define LPUART1_RX_PIN          PB7 // PA10 (Shared with UART1)
+#define LPUART1_TX_PIN          PB6 // PA9 (Shared with UART1)
 
 #define USE_VCP
 

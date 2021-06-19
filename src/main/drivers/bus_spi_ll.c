@@ -147,7 +147,7 @@ uint8_t spiTransferByte(SPI_TypeDef *instance, uint8_t txByte)
     LL_SPI_TransmitData8(instance, txByte);
 
     timeoutStartUs = microsISR();
-    while (!LL_SPI_IsActiveFlag_RXNE(instance)) {
+    while (!CHECK_SPI_RX_DATA_AVAILABLE(instance)) {
         if (cmpTimeUs(microsISR(), timeoutStartUs) >= SPI_TIMEOUT_US) {
             return spiTimeoutUserCallback(instance);
         }
@@ -188,7 +188,7 @@ bool spiTransfer(SPI_TypeDef *instance, const uint8_t *txData, uint8_t *rxData, 
         LL_SPI_TransmitData16(instance, w);
 
         timeoutStartUs = microsISR();
-        while (!LL_SPI_IsActiveFlag_RXNE(instance)) {
+        while (!CHECK_SPI_RX_DATA_AVAILABLE(instance)) {
             if (cmpTimeUs(microsISR(), timeoutStartUs) >= SPI_TIMEOUT_US) {
                 return spiTimeoutUserCallback(instance);
             }
@@ -213,7 +213,7 @@ bool spiTransfer(SPI_TypeDef *instance, const uint8_t *txData, uint8_t *rxData, 
         LL_SPI_TransmitData8(instance, b);
 
         timeoutStartUs = microsISR();
-        while (!LL_SPI_IsActiveFlag_RXNE(instance)) {
+        while (!CHECK_SPI_RX_DATA_AVAILABLE(instance)) {
             if (cmpTimeUs(microsISR(), timeoutStartUs) >= SPI_TIMEOUT_US) {
                 return spiTimeoutUserCallback(instance);
             }

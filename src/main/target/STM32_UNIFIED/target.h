@@ -155,7 +155,7 @@
 #define USE_UART3
 #define USE_UART4
 #define USE_UART5
-#define USE_UART9
+#define USE_LPUART1
 
 #define SERIAL_PORT_COUNT       (UNIFIED_SERIAL_PORT_COUNT + 6)
 
@@ -227,10 +227,10 @@
 #define USE_BARO_DPS310
 #define USE_BARO_SPI_DPS310
 
-#if !defined(STM32G4)
-// G4 support needs fixing
 #define USE_SDCARD
 #define USE_SDCARD_SPI
+#if !defined(STM32G4)
+// G4 support needs fixing
 #define USE_SDCARD_SDIO
 #endif
 

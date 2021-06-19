@@ -639,6 +639,15 @@
 #endif
 #endif
 
+#ifdef USE_UART10
+#ifndef UART10_TX_DMA_OPT
+#define UART10_TX_DMA_OPT (DMA_OPT_UNUSED)
+#endif
+#ifndef UART10_RX_DMA_OPT
+#define UART10_RX_DMA_OPT (DMA_OPT_UNUSED)
+#endif
+#endif
+
 #ifndef RTC6705_CS_PIN
 #define RTC6705_CS_PIN NONE
 #endif

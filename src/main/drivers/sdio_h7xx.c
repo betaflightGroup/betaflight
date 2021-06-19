@@ -168,8 +168,14 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
     }
 
     if (sdioHardware->instance == SDMMC1) {
+        __HAL_RCC_SDMMC1_CLK_DISABLE();
+        __HAL_RCC_SDMMC1_FORCE_RESET();
+        __HAL_RCC_SDMMC1_RELEASE_RESET();
         __HAL_RCC_SDMMC1_CLK_ENABLE();
     } else if (sdioHardware->instance == SDMMC2) {
+        __HAL_RCC_SDMMC2_CLK_DISABLE();
+        __HAL_RCC_SDMMC2_FORCE_RESET();
+        __HAL_RCC_SDMMC2_RELEASE_RESET();
         __HAL_RCC_SDMMC2_CLK_ENABLE();
     }
 

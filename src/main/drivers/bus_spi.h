@@ -88,6 +88,15 @@ typedef enum SPIDevice {
 #define SPI_CFG_TO_DEV(x)   ((x) - 1)
 #define SPI_DEV_TO_CFG(x)   ((x) + 1)
 
+// Work around different check routines in the libraries for different MCU types
+#if defined(STM32H7)
+#define CHECK_SPI_RX_DATA_AVAILABLE(instance) LL_SPI_IsActiveFlag_RXWNE(instance)
+#define SPI_RX_DATA_REGISTER(base) ((base)->RXDR)
+#else
+#define CHECK_SPI_RX_DATA_AVAILABLE(instance) LL_SPI_IsActiveFlag_RXNE(instance)
+#define SPI_RX_DATA_REGISTER(base) ((base)->DR)
+#endif
+
 void spiPreinit(void);
 void spiPreinitRegister(ioTag_t iotag, uint8_t iocfg, uint8_t init);
 void spiPreinitByIO(IO_t io);

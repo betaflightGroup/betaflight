@@ -65,6 +65,10 @@
     UART_BUFFER(UART_TX_BUFFER_ATTRIBUTE, n, T); \
     UART_BUFFER(UART_RX_BUFFER_ATTRIBUTE, n, R); struct dummy_s
 
+#define LPUART_BUFFERS(n) \
+    LPUART_BUFFER(UART_TX_BUFFER_ATTRIBUTE, n, T); \
+    LPUART_BUFFER(UART_RX_BUFFER_ATTRIBUTE, n, R); struct dummy_s
+
 #ifdef USE_UART1
 UART_BUFFERS(1);
 #endif
@@ -99,6 +103,14 @@ UART_BUFFERS(8);
 
 #ifdef USE_UART9
 UART_BUFFERS(9);
+#endif
+
+#ifdef USE_UART10
+UART_BUFFERS(10);
+#endif
+
+#ifdef USE_LPUART1
+LPUART_BUFFERS(1);
 #endif
 
 #undef UART_BUFFERS
