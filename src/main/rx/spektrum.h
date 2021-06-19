@@ -42,8 +42,6 @@
 #define SPEKTRUM_DSMX_22                   0xa2
 #define SPEKTRUM_DSMX_11                   0xb2
 
-extern uint32_t spekChannelData[SPEKTRUM_MAX_SUPPORTED_CHANNEL_COUNT];
-
 extern bool srxlEnabled;
 extern int32_t resolution;
 extern uint8_t rssi_channel; // Stores the RX RSSI channel.
@@ -53,4 +51,3 @@ bool spektrumInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState);
 
 bool srxlTelemetryBufferEmpty();
 void srxlRxWriteTelemetryData(const void *data, int len);
-bool srxlRxIsActive(void);

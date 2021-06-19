@@ -145,12 +145,10 @@ static volatile uint8_t framePosition = 0;
 static smartPortPayload_t *mspPayload = NULL;
 static timeUs_t lastRcFrameReceivedMs = 0;
 
-static serialPort_t *fportPort;
 #ifdef USE_TELEMETRY_SMARTPORT
 static bool telemetryEnabled = false;
 #endif
 
-static timeUs_t lastRcFrameTimeUs = 0;
 
 static void reportFrameError(uint8_t errorReason) {
     static volatile uint16_t frameErrors = 0;
@@ -238,9 +236,9 @@ static void smartPortWriteFrameFport(const smartPortPayload_t *payload)
     framePosition = 0;
 
     uint16_t checksum = 0;
-    smartPortSendByte(FPORT_RESPONSE_FRAME_LENGTH, &checksum, fportPort);
-    smartPortSendByte(FPORT_FRAME_TYPE_TELEMETRY_RESPONSE, &checksum, fportPort);
-    smartPortWriteFrameSerial(payload, fportPort, checksum);
+    smartPortSendByte(FPORT_RESPONSE_FRAME_LENGTH, &checksum, rxRuntimeState.rxSerialPort);
+    smartPortSendByte(FPORT_FRAME_TYPE_TELEMETRY_RESPONSE, &checksum, rxRuntimeState.rxSerialPort);
+    smartPortWriteFrameSerial(payload, rxRuntimeState.rxSerialPort, checksum);
 }
 #endif
 
@@ -280,7 +278,7 @@ static uint8_t fportFrameStatus(rxRuntimeState_t *rxRuntimeState)
                         lastRcFrameReceivedMs = millis();
 
                         if (!(result & (RX_FRAME_FAILSAFE | RX_FRAME_DROPPED))) {
-                            lastRcFrameTimeUs = rxBuffer[rxBufferReadIndex].frameStartTimeUs;
+                            rxRuntimeState->lastRcFrameTimeUs = rxBuffer[rxBufferReadIndex].frameStartTimeUs;
                         }
                     }
 
@@ -386,15 +384,8 @@ static bool fportProcessFrame(const rxRuntimeState_t *rxRuntimeState)
     return true;
 }
 
-static timeUs_t fportFrameTimeUs(void)
-{
-    return lastRcFrameTimeUs;
-}
-
 bool fportRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 {
-    static uint16_t sbusChannelData[SBUS_MAX_CHANNEL];
-    rxRuntimeState->channelData = sbusChannelData;
     sbusChannelsInit(rxConfig, rxRuntimeState);
 
     rxRuntimeState->channelCount = SBUS_MAX_CHANNEL;
@@ -402,14 +393,14 @@ bool fportRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 
     rxRuntimeState->rcFrameStatusFn = fportFrameStatus;
     rxRuntimeState->rcProcessFrameFn = fportProcessFrame;
-    rxRuntimeState->rcFrameTimeUsFn = fportFrameTimeUs;
+    rxRuntimeState->rcFrameTimeUsFn = rxFrameTimeUs;
 
     const serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_RX_SERIAL);
     if (!portConfig) {
         return false;
     }
 
-    fportPort = openSerialPort(portConfig->identifier,
+    rxRuntimeState->rxSerialPort = openSerialPort(portConfig->identifier,
         FUNCTION_RX_SERIAL,
         fportDataReceive,
         NULL,
@@ -418,7 +409,7 @@ bool fportRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
         FPORT_PORT_OPTIONS | (rxConfig->serialrx_inverted ? SERIAL_INVERTED : 0) | (rxConfig->halfDuplex ? SERIAL_BIDIR : 0)
     );
 
-    if (fportPort) {
+    if (rxRuntimeState->rxSerialPort) {
 #if defined(USE_TELEMETRY_SMARTPORT)
         telemetryEnabled = initSmartPortTelemetryExternal(smartPortWriteFrameFport);
 #endif
@@ -428,6 +419,6 @@ bool fportRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
         }
     }
 
-    return fportPort != NULL;
+    return rxRuntimeState->rxSerialPort != NULL;
 }
 #endif

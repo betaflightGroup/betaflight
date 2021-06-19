@@ -4,12 +4,10 @@
 
 #include "pg/rx.h"
 
-#include "rx/rx.h"
-
+struct rxRuntimeState_s;
 struct sbuf_s;
 
-bool srxl2RxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState);
-bool srxl2RxIsActive(void);
+bool srxl2RxInit(const rxConfig_t *rxConfig, struct rxRuntimeState_s *rxRuntimeState);
 void srxl2RxWriteData(const void *data, int len);
 bool srxl2TelemetryRequested(void);
 void srxl2InitializeFrame(struct sbuf_s *dst);

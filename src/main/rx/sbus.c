@@ -66,8 +66,6 @@
 #define SBUS_STATE_FAILSAFE (1 << 0)
 #define SBUS_STATE_SIGNALLOSS (1 << 1)
 
-#define SBUS_FRAME_SIZE (SBUS_CHANNEL_DATA_LENGTH + 2)
-
 #define SBUS_FRAME_BEGIN_BYTE 0x0F
 
 #if !defined(SBUS_PORT_OPTIONS)
@@ -83,37 +81,12 @@ enum {
     DEBUG_SBUS_FRAME_TIME,
 };
 
-struct sbusFrame_s {
-    uint8_t syncByte;
-    sbusChannels_t channels;
-    /**
-     * The endByte is 0x00 on FrSky and some futaba RX's, on Some SBUS2 RX's the value indicates the telemetry byte that is sent after every 4th sbus frame.
-     *
-     * See https://github.com/cleanflight/cleanflight/issues/590#issuecomment-101027349
-     * and
-     * https://github.com/cleanflight/cleanflight/issues/590#issuecomment-101706023
-     */
-    uint8_t endByte;
-} __attribute__ ((__packed__));
-
-typedef union sbusFrame_u {
-    uint8_t bytes[SBUS_FRAME_SIZE];
-    struct sbusFrame_s frame;
-} sbusFrame_t;
-
-typedef struct sbusFrameData_s {
-    sbusFrame_t frame;
-    timeUs_t startAtUs;
-    uint8_t position;
-    bool done;
-} sbusFrameData_t;
-
-static timeUs_t lastRcFrameTimeUs = 0;
 
 // Receive ISR callback
 static void sbusDataReceive(uint16_t c, void *data)
 {
-    sbusFrameData_t *sbusFrameData = data;
+    rxRuntimeState_t *rxRuntimeState = (rxRuntimeState_t *)data;
+    sbusFrameData_t *sbusFrameData = &rxRuntimeState->incomingFrame->sbus;
 
     const timeUs_t nowUs = microsISR();
 
@@ -143,7 +116,7 @@ static void sbusDataReceive(uint16_t c, void *data)
 
 static uint8_t sbusFrameStatus(rxRuntimeState_t *rxRuntimeState)
 {
-    sbusFrameData_t *sbusFrameData = rxRuntimeState->frameData;
+    sbusFrameData_t *sbusFrameData = &rxRuntimeState->incomingFrame->sbus;
     if (!sbusFrameData->done) {
         return RX_FRAME_PENDING;
     }
@@ -154,25 +127,16 @@ static uint8_t sbusFrameStatus(rxRuntimeState_t *rxRuntimeState)
     const uint8_t frameStatus = sbusChannelsDecode(rxRuntimeState, &sbusFrameData->frame.frame.channels);
 
     if (!(frameStatus & (RX_FRAME_FAILSAFE | RX_FRAME_DROPPED))) {
-        lastRcFrameTimeUs = sbusFrameData->startAtUs;
+        rxRuntimeState->lastRcFrameTimeUs = sbusFrameData->startAtUs;
     }
 
     return frameStatus;
 }
 
-static timeUs_t sbusFrameTimeUs(void)
-{
-    return lastRcFrameTimeUs;
-}
-
 bool sbusInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 {
-    static uint16_t sbusChannelData[SBUS_MAX_CHANNEL];
-    static sbusFrameData_t sbusFrameData;
     static uint32_t sbusBaudRate;
 
-    rxRuntimeState->channelData = sbusChannelData;
-    rxRuntimeState->frameData = &sbusFrameData;
     sbusChannelsInit(rxConfig, rxRuntimeState);
 
     rxRuntimeState->channelCount = SBUS_MAX_CHANNEL;
@@ -186,7 +150,7 @@ bool sbusInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
     }
 
     rxRuntimeState->rcFrameStatusFn = sbusFrameStatus;
-    rxRuntimeState->rcFrameTimeUsFn = sbusFrameTimeUs;
+    rxRuntimeState->rcFrameTimeUsFn = rxFrameTimeUs;
 
     const serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_RX_SERIAL);
     if (!portConfig) {
@@ -199,10 +163,10 @@ bool sbusInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
     bool portShared = false;
 #endif
 
-    serialPort_t *sBusPort = openSerialPort(portConfig->identifier,
+    rxRuntimeState->rxSerialPort = openSerialPort(portConfig->identifier,
         FUNCTION_RX_SERIAL,
         sbusDataReceive,
-        &sbusFrameData,
+        rxRuntimeState,
         sbusBaudRate,
         portShared ? MODE_RXTX : MODE_RX,
         SBUS_PORT_OPTIONS | (rxConfig->serialrx_inverted ? 0 : SERIAL_INVERTED) | (rxConfig->halfDuplex ? SERIAL_BIDIR : 0)
@@ -214,10 +178,10 @@ bool sbusInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 
 #ifdef USE_TELEMETRY
     if (portShared) {
-        telemetrySharedPort = sBusPort;
+        telemetrySharedPort = rxRuntimeState->rxSerialPort;
     }
 #endif
 
-    return sBusPort != NULL;
+    return rxRuntimeState->rxSerialPort != NULL;
 }
 #endif

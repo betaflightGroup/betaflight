@@ -28,6 +28,8 @@
 #define SPEKTRUM_MAX_FADE_PER_SEC       40
 #define SPEKTRUM_FADE_REPORTS_PER_SEC   2
 
+#include "rx/rx.h"
+
 typedef struct dbm_table_s
 {
     int8_t  dBm;
@@ -35,4 +37,4 @@ typedef struct dbm_table_s
 } dbm_table_t;
 
 
-void spektrumHandleRSSI(volatile uint8_t spekFrame[]);
+void spektrumHandleRSSI(rxRuntimeState_t *rxRuntimeState, volatile uint8_t spekFrame[]);

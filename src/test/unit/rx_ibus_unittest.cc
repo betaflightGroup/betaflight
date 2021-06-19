@@ -44,6 +44,8 @@ extern "C" {
     int16_t telemTemperature1 = 0;
     baro_t baro = { .baroTemperature = 50 };
     telemetryConfig_t telemetryConfig_System;
+
+    timeUs_t rxFrameTimeUs(void) { return 0; }
 }
 
 
@@ -286,6 +288,9 @@ TEST_F(IbusRxProtocollUnitTest, Test_InitialFrameState)
 
 TEST_F(IbusRxProtocollUnitTest, Test_IA6B_OnePacketReceived)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     uint8_t packet[] = {0x20, 0x00, //length and reserved (unknown) bits
                         0x00, 0xE0, 0x01, 0x00, 0x02, 0x00, 0x03, 0xF0, 0x04, 0x00, //channel 1..5  + 15 + 16
                         0x05, 0x00, 0x06, 0x00, 0x07, 0x10, 0x08, 0x00, 0x09, 0x10, //channel 6..10 + 17 + 18(lsb)
@@ -310,6 +315,9 @@ TEST_F(IbusRxProtocollUnitTest, Test_IA6B_OnePacketReceived)
 
 TEST_F(IbusRxProtocollUnitTest, Test_IA6B_OnePacketReceivedWithBadCrc)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     uint8_t packet[] = {0x20, 0x00, //length and reserved (unknown) bits
                         0x00, 0x33, 0x01, 0x33, 0x02, 0x33, 0x03, 0x33, 0x04, 0x33, //channel 1..5
                         0x05, 0x33, 0x06, 0x33, 0x07, 0x33, 0x08, 0x33, 0x09, 0x33, //channel 6..10
@@ -334,6 +342,9 @@ TEST_F(IbusRxProtocollUnitTest, Test_IA6B_OnePacketReceivedWithBadCrc)
 
 TEST_F(IbusRxProtocollUnitTest, Test_IA6B_HalfPacketReceived_then_interPacketGapReset)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     const uint8_t packet_half[] = {0x20, 0x00, //length and reserved (unknown) bits
                                     0x00, 0xab, 0x01, 0xab, 0x02, 0xab, 0x03, 0xab, 0x04, 0xab, //channel 1..5
                                     0x05, 0xab};
@@ -369,6 +380,9 @@ TEST_F(IbusRxProtocollUnitTest, Test_IA6B_HalfPacketReceived_then_interPacketGap
 
 TEST_F(IbusRxProtocollUnitTest, Test_IA6_OnePacketReceived)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     uint8_t packet[] = {0x55, //sync character
                         0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x04, 0x00, //channel 1..5
                         0x05, 0x00, 0x06, 0x00, 0x07, 0x00, 0x08, 0x00, 0x09, 0x00, //channel 6..10
@@ -393,6 +407,9 @@ TEST_F(IbusRxProtocollUnitTest, Test_IA6_OnePacketReceived)
 
 TEST_F(IbusRxProtocollUnitTest, Test_IA6_OnePacketReceivedBadCrc)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     uint8_t packet[] = {0x55, //sync character
                         0x00, 0x33, 0x01, 0x33, 0x02, 0x33, 0x03, 0x33, 0x04, 0x33, //channel 1..5
                         0x05, 0x33, 0x06, 0x33, 0x07, 0x33, 0x08, 0x33, 0x09, 0x33, //channel 6..10
@@ -416,6 +433,9 @@ TEST_F(IbusRxProtocollUnitTest, Test_IA6_OnePacketReceivedBadCrc)
 
 TEST_F(IbusRxProtocollUnitTest, Test_IA6B_OnePacketReceived_not_shared_port)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+    
     uint8_t packet[] = {0x20, 0x00, //length and reserved (unknown) bits
                         0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x04, 0x00, //channel 1..5
                         0x05, 0x00, 0x06, 0x00, 0x07, 0x00, 0x08, 0x00, 0x09, 0x00, //channel 6..10

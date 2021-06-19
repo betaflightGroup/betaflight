@@ -35,6 +35,7 @@
 
 #include "io/serial.h"
 
+#include "rx/rx.h"
 #include "rx/srxl2.h"
 #include "rx/srxl2_types.h"
 #include "io/spektrum_vtx_control.h"
@@ -105,14 +106,10 @@ static volatile bool transmittingTelemetry = false;
 static uint8_t writeBuffer[SRXL2_MAX_PACKET_LENGTH];
 static unsigned writeBufferIdx = 0;
 
-static serialPort_t *serialPort;
-
 static uint8_t busMasterDeviceId = 0xFF;
 static bool telemetryRequested = false;
 
 static uint8_t telemetryFrame[22];
-
-static timeUs_t lastRcFrameTimeUs = 0;
 
 uint8_t globalResult = 0;
 
@@ -128,7 +125,7 @@ uint8_t globalResult = 0;
 
 // if 50ms with not activity, go to default baudrate and to step 1
 
-bool srxl2ProcessHandshake(const Srxl2Header* header)
+bool srxl2ProcessHandshake(const Srxl2Header* header, rxRuntimeState_t *rxRuntimeState)
 {
     const Srxl2HandshakeSubHeader* handshake = (Srxl2HandshakeSubHeader*)(header + 1);
     if (handshake->destinationDeviceId == Broadcast) {
@@ -136,7 +133,7 @@ bool srxl2ProcessHandshake(const Srxl2Header* header)
         busMasterDeviceId = handshake->sourceDeviceId;
 
         if (handshake->baudSupported == 1) {
-            serialSetBaudRate(serialPort, SRXL2_PORT_BAUDRATE_HIGH);
+            serialSetBaudRate(rxRuntimeState->rxSerialPort, SRXL2_PORT_BAUDRATE_HIGH);
             DEBUG_PRINTF("switching to %d baud\r\n", SRXL2_PORT_BAUDRATE_HIGH);
         }
 
@@ -188,7 +185,9 @@ void srxl2ProcessChannelData(const Srxl2ChannelDataHeader* channelData, rxRuntim
     while (channelMask) {
         unsigned idx = __builtin_ctz (channelMask);
         uint32_t mask = 1 << idx;
-        rxRuntimeState->channelData[idx] = *frameChannels++;
+        if (idx < rxRuntimeState->channelCount) {
+            rxRuntimeState->channelXData[idx] = *frameChannels++;
+        }
         channelMask &= ~mask;
     }
 
@@ -245,7 +244,7 @@ bool srxl2ProcessPacket(const Srxl2Header* header, rxRuntimeState_t *rxRuntimeSt
 {
     switch (header->packetType) {
     case Handshake:
-        return srxl2ProcessHandshake(header);
+        return srxl2ProcessHandshake(header, rxRuntimeState);
     case ControlData:
         return srxl2ProcessControlData(header, rxRuntimeState);
     default:
@@ -355,12 +354,12 @@ static uint8_t srxl2FrameStatus(rxRuntimeState_t *rxRuntimeState)
             state = Running;
         } else if (cmpTimeUs(lastIdleTimestamp, lastReceiveTimestamp) > 0) {
             if (baudRate != 0) {
-                uint32_t currentBaud = serialGetBaudRate(serialPort);
+                uint32_t currentBaud = serialGetBaudRate(rxRuntimeState->rxSerialPort);
 
-                if(currentBaud == SRXL2_PORT_BAUDRATE_DEFAULT)
-                    serialSetBaudRate(serialPort, SRXL2_PORT_BAUDRATE_HIGH);
+                if (currentBaud == SRXL2_PORT_BAUDRATE_DEFAULT)
+                    serialSetBaudRate(rxRuntimeState->rxSerialPort, SRXL2_PORT_BAUDRATE_HIGH);
                 else
-                    serialSetBaudRate(serialPort, SRXL2_PORT_BAUDRATE_DEFAULT);
+                    serialSetBaudRate(rxRuntimeState->rxSerialPort, SRXL2_PORT_BAUDRATE_DEFAULT);
             }
         } else if (cmpTimeUs(now, timeoutTimestamp) >= 0) {
             // @todo if there was activity - detect baudrate and ListenForHandshake
@@ -384,7 +383,7 @@ static uint8_t srxl2FrameStatus(rxRuntimeState_t *rxRuntimeState)
         }
 
         if (cmpTimeUs(now, fullTimeoutTimestamp) >= 0) {
-            serialSetBaudRate(serialPort, SRXL2_PORT_BAUDRATE_DEFAULT);
+            serialSetBaudRate(rxRuntimeState->rxSerialPort, SRXL2_PORT_BAUDRATE_DEFAULT);
             DEBUG_PRINTF("case SendHandshake: switching to %d baud\r\n", SRXL2_PORT_BAUDRATE_DEFAULT);
             timeoutTimestamp = now + SRXL2_LISTEN_FOR_ACTIVITY_TIMEOUT_US;
             result = (result & ~RX_FRAME_PENDING) | RX_FRAME_FAILSAFE;
@@ -396,7 +395,7 @@ static uint8_t srxl2FrameStatus(rxRuntimeState_t *rxRuntimeState)
 
     case ListenForHandshake: {
         if (cmpTimeUs(now, timeoutTimestamp) >= 0)  {
-            serialSetBaudRate(serialPort, SRXL2_PORT_BAUDRATE_DEFAULT);
+            serialSetBaudRate(rxRuntimeState->rxSerialPort, SRXL2_PORT_BAUDRATE_DEFAULT);
             DEBUG_PRINTF("case ListenForHandshake: switching to %d baud\r\n", SRXL2_PORT_BAUDRATE_DEFAULT);
             timeoutTimestamp = now + SRXL2_LISTEN_FOR_ACTIVITY_TIMEOUT_US;
             result = (result & ~RX_FRAME_PENDING) | RX_FRAME_FAILSAFE;
@@ -409,7 +408,7 @@ static uint8_t srxl2FrameStatus(rxRuntimeState_t *rxRuntimeState)
     case Running: {
         // frame timed out, reset state
         if (cmpTimeUs(now, lastValidPacketTimestamp) >= SRXL2_FRAME_TIMEOUT_US) {
-            serialSetBaudRate(serialPort, SRXL2_PORT_BAUDRATE_DEFAULT);
+            serialSetBaudRate(rxRuntimeState->rxSerialPort, SRXL2_PORT_BAUDRATE_DEFAULT);
             DEBUG_PRINTF("case Running: switching to %d baud: %d %d\r\n", SRXL2_PORT_BAUDRATE_DEFAULT, now, lastValidPacketTimestamp);
             timeoutTimestamp = now + SRXL2_LISTEN_FOR_ACTIVITY_TIMEOUT_US;
             result = (result & ~RX_FRAME_PENDING) | RX_FRAME_FAILSAFE;
@@ -426,7 +425,7 @@ static uint8_t srxl2FrameStatus(rxRuntimeState_t *rxRuntimeState)
     }
 
     if (!(result & (RX_FRAME_FAILSAFE | RX_FRAME_DROPPED))) {
-        lastRcFrameTimeUs = lastIdleTimestamp;
+        rxRuntimeState->lastRcFrameTimeUs = lastIdleTimestamp;
     }
 
     return result;
@@ -446,7 +445,7 @@ static bool srxl2ProcessFrame(const rxRuntimeState_t *rxRuntimeState)
         // time sufficient for at least 2 characters has passed
         if (cmpTimeUs(now, lastReceiveTimestamp) > SRXL2_REPLY_QUIESCENCE) {
             transmittingTelemetry = true;
-            serialWriteBuf(serialPort, writeBuffer, writeBufferIdx);
+            serialWriteBuf(rxRuntimeState->rxSerialPort, writeBuffer, writeBufferIdx);
             writeBufferIdx = 0;
         } else {
             DEBUG_PRINTF("not enough time to send 2 characters passed yet, %d us since last receive, %d required\r\n", now - lastReceiveTimestamp, SRXL2_REPLY_QUIESCENCE);
@@ -464,7 +463,7 @@ static float srxl2ReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan
         return 0;
     }
 
-    return ((float)(rxRuntimeState->channelData[channelIdx] >> SRXL2_CHANNEL_SHIFT) / 16) + SPEKTRUM_PULSE_OFFSET;
+    return ((float)(rxRuntimeState->channelXData[channelIdx] >> SRXL2_CHANNEL_SHIFT) / 16) + SPEKTRUM_PULSE_OFFSET;
 }
 
 void srxl2RxWriteData(const void *data, int len)
@@ -478,29 +477,22 @@ void srxl2RxWriteData(const void *data, int len)
     writeBufferIdx = len;
 }
 
-static timeUs_t srxl2FrameTimeUsFn(void)
-{
-    return lastRcFrameTimeUs;
-}
-
 bool srxl2RxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 {
-    static uint16_t channelData[SRXL2_MAX_CHANNELS];
-    for (size_t i = 0; i < SRXL2_MAX_CHANNELS; ++i) {
-        channelData[i] = SRXL2_CHANNEL_CENTER;
-    }
-
     unitId = rxConfig->srxl2_unit_id;
     baudRate = rxConfig->srxl2_baud_fast;
 
-    rxRuntimeState->channelData = channelData;
-    rxRuntimeState->channelCount = SRXL2_MAX_CHANNELS;
+    rxRuntimeState->channelCount = MIN(SRXL2_MAX_CHANNELS, MAX_SUPPORTED_RC_CHANNEL_COUNT);
     rxRuntimeState->rxRefreshRate = SRXL2_FRAME_PERIOD_US;
 
     rxRuntimeState->rcReadRawFn = srxl2ReadRawRC;
     rxRuntimeState->rcFrameStatusFn = srxl2FrameStatus;
-    rxRuntimeState->rcFrameTimeUsFn = srxl2FrameTimeUsFn;
+    rxRuntimeState->rcFrameTimeUsFn = rxFrameTimeUs;
     rxRuntimeState->rcProcessFrameFn = srxl2ProcessFrame;
+
+    for (size_t i = 0; i < rxRuntimeState->channelCount; ++i) {
+        rxRuntimeState->channelXData[i] = SRXL2_CHANNEL_CENTER;
+    }
 
     const serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_RX_SERIAL);
     if (!portConfig) {
@@ -515,14 +507,14 @@ bool srxl2RxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
         options |= SERIAL_BIDIR;
     }
 
-    serialPort = openSerialPort(portConfig->identifier, FUNCTION_RX_SERIAL, srxl2DataReceive,
+    rxRuntimeState->rxSerialPort = openSerialPort(portConfig->identifier, FUNCTION_RX_SERIAL, srxl2DataReceive,
         NULL, SRXL2_PORT_BAUDRATE_DEFAULT, SRXL2_PORT_MODE, options);
 
-    if (!serialPort) {
+    if (!rxRuntimeState->rxSerialPort) {
         return false;
     }
 
-    serialPort->idleCallback = srxl2Idle;
+    rxRuntimeState->rxSerialPort->idleCallback = srxl2Idle;
 
     state = ListenForActivity;
     timeoutTimestamp = micros() + SRXL2_LISTEN_FOR_ACTIVITY_TIMEOUT_US;
@@ -531,12 +523,7 @@ bool srxl2RxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
         rssiSource = RSSI_SOURCE_RX_PROTOCOL;
     }
 
-    return (bool)serialPort;
-}
-
-bool srxl2RxIsActive(void)
-{
-    return serialPort;
+    return (bool)rxRuntimeState->rxSerialPort;
 }
 
 bool srxl2TelemetryRequested(void)

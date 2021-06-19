@@ -24,10 +24,11 @@
 
 #define GHST_MAX_NUM_CHANNELS           16
 
-void ghstRxWriteTelemetryData(const void *data, int len);
-void ghstRxSendTelemetryData(void);
-
 struct rxConfig_s;
 struct rxRuntimeState_s;
+
+void ghstRxWriteTelemetryData(const void *data, int len);
+void ghstRxSendTelemetryData(const struct rxRuntimeState_s *rxRuntimeState);
+
+
 bool ghstRxInit(const struct rxConfig_s *initialRxConfig, struct rxRuntimeState_s *rxRuntimeState);
-bool ghstRxIsActive(void);

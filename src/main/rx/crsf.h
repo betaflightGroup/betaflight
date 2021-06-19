@@ -78,11 +78,11 @@ typedef union crsfFrame_u {
     crsfFrameDef_t frame;
 } crsfFrame_t;
 
+
 void crsfRxWriteTelemetryData(const void *data, int len);
-void crsfRxSendTelemetryData(void);
+void crsfRxSendTelemetryData();
 
 struct rxConfig_s;
 struct rxRuntimeState_s;
 bool crsfRxInit(const struct rxConfig_s *initialRxConfig, struct rxRuntimeState_s *rxRuntimeState);
 void crsfRxUpdateBaudrate(uint32_t baudrate);
-bool crsfRxIsActive(void);

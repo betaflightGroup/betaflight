@@ -111,9 +111,13 @@ static uint32_t needRxSignalMaxDelayUs;
 static uint32_t suspendRxSignalUntil = 0;
 static uint8_t  skipRxSamples = 0;
 
+static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
 static float rcRaw[MAX_SUPPORTED_RC_CHANNEL_COUNT];     // interval [1000;2000]
 float rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];           // interval [1000;2000]
 uint32_t rcInvalidPulsPeriod[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+
+rxFrameBuffer_t rxFrameBuffer[2];
+
 
 #define MAX_INVALID_PULS_TIME    300
 #define PPM_AND_PWM_SAMPLE_COUNT 3
@@ -278,9 +282,14 @@ void rxInit(void)
         rxRuntimeState.rxProvider = RX_PROVIDER_NONE;
     }
     rxRuntimeState.serialrxProvider = rxConfig()->serialrx_provider;
+    rxRuntimeState.rxSerialPort = NULL;
     rxRuntimeState.rcReadRawFn = nullReadRawRC;
     rxRuntimeState.rcFrameStatusFn = nullFrameStatus;
     rxRuntimeState.rcProcessFrameFn = nullProcessFrame;
+    rxRuntimeState.lastRcFrameTimeUs = 0;
+    rxRuntimeState.channelXData = channelXData;
+    rxRuntimeState.incomingFrame = &rxFrameBuffer[0];
+    rxRuntimeState.validatedFrame = &rxFrameBuffer[1];
     rcSampleIndex = 0;
     needRxSignalMaxDelayUs = DELAY_10_HZ;
 
@@ -368,6 +377,16 @@ void rxInit(void)
     pt1FilterInit(&frameErrFilter, pt1FilterGain(GET_FRAME_ERR_LPF_FREQUENCY(rxConfig()->rssi_src_frame_lpf_period), FRAME_ERR_RESAMPLE_US/1000000.0));
 
     rxChannelCount = MIN(rxConfig()->max_aux_channel + NON_AUX_CHANNEL_COUNT, rxRuntimeState.channelCount);
+}
+
+bool rxSerialPortIsActive(SerialRXType serialrxProvider)
+{
+    return rxRuntimeState.rxSerialPort != NULL && rxRuntimeState.serialrxProvider == serialrxProvider;
+}
+
+timeUs_t rxFrameTimeUs(void)
+{
+    return rxRuntimeState.lastRcFrameTimeUs;
 }
 
 bool rxIsReceivingSignal(void)
@@ -927,4 +946,14 @@ timeDelta_t rxGetFrameDelta(timeDelta_t *frameAgeUs)
     }
 
     return frameTimeDeltaUs;
+}
+
+void rxSwapFrameBuffers(rxRuntimeState_t *rxRuntimeState)
+{
+    rxRuntimeState->validatedFrame = rxRuntimeState->incomingFrame;
+    if (rxRuntimeState->incomingFrame == &rxFrameBuffer[0]) {
+        rxRuntimeState->incomingFrame = &rxFrameBuffer[1];
+    } else {
+        rxRuntimeState->incomingFrame = &rxFrameBuffer[0];
+    }
 }

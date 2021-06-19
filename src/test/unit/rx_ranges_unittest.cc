@@ -118,11 +118,10 @@ void rxPwmInit(rxRuntimeState_t *rxRuntimeState, rcReadRawDataFnPtr *callback)
     UNUSED(callback);
 }
 
-bool sbusInit(rxConfig_t *initialRxConfig, rxRuntimeState_t *rxRuntimeState, rcReadRawDataFnPtr *callback)
+bool sbusInit(const rxConfig_t *initialRxConfig, rxRuntimeState_t *rxRuntimeState)
 {
     UNUSED(initialRxConfig);
     UNUSED(rxRuntimeState);
-    UNUSED(callback);
     return true;
 }
 

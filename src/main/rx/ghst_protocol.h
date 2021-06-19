@@ -68,6 +68,18 @@ typedef enum {
     GHST_DL_MAGBARO             = 0x27
 } ghstDl_e;
 
+typedef enum {
+    GHST_RF_PROTOCOL_UNDEFINED  = 0x00,
+    GHST_RF_PROTOCOL_NORMAL     = 0x05,
+    GHST_RF_PROTOCOL_RACE       = 0x06,
+    GHST_RF_PROTOCOL_PURERACE   = 0x07,
+    GHST_RF_PROTOCOL_LONGRANGE  = 0x08,
+    GHST_RF_PROTOCOL_RACE250    = 0x0A,  // 10
+    GHST_RF_PROTOCOL_RACE500    = 0x0B,  // 11
+    GHST_RF_PROTOCOL_SOLID150   = 0x0C,   // 12
+    GHST_RF_PROTOCOL_SOLID250   = 0x0D   // 13
+} ghstRfProtocol_e;
+
 #define GHST_RC_CTR_VAL_12BIT       0x7C0   // servo center for 12 bit values (0x3e0 << 1)
 #define GHST_RC_CTR_VAL_8BIT        0x7C    // servo center for 8 bit values
 

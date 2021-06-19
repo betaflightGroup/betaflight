@@ -20,4 +20,33 @@
 
 #pragma once
 
-bool sbusInit(const rxConfig_t *initialRxConfig, rxRuntimeState_t *rxRuntimeState);
+#include "rx/sbus_channels.h"
+
+#define SBUS_FRAME_SIZE (SBUS_CHANNEL_DATA_LENGTH + 2)
+
+struct sbusFrame_s {
+    uint8_t syncByte;
+    sbusChannels_t channels;
+    /**
+     * The endByte is 0x00 on FrSky and some futaba RX's, on Some SBUS2 RX's the value indicates the telemetry byte that is sent after every 4th sbus frame.
+     *
+     * See https://github.com/cleanflight/cleanflight/issues/590#issuecomment-101027349
+     * and
+     * https://github.com/cleanflight/cleanflight/issues/590#issuecomment-101706023
+     */
+    uint8_t endByte;
+} __attribute__ ((__packed__));
+
+typedef union sbusFrame_u {
+    uint8_t bytes[SBUS_FRAME_SIZE];
+    struct sbusFrame_s frame;
+} sbusFrame_t;
+
+typedef struct sbusFrameData_s {
+    sbusFrame_t frame;
+    timeUs_t startAtUs;
+    uint8_t position;
+    bool done;
+} sbusFrameData_t;
+
+bool sbusInit(const rxConfig_t *initialRxConfig, struct rxRuntimeState_s *rxRuntimeState);

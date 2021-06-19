@@ -55,9 +55,6 @@
 static bool sumhFrameDone = false;
 
 static uint8_t sumhFrame[SUMH_FRAME_SIZE];
-static uint32_t sumhChannels[SUMH_MAX_CHANNEL_COUNT];
-
-static serialPort_t *sumhPort;
 
 
 // Receive ISR callback
@@ -102,7 +99,7 @@ static uint8_t sumhFrameStatus(rxRuntimeState_t *rxRuntimeState)
     }
 
     for (channelIndex = 0; channelIndex < SUMH_MAX_CHANNEL_COUNT; channelIndex++) {
-        sumhChannels[channelIndex] = (((uint32_t)(sumhFrame[(channelIndex << 1) + 3]) << 8)
+        rxRuntimeState->channelXData[channelIndex] = (((uint32_t)(sumhFrame[(channelIndex << 1) + 3]) << 8)
                 + sumhFrame[(channelIndex << 1) + 4]) / 6.4f - 375;
     }
     return RX_FRAME_COMPLETE;
@@ -110,13 +107,11 @@ static uint8_t sumhFrameStatus(rxRuntimeState_t *rxRuntimeState)
 
 static float sumhReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
 {
-    UNUSED(rxRuntimeState);
-
     if (chan >= SUMH_MAX_CHANNEL_COUNT) {
         return 0;
     }
 
-    return sumhChannels[chan];
+    return rxRuntimeState->channelXData[chan];
 }
 
 bool sumhInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
@@ -140,14 +135,14 @@ bool sumhInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
     bool portShared = false;
 #endif
 
-    sumhPort = openSerialPort(portConfig->identifier, FUNCTION_RX_SERIAL, sumhDataReceive, NULL, SUMH_BAUDRATE, portShared ? MODE_RXTX : MODE_RX, (rxConfig->serialrx_inverted ? SERIAL_INVERTED : 0));
+    rxRuntimeState->rxSerialPort = openSerialPort(portConfig->identifier, FUNCTION_RX_SERIAL, sumhDataReceive, NULL, SUMH_BAUDRATE, portShared ? MODE_RXTX : MODE_RX, (rxConfig->serialrx_inverted ? SERIAL_INVERTED : 0));
 
 #ifdef USE_TELEMETRY
     if (portShared) {
-        telemetrySharedPort = sumhPort;
+        telemetrySharedPort = rxRuntimeState->rxSerialPort;
     }
 #endif
 
-    return sumhPort != NULL;
+    return rxRuntimeState->rxSerialPort != NULL;
 }
 #endif

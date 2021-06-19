@@ -107,7 +107,7 @@ static int8_t dBm2range (int8_t dBm) {
 }
 #endif
 
-void spektrumHandleRSSI(volatile uint8_t spekFrame[]) {
+void spektrumHandleRSSI(rxRuntimeState_t *rxRuntimeState, volatile uint8_t spekFrame[]) {
 #ifdef USE_SPEKTRUM_REAL_RSSI
     static int8_t spek_last_rssi = SPEKTRUM_RSSI_MAX;
     static uint8_t spek_fade_count = 0;
@@ -145,14 +145,14 @@ void spektrumHandleRSSI(volatile uint8_t spekFrame[]) {
 #ifdef USE_SPEKTRUM_RSSI_PERCENT_CONVERSION
             // Do an dBm to percent conversion with an approxatelly linear distance
             // and map the percentage to RSSI RC channel range
-            spekChannelData[rssi_channel] = (uint16_t)(map(dBm2range (rssi),
+            rxRuntimeState->channelXData[rssi_channel] = map(dBm2range (rssi),
                                                        0, 100,
-                                                       0,resolution));
+                                                       0, resolution);
 #else
             // Do a direkt dBm to percent mapping, keeping the non-linear dBm logarithmic curve.
-            spekChannelData[rssi_channel] = (uint16_t)(map(rssi),
+            rxRuntimeState->channelXData[rssi_channel] = map(rssi),
                                                        SPEKTRUM_RSSI_MIN, SPEKTRUM_RSSI_MAX,
-                                                       0,resolution));
+                                                       0, resolution);
 #endif
         }
         spek_last_rssi = rssi;
@@ -198,9 +198,9 @@ void spektrumHandleRSSI(volatile uint8_t spekFrame[]) {
             // should just throw out the fade calc (as it's likely a full signal loss).
             if ((current_secs - spek_fade_last_sec) == 1) {
                 if (rssi_channel != 0) {
-                    spekChannelData[rssi_channel] = (uint16_t)(map(fade - spek_fade_last_sec_count,
+                    rxRuntimeState->channelXData[rssi_channel] = map(fade - spek_fade_last_sec_count,
                                                                    SPEKTRUM_MAX_FADE_PER_SEC / SPEKTRUM_FADE_REPORTS_PER_SEC, 0,
-                                                                   0, resolution));
+                                                                   0, resolution);
                 }
             }
             spek_fade_last_sec_count = fade;

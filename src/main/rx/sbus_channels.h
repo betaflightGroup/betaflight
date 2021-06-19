@@ -50,7 +50,8 @@ typedef struct sbusChannels_s {
 
 #define SBUS_CHANNEL_DATA_LENGTH sizeof(sbusChannels_t)
 
-uint8_t sbusChannelsDecode(rxRuntimeState_t *rxRuntimeState, const sbusChannels_t *channels);
+struct rxRuntimeState_s;
 
-void sbusChannelsInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState);
+uint8_t sbusChannelsDecode(struct rxRuntimeState_s *rxRuntimeState, const sbusChannels_t *channels);
+void sbusChannelsInit(const rxConfig_t *rxConfig, struct rxRuntimeState_s *rxRuntimeState);
 
