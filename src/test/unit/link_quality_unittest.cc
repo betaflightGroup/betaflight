@@ -89,7 +89,7 @@ extern "C" {
 
     timeUs_t simulationTime = 0;
 
-    void osdRefresh(timeUs_t currentTimeUs);
+    void osdUpdate(timeUs_t currentTimeUs);
     uint16_t updateLinkQualitySamples(uint16_t value);
 #define LINK_QUALITY_SAMPLE_COUNT 16
 }
@@ -113,9 +113,8 @@ extern "C" {
 }
 void setDefaultSimulationState()
 {
-
     setLinkQualityDirect(LINK_QUALITY_MAX_VALUE);
-
+    osdConfigMutable()->task_frequency = 12;
 }
 /*
  * Performs a test of the OSD actions on arming.
@@ -127,9 +126,13 @@ void doTestArm(bool testEmpty = true)
     // craft has been armed
     ENABLE_ARMING_FLAG(ARMED);
 
+    simulationTime += 0.1e6;
     // when
     // sufficient OSD updates have been called
-    osdRefresh(simulationTime);
+    while (osdUpdateCheck(simulationTime, 0)) {
+        osdUpdate(simulationTime);
+        simulationTime += 10;
+    }
 
     // then
     // arming alert displayed
@@ -141,7 +144,10 @@ void doTestArm(bool testEmpty = true)
 
     // when
     // sufficient OSD updates have been called
-    osdRefresh(simulationTime);
+    while (osdUpdateCheck(simulationTime, 0)) {
+        osdUpdate(simulationTime);
+        simulationTime += 10;
+    }
 
     // then
     // arming alert disappears
@@ -172,7 +178,10 @@ void doTestDisarm()
 
     // when
     // sufficient OSD updates have been called
-    osdRefresh(simulationTime);
+    while (osdUpdateCheck(simulationTime, 0)) {
+        osdUpdate(simulationTime);
+        simulationTime += 10;
+    }
 
     // then
     // post flight statistics displayed
@@ -203,6 +212,11 @@ TEST(LQTest, TestInit)
     // OSD is initialised
     osdInit(&testDisplayPort, OSD_DISPLAYPORT_DEVICE_AUTO);
 
+    while (osdUpdateCheck(simulationTime, 0)) {
+        osdUpdate(simulationTime);
+        simulationTime += 10;
+    }
+
     // then
     // display buffer should contain splash screen
     displayPortTestBufferSubstring(7, 8, "MENU:THR MID");
@@ -212,7 +226,10 @@ TEST(LQTest, TestInit)
     // when
     // splash screen timeout has elapsed
     simulationTime += 4e6;
-    osdUpdate(simulationTime);
+    while (osdUpdateCheck(simulationTime, 0)) {
+        osdUpdate(simulationTime);
+        simulationTime += 10;
+    }
 
     // then
     // display buffer should be empty
@@ -227,8 +244,6 @@ TEST(LQTest, TestInit)
 TEST(LQTest, TestElement_LQ_SOURCE_NONE_SAMPLES)
 {
     // given
-
-
     linkQualitySource = LQ_SOURCE_NONE;
 
     osdElementConfigMutable()->item_pos[OSD_LINK_QUALITY] = OSD_POS(8, 1) | OSD_PROFILE_1_FLAG;
@@ -241,9 +256,12 @@ TEST(LQTest, TestElement_LQ_SOURCE_NONE_SAMPLES)
         setLinkQualityDirect(updateLinkQualitySamples(LINK_QUALITY_MAX_VALUE));
     }
 
+    simulationTime += 1000000;
 
-    displayClearScreen(&testDisplayPort);
-    osdRefresh(simulationTime);
+    while (osdUpdateCheck(simulationTime, 0)) {
+        osdUpdate(simulationTime);
+        simulationTime += 10;
+    }
 
     // then
     displayPortTestBufferSubstring(8, 1, "%c9", SYM_LINK_QUALITY);
@@ -254,12 +272,15 @@ TEST(LQTest, TestElement_LQ_SOURCE_NONE_SAMPLES)
         setLinkQualityDirect(updateLinkQualitySamples(0));
     }
 
-    displayClearScreen(&testDisplayPort);
-    osdRefresh(simulationTime);
+    simulationTime += 1000000;
+
+    while (osdUpdateCheck(simulationTime, 0)) {
+        osdUpdate(simulationTime);
+        simulationTime += 10;
+    }
 
     // then
     displayPortTestBufferSubstring(8, 1, "%c4", SYM_LINK_QUALITY);
-
 }
 /*
  * Tests the Tests the OSD_LINK_QUALITY element values  default LQ_SOURCE_NONE
@@ -267,7 +288,6 @@ TEST(LQTest, TestElement_LQ_SOURCE_NONE_SAMPLES)
 TEST(LQTest, TestElement_LQ_SOURCE_NONE_VALUES)
 {
     // given
-
 
     linkQualitySource = LQ_SOURCE_NONE;
 
@@ -280,8 +300,11 @@ TEST(LQTest, TestElement_LQ_SOURCE_NONE_VALUES)
     for (int testdigit = 10; testdigit > 0; testdigit--) {
         testscale = testdigit * 102.3;
         setLinkQualityDirect(testscale);
-        displayClearScreen(&testDisplayPort);
-        osdRefresh(simulationTime);
+        simulationTime += 100000;
+        while (osdUpdateCheck(simulationTime, 0)) {
+            osdUpdate(simulationTime);
+            simulationTime += 10;
+        }
 #ifdef DEBUG_OSD
         printf("%d %d\n",testscale, testdigit);
         displayPortTestPrint();
@@ -294,6 +317,7 @@ TEST(LQTest, TestElement_LQ_SOURCE_NONE_VALUES)
         }
     }
 }
+
 /*
  * Tests the OSD_LINK_QUALITY element LQ RX_PROTOCOL_CRSF.
  */
@@ -307,8 +331,11 @@ TEST(LQTest, TestElementLQ_PROTOCOL_CRSF_VALUES)
 
     osdAnalyzeActiveElements();
 
-    displayClearScreen(&testDisplayPort);
-    osdRefresh(simulationTime);
+    simulationTime += 1000000;
+    while (osdUpdateCheck(simulationTime, 0)) {
+        osdUpdate(simulationTime);
+        simulationTime += 10;
+    }
 
     // crsf setLinkQualityDirect 0-300;
 
@@ -319,18 +346,22 @@ TEST(LQTest, TestElementLQ_PROTOCOL_CRSF_VALUES)
             rxSetRfMode(m);
             // then rxGetLinkQuality Osd should be x
             // and RfMode should be m
-            displayClearScreen(&testDisplayPort);
-            osdRefresh(simulationTime);
-                displayPortTestBufferSubstring(8, 1, "%c%1d:%2d", SYM_LINK_QUALITY, m, x);
+            simulationTime += 100000;
+            while (osdUpdateCheck(simulationTime, 0)) {
+                osdUpdate(simulationTime);
+                simulationTime += 10;
             }
+            displayPortTestBufferSubstring(8, 1, "%c%1d:%2d", SYM_LINK_QUALITY, m, x);
         }
     }
+}
 /*
  * Tests the LQ Alarms
  *
 */
 TEST(LQTest, TestLQAlarm)
 {
+    timeUs_t startTime = simulationTime;
     // given
     // default state is set
     setDefaultSimulationState();
@@ -364,10 +395,17 @@ TEST(LQTest, TestLQAlarm)
 
     // then
     // no elements should flash as all values are out of alarm range
+    // Ensure a consistent start time for testing
+    simulationTime += 5000000;
+    simulationTime -= simulationTime % 1000000;
+    startTime = simulationTime;
     for (int i = 0; i < 30; i++) {
         // Check for visibility every 100ms, elements should always be visible
-        simulationTime += 0.1e6;
-        osdRefresh(simulationTime);
+        simulationTime = startTime + i*0.1e6;
+        while (osdUpdateCheck(simulationTime, 0)) {
+            osdUpdate(simulationTime);
+            simulationTime += 10;
+        }
 
 #ifdef DEBUG_OSD
         printf("%d\n", i);
@@ -377,18 +415,25 @@ TEST(LQTest, TestLQAlarm)
     }
 
     setLinkQualityDirect(512);
-    simulationTime += 60e6;
-    osdRefresh(simulationTime);
+    while (osdUpdateCheck(simulationTime, 0)) {
+        osdUpdate(simulationTime);
+        simulationTime += 10;
+    }
 
     // then
     // elements showing values in alarm range should flash
+    simulationTime += 1000000;
+    simulationTime -= simulationTime % 1000000;
+    startTime = simulationTime;
     for (int i = 0; i < 15; i++) {
-        // Blinking should happen at 5Hz
-        simulationTime += 0.2e6;
-        osdRefresh(simulationTime);
+        // Blinking should happen at 2Hz
+        simulationTime = startTime + i*0.25e6;
+        while (osdUpdateCheck(simulationTime, 0)) {
+            osdUpdate(simulationTime);
+            simulationTime += 10;
+        }
 
 #ifdef DEBUG_OSD
-        printf("%d\n", i);
         displayPortTestPrint();
 #endif
         if (i % 2 == 0) {
@@ -399,8 +444,12 @@ TEST(LQTest, TestLQAlarm)
     }
 
     doTestDisarm();
-    simulationTime += 60e6;
-    osdRefresh(simulationTime);
+    simulationTime += 1000000;
+    simulationTime -= simulationTime % 1000000;
+    while (osdUpdateCheck(simulationTime, 0)) {
+        osdUpdate(simulationTime);
+        simulationTime += 10;
+    }
 }
 
 // STUBS
@@ -461,6 +510,10 @@ extern "C" {
     void failsafeOnValidDataFailed(void) { }
     void pinioBoxTaskControl(void) { }
     bool taskUpdateRxMainInProgress() { return true; }
+    void ignoreTaskStateTime(void) { }
+    void ignoreTaskExecRate(void) { }
+    void ignoreTaskShortExecTime(void) { }
+    void schedulerSetNextStateTime(timeDelta_t) {}
 
     void rxPwmInit(rxRuntimeState_t *rxRuntimeState, rcReadRawDataFnPtr *callback)
     {
@@ -559,7 +612,4 @@ extern "C" {
     float getMotorOutputLow(void) { return 1000.0; }
 
     float getMotorOutputHigh(void) { return 2047.0; }
-
-    void ignoreTaskShortExecTime(void) {}
-    void ignoreTaskStateTime(void) {}
 }

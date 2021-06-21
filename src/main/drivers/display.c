@@ -38,9 +38,10 @@ void displayClearScreen(displayPort_t *instance)
     instance->cursorRow = -1;
 }
 
-void displayDrawScreen(displayPort_t *instance)
+// Return true if screen still being transferred
+int displayDrawScreen(displayPort_t *instance)
 {
-    instance->vTable->drawScreen(instance);
+    return instance->vTable->drawScreen(instance);
 }
 
 int displayScreenSize(const displayPort_t *instance)
@@ -103,9 +104,9 @@ bool displayIsSynced(const displayPort_t *instance)
     return instance->vTable->isSynced(instance);
 }
 
-void displayHeartbeat(displayPort_t *instance)
+bool displayHeartbeat(displayPort_t *instance)
 {
-    instance->vTable->heartbeat(instance);
+    return instance->vTable->heartbeat(instance);
 }
 
 void displayRedraw(displayPort_t *instance)

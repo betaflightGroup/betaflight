@@ -44,7 +44,6 @@ const int TEST_DISPATCH_TIME = 1;
 extern "C" {
     task_t * unittest_scheduler_selectedTask;
     uint8_t unittest_scheduler_selectedTaskDynPrio;
-    uint16_t unittest_scheduler_waitingTasks;
     timeDelta_t unittest_scheduler_taskRequiredTimeUs;
     bool taskGyroRan = false;
     bool taskFilterRan = false;
@@ -399,14 +398,12 @@ TEST(SchedulerUnittest, TestTwoTasks)
     // no tasks should run, since neither task's desired time has elapsed
     scheduler();
     EXPECT_EQ(static_cast<task_t*>(0), unittest_scheduler_selectedTask);
-    EXPECT_EQ(0, unittest_scheduler_waitingTasks);
 
     // 500 microseconds later, TASK_ACCEL desiredPeriodUs has elapsed
     simulatedTime += 500;
     // TASK_ACCEL should now run
     scheduler();
     EXPECT_EQ(&tasks[TASK_ACCEL], unittest_scheduler_selectedTask);
-    EXPECT_EQ(1, unittest_scheduler_waitingTasks);
     EXPECT_EQ(5000 + TEST_UPDATE_ACCEL_TIME, simulatedTime);
 
     simulatedTime += 1000 - TEST_UPDATE_ACCEL_TIME;
@@ -417,7 +414,6 @@ TEST(SchedulerUnittest, TestTwoTasks)
     scheduler();
     // No task should have run
     EXPECT_EQ(static_cast<task_t*>(0), unittest_scheduler_selectedTask);
-    EXPECT_EQ(0, unittest_scheduler_waitingTasks);
 
     simulatedTime = startTime + 10500; // TASK_ACCEL and TASK_ATTITUDE desiredPeriodUss have elapsed
     // of the two TASK_ACCEL should run first

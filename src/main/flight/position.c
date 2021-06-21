@@ -38,6 +38,8 @@
 
 #include "io/gps.h"
 
+#include "scheduler/scheduler.h"
+
 #include "sensors/sensors.h"
 #include "sensors/barometer.h"
 
@@ -94,6 +96,7 @@ void calculateEstimatedAltitude(timeUs_t currentTimeUs)
 
     const uint32_t dTime = currentTimeUs - previousTimeUs;
     if (dTime < BARO_UPDATE_FREQUENCY_40HZ) {
+        ignoreTaskShortExecTime();
         return;
     }
     previousTimeUs = currentTimeUs;
@@ -167,7 +170,7 @@ void calculateEstimatedAltitude(timeUs_t currentTimeUs)
 #endif
     }
 
-	
+    
 
     DEBUG_SET(DEBUG_ALTITUDE, 0, (int32_t)(100 * gpsTrust));
     DEBUG_SET(DEBUG_ALTITUDE, 1, baroAlt);

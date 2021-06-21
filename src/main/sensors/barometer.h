@@ -67,7 +67,7 @@ bool baroDetect(baroDev_t *dev, baroSensor_e baroHardwareToUse);
 bool baroIsCalibrationComplete(void);
 void baroStartCalibration(void);
 void baroSetGroundLevel(void);
-uint32_t baroUpdate(void);
+uint32_t baroUpdate(timeUs_t currentTimeUs);
 bool isBaroReady(void);
 int32_t baroCalculateAltitude(void);
 void performBaroCalibrationCycle(void);

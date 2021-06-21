@@ -230,14 +230,18 @@ typedef struct {
 #endif // USE_GPS_UBLOX
 
 typedef enum {
-    GPS_UNKNOWN,
-    GPS_INITIALIZING,
-    GPS_INITIALIZED,
-    GPS_CHANGE_BAUD,
-    GPS_CONFIGURE,
-    GPS_RECEIVING_DATA,
-    GPS_LOST_COMMUNICATION
+    GPS_STATE_UNKNOWN,
+    GPS_STATE_INITIALIZING,
+    GPS_STATE_INITIALIZED,
+    GPS_STATE_CHANGE_BAUD,
+    GPS_STATE_CONFIGURE,
+    GPS_STATE_RECEIVING_DATA,
+    GPS_STATE_LOST_COMMUNICATION,
+    GPS_STATE_COUNT
 } gpsState_e;
+
+// Max time to wait for received data
+#define GPS_MAX_WAIT_DATA_RX 30
 
 gpsData_t gpsData;
 
@@ -290,12 +294,12 @@ void gpsInit(void)
     memset(gpsPacketLog, 0x00, sizeof(gpsPacketLog));
 
     // init gpsData structure. if we're not actually enabled, don't bother doing anything else
-    gpsSetState(GPS_UNKNOWN);
+    gpsSetState(GPS_STATE_UNKNOWN);
 
     gpsData.lastMessage = millis();
 
     if (gpsConfig()->provider == GPS_MSP) { // no serial ports used when GPS_MSP is configured
-        gpsSetState(GPS_INITIALIZED);
+        gpsSetState(GPS_STATE_INITIALIZED);
         return;
     }
 
@@ -326,7 +330,7 @@ void gpsInit(void)
     }
 
     // signal GPS "thread" to initialize when it gets to it
-    gpsSetState(GPS_INITIALIZING);
+    gpsSetState(GPS_STATE_INITIALIZING);
 }
 
 #ifdef USE_GPS_NMEA
@@ -336,7 +340,7 @@ void gpsInitNmea(void)
     uint32_t now;
 #endif
     switch (gpsData.state) {
-        case GPS_INITIALIZING:
+        case GPS_STATE_INITIALIZING:
 #if !defined(GPS_NMEA_TX_ONLY)
            now = millis();
            if (now - gpsData.state_ts < 1000) {
@@ -352,11 +356,11 @@ void gpsInitNmea(void)
                gpsData.state_position++;
            } else {
                // we're now (hopefully) at the correct rate, next state will switch to it
-               gpsSetState(GPS_CHANGE_BAUD);
+               gpsSetState(GPS_STATE_CHANGE_BAUD);
            }
            break;
 #endif
-        case GPS_CHANGE_BAUD:
+        case GPS_STATE_CHANGE_BAUD:
 #if !defined(GPS_NMEA_TX_ONLY)
            now = millis();
            if (now - gpsData.state_ts < 1000) {
@@ -375,7 +379,7 @@ void gpsInitNmea(void)
                serialSetBaudRate(gpsPort, baudRates[gpsInitData[gpsData.baudrateIndex].baudrateIndex]);
            }
 #endif
-               gpsSetState(GPS_RECEIVING_DATA);
+               gpsSetState(GPS_STATE_RECEIVING_DATA);
             break;
     }
 }
@@ -423,7 +427,7 @@ void gpsInitUblox(void)
 
 
     switch (gpsData.state) {
-        case GPS_INITIALIZING:
+        case GPS_STATE_INITIALIZING:
             now = millis();
             if (now - gpsData.state_ts < GPS_BAUDRATE_CHANGE_DELAY)
                 return;
@@ -446,18 +450,18 @@ void gpsInitUblox(void)
                 gpsData.state_position++;
             } else {
                 // we're now (hopefully) at the correct rate, next state will switch to it
-                gpsSetState(GPS_CHANGE_BAUD);
+                gpsSetState(GPS_STATE_CHANGE_BAUD);
             }
             break;
-        case GPS_CHANGE_BAUD:
+        case GPS_STATE_CHANGE_BAUD:
             serialSetBaudRate(gpsPort, baudRates[gpsInitData[gpsData.baudrateIndex].baudrateIndex]);
-            gpsSetState(GPS_CONFIGURE);
+            gpsSetState(GPS_STATE_CONFIGURE);
             break;
-        case GPS_CONFIGURE:
+        case GPS_STATE_CONFIGURE:
 
             // Either use specific config file for GPS or let dynamically upload config
             if ( gpsConfig()->autoConfig == GPS_AUTOCONFIG_OFF ) {
-                gpsSetState(GPS_RECEIVING_DATA);
+                gpsSetState(GPS_STATE_RECEIVING_DATA);
                 break;
             }
 
@@ -638,7 +642,7 @@ void gpsInitUblox(void)
 
             if (gpsData.messageState >= GPS_MESSAGE_STATE_INITIALIZED) {
                 // ublox should be initialised, try receiving
-                gpsSetState(GPS_RECEIVING_DATA);
+                gpsSetState(GPS_STATE_RECEIVING_DATA);
             }
             break;
     }
@@ -675,16 +679,18 @@ static void updateGpsIndicator(timeUs_t currentTimeUs)
 
 void gpsUpdate(timeUs_t currentTimeUs)
 {
-    static timeUs_t maxTimeUs = 0;
-    timeUs_t endTimeUs;
+    static gpsState_e gpsStateDurationUs[GPS_STATE_COUNT];
+    timeUs_t executeTimeUs;
+    gpsState_e gpsCurState = gpsData.state;
+
 
     // read out available GPS bytes
     if (gpsPort) {
-        while (serialRxBytesWaiting(gpsPort)) {
+        while (serialRxBytesWaiting(gpsPort) && (cmpTimeUs(micros(), currentTimeUs) < GPS_MAX_WAIT_DATA_RX)) {
             gpsNewData(serialRead(gpsPort));
         }
     } else if (GPS_update & GPS_MSP_UPDATE) { // GPS data received via MSP
-        gpsSetState(GPS_RECEIVING_DATA);
+        gpsSetState(GPS_STATE_RECEIVING_DATA);
         gpsData.lastMessage = millis();
         sensorsSet(SENSOR_GPS);
         onGpsNewData();
@@ -692,17 +698,17 @@ void gpsUpdate(timeUs_t currentTimeUs)
     }
 
     switch (gpsData.state) {
-        case GPS_UNKNOWN:
-        case GPS_INITIALIZED:
+        case GPS_STATE_UNKNOWN:
+        case GPS_STATE_INITIALIZED:
             break;
 
-        case GPS_INITIALIZING:
-        case GPS_CHANGE_BAUD:
-        case GPS_CONFIGURE:
+        case GPS_STATE_INITIALIZING:
+        case GPS_STATE_CHANGE_BAUD:
+        case GPS_STATE_CONFIGURE:
             gpsInitHardware();
             break;
 
-        case GPS_LOST_COMMUNICATION:
+        case GPS_STATE_LOST_COMMUNICATION:
             gpsData.timeouts++;
             if (gpsConfig()->autoBaud) {
                 // try another rate
@@ -712,15 +718,15 @@ void gpsUpdate(timeUs_t currentTimeUs)
             gpsData.lastMessage = millis();
             gpsSol.numSat = 0;
             DISABLE_STATE(GPS_FIX);
-            gpsSetState(GPS_INITIALIZING);
+            gpsSetState(GPS_STATE_INITIALIZING);
             break;
 
-        case GPS_RECEIVING_DATA:
+        case GPS_STATE_RECEIVING_DATA:
             // check for no data/gps timeout/cable disconnection etc
             if (millis() - gpsData.lastMessage > GPS_TIMEOUT) {
                 // remove GPS from capability
                 sensorsClear(SENSOR_GPS);
-                gpsSetState(GPS_LOST_COMMUNICATION);
+                gpsSetState(GPS_STATE_LOST_COMMUNICATION);
 #ifdef USE_GPS_UBLOX
             } else {
                 if (gpsConfig()->autoConfig == GPS_AUTOCONFIG_ON) { // Only if autoconfig is enabled
@@ -744,6 +750,13 @@ void gpsUpdate(timeUs_t currentTimeUs)
             break;
     }
 
+    executeTimeUs = micros() - currentTimeUs;
+
+    if (executeTimeUs > gpsStateDurationUs[gpsCurState]) {
+        gpsStateDurationUs[gpsCurState] = executeTimeUs;
+    }
+    schedulerSetNextStateTime(gpsStateDurationUs[gpsData.state]);
+
     if (sensors(SENSOR_GPS)) {
         updateGpsIndicator(currentTimeUs);
     }
@@ -755,17 +768,6 @@ void gpsUpdate(timeUs_t currentTimeUs)
         updateGPSRescueState();
     }
 #endif
-    // Call ignoreTaskShortExecTime() unless this took appreciable time
-    // Note that this will mess up the rate/Hz display under tasks, but the code
-    // takes widely varying time to complete
-    endTimeUs = micros();
-    if ((endTimeUs - currentTimeUs) > maxTimeUs) {
-        maxTimeUs = endTimeUs - currentTimeUs;
-    } else {
-        ignoreTaskShortExecTime();
-        // Decay max time
-        maxTimeUs--;
-    }
 }
 
 static void gpsNewData(uint16_t c)
@@ -810,7 +812,7 @@ bool gpsNewFrame(uint8_t c)
 // Check for healthy communications
 bool gpsIsHealthy()
 {
-    return (gpsData.state == GPS_RECEIVING_DATA);
+    return (gpsData.state == GPS_STATE_RECEIVING_DATA);
 }
 
 /* This is a light implementation of a GPS frame decoding

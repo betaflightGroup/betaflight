@@ -398,37 +398,9 @@ uint16_t spiCalculateDivider(uint32_t freq)
 }
 
 // Interrupt handler for SPI receive DMA completion
-static void spiRxIrqHandler(dmaChannelDescriptor_t* descriptor)
+static void spiIrqHandler(const extDevice_t *dev)
 {
-    const extDevice_t *dev = (const extDevice_t *)descriptor->userParam;
-
-    if (!dev) {
-        return;
-    }
-
     busDevice_t *bus = dev->bus;
-
-    if (bus->curSegment->negateCS) {
-        // Negate Chip Select
-        IOHi(dev->busType_u.spi.csnPin);
-    }
-
-    spiInternalStopDMA(dev);
-
-#ifdef __DCACHE_PRESENT
-#ifdef STM32H7
-    if (bus->curSegment->rxData &&
-        ((bus->curSegment->rxData < &_dmaram_start__) || (bus->curSegment->rxData >= &_dmaram_end__))) {
-#else
-    if (bus->curSegment->rxData) {
-#endif
-         // Invalidate the D cache covering the area into which data has been read
-        SCB_InvalidateDCache_by_Addr(
-            (uint32_t *)((uint32_t)bus->curSegment->rxData & ~CACHE_LINE_MASK),
-            (((uint32_t)bus->curSegment->rxData & CACHE_LINE_MASK) +
-              bus->curSegment->len - 1 + CACHE_LINE_SIZE) & ~CACHE_LINE_MASK);
-    }
-#endif // __DCACHE_PRESENT
 
     if (bus->curSegment->callback) {
         switch(bus->curSegment->callback(dev->callbackArg)) {
@@ -470,6 +442,65 @@ static void spiRxIrqHandler(dmaChannelDescriptor_t* descriptor)
         spiInternalInitStream(dev, true);
     }
 }
+
+// Interrupt handler for SPI receive DMA completion
+static void spiRxIrqHandler(dmaChannelDescriptor_t* descriptor)
+{
+    const extDevice_t *dev = (const extDevice_t *)descriptor->userParam;
+
+    if (!dev) {
+        return;
+    }
+
+    busDevice_t *bus = dev->bus;
+
+    if (bus->curSegment->negateCS) {
+        // Negate Chip Select
+        IOHi(dev->busType_u.spi.csnPin);
+    }
+
+    spiInternalStopDMA(dev);
+
+#ifdef __DCACHE_PRESENT
+#ifdef STM32H7
+    if (bus->curSegment->rxData &&
+        ((bus->curSegment->rxData < &_dmaram_start__) || (bus->curSegment->rxData >= &_dmaram_end__))) {
+#else
+    if (bus->curSegment->rxData) {
+#endif
+         // Invalidate the D cache covering the area into which data has been read
+        SCB_InvalidateDCache_by_Addr(
+            (uint32_t *)((uint32_t)bus->curSegment->rxData & ~CACHE_LINE_MASK),
+            (((uint32_t)bus->curSegment->rxData & CACHE_LINE_MASK) +
+              bus->curSegment->len - 1 + CACHE_LINE_SIZE) & ~CACHE_LINE_MASK);
+    }
+#endif // __DCACHE_PRESENT
+
+    spiIrqHandler(dev);
+}
+
+#if !defined(STM32H7)
+// Interrupt handler for SPI transmit DMA completion
+static void spiTxIrqHandler(dmaChannelDescriptor_t* descriptor)
+{
+    const extDevice_t *dev = (const extDevice_t *)descriptor->userParam;
+
+    if (!dev) {
+        return;
+    }
+
+    busDevice_t *bus = dev->bus;
+
+    spiInternalStopDMA(dev);
+
+    if (bus->curSegment->negateCS) {
+        // Negate Chip Select
+        IOHi(dev->busType_u.spi.csnPin);
+    }
+
+    spiIrqHandler(dev);
+}
+#endif
 
 // Mark this bus as being SPI and record the first owner to use it
 bool spiSetBusInstance(extDevice_t *dev, uint32_t device, resourceOwner_e owner)
@@ -525,8 +556,8 @@ void spiInitBusDMA()
             continue;
         }
 
-        dmaIdentifier_e dmaTxIdentifier = DMA_NONE;
-        dmaIdentifier_e dmaRxIdentifier = DMA_NONE;
+        volatile dmaIdentifier_e dmaTxIdentifier = DMA_NONE;
+        volatile dmaIdentifier_e dmaRxIdentifier = DMA_NONE;
 
         for (uint8_t opt = 0; opt < MAX_PERIPHERAL_DMA_OPTIONS; opt++) {
             const dmaChannelSpec_t *dmaTxChannelSpec = dmaGetChannelSpecByPeripheral(DMA_PERIPH_SPI_TX, device, opt);
@@ -544,6 +575,9 @@ void spiInitBusDMA()
                 }
 #endif
                 bus->dmaTxChannel = dmaTxChannelSpec->channel;
+
+                // Claim the transmit identifier now, as on H7 this would be claimed for receive
+                // SPI DMA is useful even if only transmit is available for the MAX7456
                 dmaInit(dmaTxIdentifier, bus->owner, 0);
                 break;
             }
@@ -565,27 +599,51 @@ void spiInitBusDMA()
                 }
 #endif
                 bus->dmaRxChannel = dmaRxChannelSpec->channel;
-                dmaInit(dmaRxIdentifier, bus->owner, 0);
+                // Don't claim the receive identifier yet; validate below based on having got the transmit identifier too
                 break;
             }
         }
 
-        if (dmaTxIdentifier && dmaRxIdentifier) {
-            bus->dmaTx = dmaGetDescriptorByIdentifier(dmaTxIdentifier);
-            bus->dmaRx = dmaGetDescriptorByIdentifier(dmaRxIdentifier);
+        if (dmaTxIdentifier) {
+            if (dmaRxIdentifier) {
+                // Claim the transmit resource
+                dmaInit(dmaRxIdentifier, bus->owner, 0);
 
-            // Ensure streams are disabled
-            spiInternalResetStream(bus->dmaRx);
-            spiInternalResetStream(bus->dmaTx);
+                bus->dmaTx = dmaGetDescriptorByIdentifier(dmaTxIdentifier);
+                bus->dmaRx = dmaGetDescriptorByIdentifier(dmaRxIdentifier);
 
-            spiInternalResetDescriptors(bus);
+                // Ensure streams are disabled
+                spiInternalResetStream(bus->dmaRx);
+                spiInternalResetStream(bus->dmaTx);
 
-            /* Note that this driver may be called both from the normal thread of execution, or from USB interrupt
-             * handlers, so the DMA completion interrupt must be at a higher priority
-             */
-            dmaSetHandler(dmaRxIdentifier, spiRxIrqHandler, NVIC_PRIO_SPI_DMA, 0);
+                spiInternalResetDescriptors(bus);
+
+                /* Note that this driver may be called both from the normal thread of execution, or from USB interrupt
+                 * handlers, so the DMA completion interrupt must be at a higher priority
+                 */
+                dmaSetHandler(dmaRxIdentifier, spiRxIrqHandler, NVIC_PRIO_SPI_DMA, 0);
+#if defined(STM32H7)
+                bus->useDMA = true;
+            }
+#else
+            } else {
+                // Claim the resource
+                dmaInit(dmaTxIdentifier, bus->owner, 0);
+
+                // Transmit on DMA is adequate for OSD so worth having
+                bus->dmaTx = dmaGetDescriptorByIdentifier(dmaTxIdentifier);
+                bus->dmaRx = (dmaChannelDescriptor_t *)NULL;
+
+                // Ensure streams are disabled
+                spiInternalResetStream(bus->dmaTx);
+
+                spiInternalResetDescriptors(bus);
+
+                dmaSetHandler(dmaTxIdentifier, spiTxIrqHandler, NVIC_PRIO_SPI_DMA, 0);
+            }
 
             bus->useDMA = true;
+#endif
         }
     }
 }

@@ -72,12 +72,11 @@ static int clearScreen(displayPort_t *displayPort)
     return 0;
 }
 
+// Return true if screen still being transferred
 static int drawScreen(displayPort_t *displayPort)
 {
     UNUSED(displayPort);
-    max7456DrawScreen();
-
-    return 0;
+    return max7456DrawScreen();
 }
 
 static int screenSize(const displayPort_t *displayPort)
@@ -130,7 +129,9 @@ static void redraw(displayPort_t *displayPort)
 static int heartbeat(displayPort_t *displayPort)
 {
     UNUSED(displayPort);
-    return 0;
+
+    // (Re)Initialize MAX7456 at startup or stall is detected.
+    return max7456ReInitIfRequired(false);
 }
 
 static uint32_t txBytesFree(const displayPort_t *displayPort)
@@ -240,7 +241,6 @@ bool max7456DisplayPortInit(const vcdProfile_t *vcdProfile, displayPort_t **disp
     case MAX7456_INIT_OK:
         // MAX7456 configured and detected
         displayInit(&max7456DisplayPort, &max7456VTable, DISPLAYPORT_DEVICE_TYPE_MAX7456);
-        redraw(&max7456DisplayPort);
         *displayPort = &max7456DisplayPort;
 
         break;

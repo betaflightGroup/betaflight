@@ -159,42 +159,53 @@ static void taskUpdateAccelerometer(timeUs_t currentTimeUs)
 }
 #endif
 
-static enum {
-    CHECK, PROCESS, MODES, UPDATE
-} rxState = CHECK;
+typedef enum {
+    RX_STATE_CHECK,
+    RX_STATE_PROCESS,
+    RX_STATE_MODES,
+    RX_STATE_UPDATE,
+    RX_STATE_COUNT
+} rxState_e;
+
+static rxState_e rxState = RX_STATE_CHECK;
 
 bool taskUpdateRxMainInProgress()
 {
-    return (rxState != CHECK);
+    return (rxState != RX_STATE_CHECK);
 }
 
 static void taskUpdateRxMain(timeUs_t currentTimeUs)
 {
-    // Where we are using a state machine call ignoreTaskStateTime() for all states bar one
-    if (rxState != MODES) {
-        ignoreTaskStateTime();
+    static timeUs_t rxStateDurationUs[RX_STATE_COUNT];
+    timeUs_t executeTimeUs;
+    timeUs_t existingDurationUs;
+    rxState_e oldRxState = rxState;
+
+    // Where we are using a state machine call ignoreTaskExecRate() for all states bar one
+    if (rxState != RX_STATE_UPDATE) {
+        ignoreTaskExecRate();
     }
 
     switch (rxState) {
     default:
-    case CHECK:
-        rxState = PROCESS;
+    case RX_STATE_CHECK:
+        rxState = RX_STATE_PROCESS;
         break;
 
-    case PROCESS:
+    case RX_STATE_PROCESS:
         if (!processRx(currentTimeUs)) {
-            rxState = CHECK;
+            rxState = RX_STATE_CHECK;
             break;
         }
-        rxState = MODES;
+        rxState = RX_STATE_MODES;
         break;
 
-    case MODES:
+    case RX_STATE_MODES:
         processRxModes(currentTimeUs);
-        rxState = UPDATE;
+        rxState = RX_STATE_UPDATE;
         break;
 
-    case UPDATE:
+    case RX_STATE_UPDATE:
         // updateRcCommands sets rcCommand, which is needed by updateAltHoldState and updateSonarAltHoldState
         updateRcCommands();
         updateArmingStatus();
@@ -204,9 +215,22 @@ static void taskUpdateRxMain(timeUs_t currentTimeUs)
             sendRcDataToHid();
         }
 #endif
-        rxState = CHECK;
+        rxState = RX_STATE_CHECK;
         break;
     }
+
+    executeTimeUs = micros() - currentTimeUs;
+
+    existingDurationUs = rxStateDurationUs[oldRxState] / TASK_STATS_MOVING_SUM_COUNT;
+
+    // If the execution time is higher than expected, double the weight in the moving average
+    if (executeTimeUs > existingDurationUs) {
+        rxStateDurationUs[oldRxState] += executeTimeUs - existingDurationUs;
+    }
+
+    rxStateDurationUs[oldRxState] += executeTimeUs - existingDurationUs;
+
+    schedulerSetNextStateTime(rxStateDurationUs[rxState] / TASK_STATS_MOVING_SUM_COUNT);
 }
 
 
@@ -216,7 +240,7 @@ static void taskUpdateBaro(timeUs_t currentTimeUs)
     UNUSED(currentTimeUs);
 
     if (sensors(SENSOR_BARO)) {
-        const uint32_t newDeadline = baroUpdate();
+        const uint32_t newDeadline = baroUpdate(currentTimeUs);
         if (newDeadline != 0) {
             rescheduleTask(TASK_SELF, newDeadline);
         }
@@ -478,7 +502,7 @@ task_t tasks[TASK_COUNT] = {
 #endif
 
 #ifdef USE_OSD
-    [TASK_OSD] = DEFINE_TASK("OSD", NULL, NULL, osdUpdate, TASK_PERIOD_HZ(OSD_TASK_FREQUENCY_DEFAULT), TASK_PRIORITY_LOW),
+    [TASK_OSD] = DEFINE_TASK("OSD", NULL, osdUpdateCheck, osdUpdate, TASK_PERIOD_HZ(OSD_TASK_FREQUENCY_DEFAULT), TASK_PRIORITY_LOW),
 #endif
 
 #ifdef USE_TELEMETRY

@@ -49,9 +49,9 @@ extern const char * const osdTimerSourceNames[OSD_NUM_TIMER_TYPES];
 #define OSD_CAMERA_FRAME_MIN_HEIGHT 2
 #define OSD_CAMERA_FRAME_MAX_HEIGHT 16    // Rows supported by MAX7456 (PAL)
 
-#define OSD_TASK_FREQUENCY_MIN 30
-#define OSD_TASK_FREQUENCY_MAX 300
-#define OSD_TASK_FREQUENCY_DEFAULT 60
+#define OSD_TASK_FREQUENCY_MIN 6
+#define OSD_TASK_FREQUENCY_MAX 60
+#define OSD_TASK_FREQUENCY_DEFAULT 12
 
 #define OSD_PROFILE_BITS_POS 11
 #define OSD_PROFILE_MASK    (((1 << OSD_PROFILE_COUNT) - 1) << OSD_PROFILE_BITS_POS)
@@ -339,6 +339,7 @@ extern escSensorData_t *osdEscDataCombined;
 #endif
 
 void osdInit(displayPort_t *osdDisplayPort, osdDisplayPortDevice_e displayPortDevice);
+bool osdUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs);
 void osdUpdate(timeUs_t currentTimeUs);
 
 void osdStatSetState(uint8_t statIndex, bool enabled);

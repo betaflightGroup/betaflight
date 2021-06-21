@@ -36,7 +36,7 @@
 #define SCHED_START_LOOP_DOWN_STEP      50  // Fraction of a us to reduce start loop wait
 #define SCHED_START_LOOP_UP_STEP        1   // Fraction of a us to increase start loop wait
 
-#define TASK_GUARD_MARGIN_MIN_US        2   // Add an amount to the estimate of a task duration
+#define TASK_GUARD_MARGIN_MIN_US        3   // Add an amount to the estimate of a task duration
 #define TASK_GUARD_MARGIN_MAX_US        5
 #define TASK_GUARD_MARGIN_DOWN_STEP     50  // Fraction of a us to reduce task guard margin
 #define TASK_GUARD_MARGIN_UP_STEP       1   // Fraction of a us to increase task guard margin
@@ -196,7 +196,7 @@ typedef struct {
 
     // Statistics
     float    movingAverageCycleTimeUs;
-    timeUs_t movingSumExecutionTimeUs;  // moving sum over 32 samples
+    timeUs_t anticipatedExecutionTimeUs;  // moving sum over 32 samples
     timeUs_t movingSumDeltaTimeUs;      // moving sum over 32 samples
     timeUs_t maxExecutionTimeUs;
     timeUs_t totalExecutionTimeUs;      // total time consumed by task since boot
@@ -214,10 +214,13 @@ void rescheduleTask(taskId_e taskId, timeDelta_t newPeriodUs);
 void setTaskEnabled(taskId_e taskId, bool newEnabledState);
 timeDelta_t getTaskDeltaTimeUs(taskId_e taskId);
 void ignoreTaskStateTime();
+void ignoreTaskExecRate();
 void ignoreTaskShortExecTime();
 void schedulerResetTaskStatistics(taskId_e taskId);
 void schedulerResetTaskMaxExecutionTime(taskId_e taskId);
 void schedulerResetCheckFunctionMaxExecutionTime(void);
+
+void schedulerSetNextStateTime(timeDelta_t nextStateTime);
 
 void schedulerInit(void);
 void scheduler(void);

@@ -219,6 +219,7 @@ static uint8_t activeOsdElementArray[OSD_ITEM_COUNT];
 static bool backgroundLayerSupported = false;
 
 // Blink control
+#define OSD_BLINK_FREQUENCY_HZ 2
 static bool blinkState = true;
 static uint32_t blinkBits[(OSD_ITEM_COUNT + 31) / 32];
 #define SET_BLINK(item) (blinkBits[(item) / 32] |= (1 << ((item) % 32)))
@@ -1803,37 +1804,42 @@ static void osdDrawSingleElementBackground(displayPort_t *osdDisplayPort, uint8_
     }
 }
 
-#define OSD_BLINK_FREQUENCY_HZ 2.5f
+static uint8_t activeElement = 0;
 
-void osdDrawActiveElements(displayPort_t *osdDisplayPort)
+uint8_t osdGetActiveElement()
 {
-    static unsigned blinkLoopCounter = 0;
+    return activeElement;
+}
 
-#ifdef USE_GPS
-    static bool lastGpsSensorState;
-    // Handle the case that the GPS_SENSOR may be delayed in activation
-    // or deactivate if communication is lost with the module.
-    const bool currentGpsSensorState = sensors(SENSOR_GPS);
-    if (lastGpsSensorState != currentGpsSensorState) {
-        lastGpsSensorState = currentGpsSensorState;
-        osdAnalyzeActiveElements();
-    }
-#endif // USE_GPS
+uint8_t osdGetActiveElementCount()
+{
+    return activeOsdElementCount;
+}
 
-    // synchronize the blinking with the OSD task loop
-    if (++blinkLoopCounter >= lrintf(osdConfig()->task_frequency / OSD_DRAW_FREQ_DENOM / (OSD_BLINK_FREQUENCY_HZ * 2))) {
-        blinkState = !blinkState;
-        blinkLoopCounter = 0;
+// Return true if there are more elements to draw
+bool osdDrawNextActiveElement(displayPort_t *osdDisplayPort, timeUs_t currentTimeUs)
+{
+    UNUSED(currentTimeUs);
+    bool retval = true;
+
+    if (activeElement >= activeOsdElementCount) {
+        return false;
     }
 
-    for (unsigned i = 0; i < activeOsdElementCount; i++) {
-        if (!backgroundLayerSupported) {
-            // If the background layer isn't supported then we
-            // have to draw the element's static layer as well.
-            osdDrawSingleElementBackground(osdDisplayPort, activeOsdElementArray[i]);
-        }
-        osdDrawSingleElement(osdDisplayPort, activeOsdElementArray[i]);
+    if (!backgroundLayerSupported) {
+        // If the background layer isn't supported then we
+        // have to draw the element's static layer as well.
+        osdDrawSingleElementBackground(osdDisplayPort, activeOsdElementArray[activeElement]);
     }
+
+    osdDrawSingleElement(osdDisplayPort, activeOsdElementArray[activeElement]);
+
+    if (++activeElement >= activeOsdElementCount) {
+        activeElement = 0;
+        retval= false;
+    }
+
+    return retval;
 }
 
 void osdDrawActiveElementsBackground(displayPort_t *osdDisplayPort)
@@ -1852,6 +1858,17 @@ void osdElementsInit(bool backgroundLayerFlag)
 {
     backgroundLayerSupported = backgroundLayerFlag;
     activeOsdElementCount = 0;
+}
+
+void osdSyncBlink() {
+    static int blinkCount = 0;
+
+    // If the OSD blink is due a transition, do so
+    // Task runs at 12Hz, so this will cycle at 2Hz
+    if (++blinkCount == ((OSD_TASK_FREQUENCY_DEFAULT/OSD_BLINK_FREQUENCY_HZ)/2)) {
+        blinkCount = 0;
+        blinkState = !blinkState;
+    }
 }
 
 void osdResetAlarms(void)

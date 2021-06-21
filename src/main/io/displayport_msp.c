@@ -64,7 +64,9 @@ static int heartbeat(displayPort_t *displayPort)
     // heartbeat is used to:
     // a) ensure display is not released by MW OSD software
     // b) prevent OSD Slave boards from displaying a 'disconnected' status.
-    return output(displayPort, MSP_DISPLAYPORT, subcmd, sizeof(subcmd));
+    output(displayPort, MSP_DISPLAYPORT, subcmd, sizeof(subcmd));
+
+    return 0;
 }
 
 static int grab(displayPort_t *displayPort)
@@ -89,7 +91,9 @@ static int clearScreen(displayPort_t *displayPort)
 static int drawScreen(displayPort_t *displayPort)
 {
     uint8_t subcmd[] = { 4 };
-    return output(displayPort, MSP_DISPLAYPORT, subcmd, sizeof(subcmd));
+    output(displayPort, MSP_DISPLAYPORT, subcmd, sizeof(subcmd));
+
+    return 0;
 }
 
 static int screenSize(const displayPort_t *displayPort)
