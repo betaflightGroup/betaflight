@@ -236,7 +236,9 @@ static uint8_t cmsx_simplified_roll_pitch_ratio;
 static uint8_t cmsx_simplified_i_gain;
 static uint8_t cmsx_simplified_pd_ratio;
 static uint8_t cmsx_simplified_pd_gain;
+#ifdef USE_D_MIN
 static uint8_t cmsx_simplified_dmin_ratio;
+#endif
 static uint8_t cmsx_simplified_feedforward_gain;
 
 static uint8_t cmsx_simplified_dterm_filter;
@@ -256,7 +258,9 @@ static const void *cmsx_simplifiedTuningOnEnter(displayPort_t *pDisp)
     cmsx_simplified_i_gain = pidProfile->simplified_i_gain;
     cmsx_simplified_pd_ratio = pidProfile->simplified_pd_ratio;
     cmsx_simplified_pd_gain = pidProfile->simplified_pd_gain;
+#ifdef USE_D_MIN
     cmsx_simplified_dmin_ratio = pidProfile->simplified_dmin_ratio;
+#endif
     cmsx_simplified_feedforward_gain = pidProfile->simplified_feedforward_gain;
 
     cmsx_simplified_dterm_filter = pidProfile->simplified_dterm_filter;
@@ -280,7 +284,9 @@ static const void *cmsx_simplifiedTuningOnExit(displayPort_t *pDisp, const OSD_E
     pidProfile->simplified_i_gain = cmsx_simplified_i_gain;
     pidProfile->simplified_pd_ratio = cmsx_simplified_pd_ratio;
     pidProfile->simplified_pd_gain = cmsx_simplified_pd_gain;
+#ifdef USE_D_MIN
     pidProfile->simplified_dmin_ratio = cmsx_simplified_dmin_ratio;
+#endif
     pidProfile->simplified_feedforward_gain = cmsx_simplified_feedforward_gain;
 
     pidProfile->simplified_dterm_filter = cmsx_simplified_dterm_filter;
@@ -304,7 +310,9 @@ static const void *cmsx_applySimplifiedTuning(displayPort_t *pDisp, const void *
     pidProfile->simplified_i_gain = cmsx_simplified_i_gain;
     pidProfile->simplified_pd_ratio = cmsx_simplified_pd_ratio;
     pidProfile->simplified_pd_gain = cmsx_simplified_pd_gain;
+#ifdef USE_D_MIN
     pidProfile->simplified_dmin_ratio = cmsx_simplified_dmin_ratio;
+#endif
     pidProfile->simplified_feedforward_gain = cmsx_simplified_feedforward_gain;
 
     pidProfile->simplified_dterm_filter = cmsx_simplified_dterm_filter;
@@ -326,7 +334,9 @@ static const OSD_Entry cmsx_menuSimplifiedTuningEntries[] =
     { "I GAIN",         OME_FLOAT, NULL, &(OSD_FLOAT_t) { &cmsx_simplified_i_gain,            SIMPLIFIED_TUNING_MIN, SIMPLIFIED_TUNING_MAX, 5, 10 }, 0 },
     { "PD RATIO",       OME_FLOAT, NULL, &(OSD_FLOAT_t) { &cmsx_simplified_pd_ratio,          SIMPLIFIED_TUNING_MIN, SIMPLIFIED_TUNING_MAX, 5, 10 }, 0 },
     { "PD GAIN",        OME_FLOAT, NULL, &(OSD_FLOAT_t) { &cmsx_simplified_pd_gain,           SIMPLIFIED_TUNING_MIN, SIMPLIFIED_TUNING_MAX, 5, 10 }, 0 },
+#ifdef USE_D_MIN
     { "DMIN RATIO",     OME_FLOAT, NULL, &(OSD_FLOAT_t) { &cmsx_simplified_dmin_ratio,        SIMPLIFIED_TUNING_MIN, SIMPLIFIED_TUNING_MAX, 5, 10 }, 0 },
+#endif
     { "FF GAIN",        OME_FLOAT, NULL, &(OSD_FLOAT_t) { &cmsx_simplified_feedforward_gain,  SIMPLIFIED_TUNING_MIN, SIMPLIFIED_TUNING_MAX, 5, 10 }, 0 },
 
     { "-- SIMPLIFIED FILTER --", OME_Label, NULL, NULL, 0},

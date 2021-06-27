@@ -2143,7 +2143,11 @@ static mspResult_e mspFcProcessOutCommandWithArg(mspDescriptor_t srcDesc, int16_
             sbufWriteU8(dst, currentPidProfile->simplified_i_gain);
             sbufWriteU8(dst, currentPidProfile->simplified_pd_ratio);
             sbufWriteU8(dst, currentPidProfile->simplified_pd_gain);
+#ifdef USE_D_MIN
             sbufWriteU8(dst, currentPidProfile->simplified_dmin_ratio);
+#else
+            sbufWriteU8(dst, 0);
+#endif
             sbufWriteU8(dst, currentPidProfile->simplified_feedforward_gain);
 
             sbufWriteU8(dst, currentPidProfile->simplified_dterm_filter);
@@ -3116,7 +3120,9 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
         currentPidProfile->simplified_i_gain = sbufReadU8(src);
         currentPidProfile->simplified_pd_ratio = sbufReadU8(src);
         currentPidProfile->simplified_pd_gain = sbufReadU8(src);
+#ifdef USE_D_MIN
         currentPidProfile->simplified_dmin_ratio = sbufReadU8(src);
+#endif
         currentPidProfile->simplified_feedforward_gain = sbufReadU8(src);
 
         currentPidProfile->simplified_dterm_filter = sbufReadU8(src);
