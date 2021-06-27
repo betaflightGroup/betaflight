@@ -103,6 +103,7 @@ PG_REGISTER_WITH_RESET_TEMPLATE(pidConfig_t, pidConfig, PG_PID_CONFIG, 2);
 PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
     .pid_process_denom = PID_PROCESS_DENOM_DEFAULT,
     .runaway_takeoff_prevention = true,
+    .runaway_takeoff_prevention_crashflip_reset = true,
     .runaway_takeoff_deactivate_throttle = 20,  // throttle level % needed to accumulate deactivation time
     .runaway_takeoff_deactivate_delay = 500     // Accumulated time (in milliseconds) before deactivation in successful takeoff
 );

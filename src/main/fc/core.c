@@ -517,7 +517,12 @@ void tryArm(void)
             } else {
                 flipOverAfterCrashActive = true;
 #ifdef USE_RUNAWAY_TAKEOFF
-                runawayTakeoffCheckDisabled = false;
+                if (pidConfig()->runaway_takeoff_prevention_crashflip_reset) {
+                    runawayTakeoffCheckDisabled = false;
+                } else {
+                  runawayTakeoffCheckDisabled = true;
+                }
+
 #endif
                 if (!featureIsEnabled(FEATURE_3D)) {
                     dshotCommandWrite(ALL_MOTORS, getMotorCount(), DSHOT_CMD_SPIN_DIRECTION_REVERSED, DSHOT_CMD_TYPE_INLINE);

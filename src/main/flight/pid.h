@@ -230,10 +230,11 @@ typedef struct pidProfile_s {
 PG_DECLARE_ARRAY(pidProfile_t, PID_PROFILE_COUNT, pidProfiles);
 
 typedef struct pidConfig_s {
-    uint8_t pid_process_denom;              // Processing denominator for PID controller vs gyro sampling rate
-    uint8_t runaway_takeoff_prevention;          // off, on - enables pidsum runaway disarm logic
-    uint16_t runaway_takeoff_deactivate_delay;   // delay in ms for "in-flight" conditions before deactivation (successful flight)
-    uint8_t runaway_takeoff_deactivate_throttle; // minimum throttle percent required during deactivation phase
+    uint8_t pid_process_denom;                            // Processing denominator for PID controller vs gyro sampling rate
+    uint8_t runaway_takeoff_prevention;                   // off, on - enables pidsum runaway disarm logic
+    uint8_t runaway_takeoff_prevention_crashflip_reset;   // off, on - prevents runaway_takeoff_prevention after armed once
+    uint16_t runaway_takeoff_deactivate_delay;            // delay in ms for "in-flight" conditions before deactivation (successful flight)
+    uint8_t runaway_takeoff_deactivate_throttle;          // minimum throttle percent required during deactivation phase
 } pidConfig_t;
 
 PG_DECLARE(pidConfig_t, pidConfig);
