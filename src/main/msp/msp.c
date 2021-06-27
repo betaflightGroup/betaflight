@@ -1659,6 +1659,8 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
         sbufWriteU8(dst, blackboxGetRateDenom());
         sbufWriteU16(dst, blackboxGetPRatio());
         sbufWriteU8(dst, blackboxConfig()->sample_rate);
+        // Added in MSP API 1.45
+        sbufWriteU32(dst, blackboxConfig()->fields_disabled_mask);
 #else
         sbufWriteU8(dst, 0); // Blackbox not supported
         sbufWriteU8(dst, 0);
@@ -1666,6 +1668,8 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
         sbufWriteU8(dst, 0);
         sbufWriteU16(dst, 0);
         sbufWriteU8(dst, 0);
+        // Added in MSP API 1.45
+        sbufWriteU32(dst, 0);
 #endif
         break;
 
@@ -2893,6 +2897,11 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             } else {
                 // sample_rate not specified in MSP, so calculate it from old p_ratio
                 blackboxConfigMutable()->sample_rate = blackboxCalculateSampleRate(pRatio);
+            }
+
+            // Added in MSP API 1.45
+            if (sbufBytesRemaining(src) >= 4) {
+                blackboxConfigMutable()->fields_disabled_mask = sbufReadU32(src);
             }
         }
         break;
