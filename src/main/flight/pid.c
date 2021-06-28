@@ -210,7 +210,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .dyn_lpf_curve_expo = 5,
         .level_race_mode = false,
         .vbat_sag_compensation = 0,
-        .simplified_pids_mode = PID_SIMPLIFIED_TUNING_OFF,
+        .simplified_pids_mode = PID_SIMPLIFIED_TUNING_RPY,
         .simplified_master_multiplier = SIMPLIFIED_TUNING_DEFAULT,
         .simplified_roll_pitch_ratio = SIMPLIFIED_TUNING_DEFAULT,
         .simplified_i_gain = SIMPLIFIED_TUNING_DEFAULT,
@@ -218,7 +218,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .simplified_pd_gain = SIMPLIFIED_TUNING_DEFAULT,
         .simplified_dmin_ratio = SIMPLIFIED_TUNING_DEFAULT,
         .simplified_feedforward_gain = SIMPLIFIED_TUNING_DEFAULT,
-        .simplified_dterm_filter = false,
+        .simplified_dterm_filter = true,
         .simplified_dterm_filter_multiplier = SIMPLIFIED_TUNING_DEFAULT,
     );
 #ifndef USE_D_MIN
