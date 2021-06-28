@@ -68,6 +68,7 @@
 #define GHST_CYCLETIME_US                   100000      // 10x/sec
 #define GHST_FRAME_PACK_PAYLOAD_SIZE        10
 #define GHST_FRAME_GPS_PAYLOAD_SIZE         10
+#define GHST_FRAME_MAGBARO_PAYLOAD_SIZE     10
 #define GHST_FRAME_LENGTH_CRC               1
 #define GHST_FRAME_LENGTH_TYPE              1
 
@@ -95,7 +96,7 @@ void ghstFramePackTelemetry(sbuf_t *dst)
 {
     // use sbufWrite since CRC does not include frame length
     sbufWriteU8(dst, GHST_FRAME_PACK_PAYLOAD_SIZE + GHST_FRAME_LENGTH_CRC + GHST_FRAME_LENGTH_TYPE);
-    sbufWriteU8(dst, 0x23);                     // GHST_DL_PACK_STAT
+    sbufWriteU8(dst, GHST_DL_PACK_STAT);
 
     if (telemetryConfig()->report_cell_voltage) {
         sbufWriteU16(dst, getBatteryAverageCellVoltage());      // units of 10mV
@@ -143,7 +144,7 @@ void ghstFrameGpsSecondaryTelemetry(sbuf_t *dst)
     sbufWriteU16(dst, gpsSol.groundCourse);     // degrees * 10
     sbufWriteU8(dst, gpsSol.numSat);
 	
-    sbufWriteU16(dst, (uint16_t) (GPS_distanceToHome / 10));    // use units of 10m to increase range of U16 to 655.36km
+    sbufWriteU16(dst, GPS_distanceToHome / 10); // use units of 10m to increase range of U16 to 655.36km
     sbufWriteU16(dst, GPS_directionToHome);
 
     uint8_t gpsFlags = 0;
@@ -186,7 +187,7 @@ void ghstFrameMagBaro(sbuf_t *dst)
 #endif
 
     // use sbufWrite since CRC does not include frame length
-    sbufWriteU8(dst, GHST_FRAME_GPS_PAYLOAD_SIZE + GHST_FRAME_LENGTH_CRC + GHST_FRAME_LENGTH_TYPE);
+    sbufWriteU8(dst, GHST_FRAME_MAGBARO_PAYLOAD_SIZE + GHST_FRAME_LENGTH_CRC + GHST_FRAME_LENGTH_TYPE);
     sbufWriteU8(dst, GHST_DL_MAGBARO);
 
     sbufWriteU16(dst, yaw);                 // magHeading, deci-degrees
@@ -283,8 +284,8 @@ void initGhstTelemetry(void)
     }
 #endif
 
-    ghstScheduleCount = (uint8_t)index;
- }
+    ghstScheduleCount = index;
+}
 
 bool checkGhstTelemetryState(void)
 {
@@ -294,7 +295,7 @@ bool checkGhstTelemetryState(void)
 // Called periodically by the scheduler
  void handleGhstTelemetry(timeUs_t currentTimeUs)
 {
-    static uint32_t ghstLastCycleTime;
+    static timeUs_t ghstLastCycleTime = 0;
 
     if (!ghstTelemetryEnabled) {
         return;
