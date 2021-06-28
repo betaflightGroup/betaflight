@@ -69,7 +69,7 @@
 
 #include "build/debug.h"
 
-void forcedSystemResetWithoutDisablingCaches(void);
+void systemResetWithoutDisablingCaches(void);
 
 #if !defined  (HSE_VALUE)
 #define HSE_VALUE    ((uint32_t)25000000) /*!< Value of the External oscillator in Hz */
@@ -179,7 +179,7 @@ void HandleStuckSysTick(void)
     }
 
     if (tickStart == tickEnd) {
-        forcedSystemResetWithoutDisablingCaches();
+        systemResetWithoutDisablingCaches();
     }
 }
 
@@ -389,7 +389,7 @@ static void SystemClockHSE_Config(void)
 
 #ifdef USE_H7_HSE_TIMEOUT_WORKAROUND
     if (status == HAL_TIMEOUT) {
-        forcedSystemResetWithoutDisablingCaches(); // DC - sometimes HSERDY gets stuck, waiting longer doesn't help.
+        systemResetWithoutDisablingCaches(); // DC - sometimes HSERDY gets stuck, waiting longer doesn't help.
     }
 #endif
 

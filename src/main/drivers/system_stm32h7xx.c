@@ -110,10 +110,8 @@ void systemReset(void)
     NVIC_SystemReset();
 }
 
-void forcedSystemResetWithoutDisablingCaches(void)
+void systemResetWithoutDisablingCaches(void)
 {
-    // Don't overwrite the PERSISTENT_OBJECT_RESET_REASON; just make another attempt
-
     __disable_irq();
     NVIC_SystemReset();
 }
@@ -184,7 +182,8 @@ void systemCheckResetReason(void)
     case RESET_BOOTLOADER_POST:
         // Boot loader activity magically prevents SysTick from interrupting.
         // Issue a soft reset to prevent the condition.
-        forcedSystemResetWithoutDisablingCaches(); // observed that disabling dcache after cold boot with BOOT pin high causes segfault.
+        persistentObjectWrite(PERSISTENT_OBJECT_RESET_REASON, RESET_FORCED);
+        systemResetWithoutDisablingCaches(); // observed that disabling dcache after cold boot with BOOT pin high causes segfault.
 
     case RESET_MSC_REQUEST:
     case RESET_NONE:
