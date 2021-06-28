@@ -30,8 +30,6 @@
 
 #define NRF24L01_MAX_PAYLOAD_SIZE 32
 
-#define BV(x) (1<<(x)) // bit value
-
 // Register map of nRF24L01
 enum {
     NRF24L01_00_CONFIG      = 0x00,

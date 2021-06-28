@@ -138,7 +138,7 @@ static uint8_t standbyConfig;
 
 void NRF24L01_Initialize(uint8_t baseConfig)
 {
-    standbyConfig = BV(NRF24L01_00_CONFIG_PWR_UP) | baseConfig;
+    standbyConfig = BIT(NRF24L01_00_CONFIG_PWR_UP) | baseConfig;
     NRF24L01_InitGpio();
     // nRF24L01+ needs 100 milliseconds settling time from PowerOnReset to PowerDown mode
     static const uint32_t settlingTimeUs = 100000;
@@ -159,7 +159,7 @@ void NRF24L01_Initialize(uint8_t baseConfig)
 void NRF24L01_SetupBasic(void)
 {
     NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00); // No auto acknowledgment
-    NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, BV(NRF24L01_02_EN_RXADDR_ERX_P0));
+    NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, BIT(NRF24L01_02_EN_RXADDR_ERX_P0));
     NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, NRF24L01_03_SETUP_AW_5BYTES); // 5-byte RX/TX address
     NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x00); // Disable dynamic payload length on all pipes
 }
@@ -181,7 +181,7 @@ void NRF24L01_SetRxMode(void)
 {
     NRF24_CE_LO(); // drop into standby mode
     // set the PRIM_RX bit
-    NRF24L01_WriteReg(NRF24L01_00_CONFIG, standbyConfig | BV(NRF24L01_00_CONFIG_PRIM_RX));
+    NRF24L01_WriteReg(NRF24L01_00_CONFIG, standbyConfig | BIT(NRF24L01_00_CONFIG_PRIM_RX));
     NRF24L01_ClearAllInterrupts();
     // finally set CE high to start enter RX mode
     NRF24_CE_HI();
@@ -207,7 +207,7 @@ void NRF24L01_SetTxMode(void)
 void NRF24L01_ClearAllInterrupts(void)
 {
     // Writing to the STATUS register clears the specified interrupt bits
-    NRF24L01_WriteReg(NRF24L01_07_STATUS, BV(NRF24L01_07_STATUS_RX_DR) | BV(NRF24L01_07_STATUS_TX_DS) | BV(NRF24L01_07_STATUS_MAX_RT));
+    NRF24L01_WriteReg(NRF24L01_07_STATUS, BIT(NRF24L01_07_STATUS_RX_DR) | BIT(NRF24L01_07_STATUS_TX_DS) | BIT(NRF24L01_07_STATUS_MAX_RT));
 }
 
 void NRF24L01_SetChannel(uint8_t channel)
@@ -217,7 +217,7 @@ void NRF24L01_SetChannel(uint8_t channel)
 
 bool NRF24L01_ReadPayloadIfAvailable(uint8_t *data, uint8_t length)
 {
-    if (NRF24L01_ReadReg(NRF24L01_17_FIFO_STATUS) & BV(NRF24L01_17_FIFO_STATUS_RX_EMPTY)) {
+    if (NRF24L01_ReadReg(NRF24L01_17_FIFO_STATUS) & BIT(NRF24L01_17_FIFO_STATUS_RX_EMPTY)) {
         return false;
     }
     NRF24L01_ReadPayload(data, length);
@@ -239,11 +239,11 @@ bool NRF24L01_ReadPayloadIfAvailableFast(uint8_t *data, uint8_t length)
     ENABLE_RX();
     rxSpiTransferByte(R_REGISTER | (REGISTER_MASK & NRF24L01_07_STATUS));
     const uint8_t status = rxSpiTransferByte(NOP);
-    if ((status & BV(NRF24L01_07_STATUS_RX_DR)) == 0) {
+    if ((status & BIT(NRF24L01_07_STATUS_RX_DR)) == 0) {
         ret = true;
         // clear RX_DR flag
         rxSpiTransferByte(W_REGISTER | (REGISTER_MASK & NRF24L01_07_STATUS));
-        rxSpiTransferByte(BV(NRF24L01_07_STATUS_RX_DR));
+        rxSpiTransferByte(BIT(NRF24L01_07_STATUS_RX_DR));
         rxSpiTransferByte(R_RX_PAYLOAD);
         for (uint8_t i = 0; i < length; i++) {
             data[i] = rxSpiTransferByte(NOP);

@@ -522,8 +522,6 @@ static void crsfFrameDisplayPortClear(sbuf_t *dst)
 
 #endif
 
-#define BV(x)  (1 << (x)) // bit value
-
 // schedule array to decide how often each type of frame is sent
 typedef enum {
     CRSF_FRAME_START_INDEX = 0,
@@ -570,24 +568,24 @@ static void processCrsf(void)
     sbuf_t crsfPayloadBuf;
     sbuf_t *dst = &crsfPayloadBuf;
 
-    if (currentSchedule & BV(CRSF_FRAME_ATTITUDE_INDEX)) {
+    if (currentSchedule & BIT(CRSF_FRAME_ATTITUDE_INDEX)) {
         crsfInitializeFrame(dst);
         crsfFrameAttitude(dst);
         crsfFinalize(dst);
     }
-    if (currentSchedule & BV(CRSF_FRAME_BATTERY_SENSOR_INDEX)) {
+    if (currentSchedule & BIT(CRSF_FRAME_BATTERY_SENSOR_INDEX)) {
         crsfInitializeFrame(dst);
         crsfFrameBatterySensor(dst);
         crsfFinalize(dst);
     }
 
-    if (currentSchedule & BV(CRSF_FRAME_FLIGHT_MODE_INDEX)) {
+    if (currentSchedule & BIT(CRSF_FRAME_FLIGHT_MODE_INDEX)) {
         crsfInitializeFrame(dst);
         crsfFrameFlightMode(dst);
         crsfFinalize(dst);
     }
 #ifdef USE_GPS
-    if (currentSchedule & BV(CRSF_FRAME_GPS_INDEX)) {
+    if (currentSchedule & BIT(CRSF_FRAME_GPS_INDEX)) {
         crsfInitializeFrame(dst);
         crsfFrameGps(dst);
         crsfFinalize(dst);
@@ -619,19 +617,19 @@ void initCrsfTelemetry(void)
 
     int index = 0;
     if (sensors(SENSOR_ACC) && telemetryIsSensorEnabled(SENSOR_PITCH | SENSOR_ROLL | SENSOR_HEADING)) {
-        crsfSchedule[index++] = BV(CRSF_FRAME_ATTITUDE_INDEX);
+        crsfSchedule[index++] = BIT(CRSF_FRAME_ATTITUDE_INDEX);
     }
     if ((isBatteryVoltageConfigured() && telemetryIsSensorEnabled(SENSOR_VOLTAGE))
         || (isAmperageConfigured() && telemetryIsSensorEnabled(SENSOR_CURRENT | SENSOR_FUEL))) {
-        crsfSchedule[index++] = BV(CRSF_FRAME_BATTERY_SENSOR_INDEX);
+        crsfSchedule[index++] = BIT(CRSF_FRAME_BATTERY_SENSOR_INDEX);
     }
     if (telemetryIsSensorEnabled(SENSOR_MODE)) {
-        crsfSchedule[index++] = BV(CRSF_FRAME_FLIGHT_MODE_INDEX);
+        crsfSchedule[index++] = BIT(CRSF_FRAME_FLIGHT_MODE_INDEX);
     }
 #ifdef USE_GPS
     if (featureIsEnabled(FEATURE_GPS)
        && telemetryIsSensorEnabled(SENSOR_ALTITUDE | SENSOR_LAT_LONG | SENSOR_GROUND_SPEED | SENSOR_HEADING)) {
-        crsfSchedule[index++] = BV(CRSF_FRAME_GPS_INDEX);
+        crsfSchedule[index++] = BIT(CRSF_FRAME_GPS_INDEX);
     }
 #endif
     crsfScheduleCount = (uint8_t)index;

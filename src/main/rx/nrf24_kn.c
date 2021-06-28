@@ -148,7 +148,7 @@ void knNrf24SetRcDataFromPayload(uint16_t *rcData, const uint8_t *packet)
 
 static rx_spi_received_e readrx(uint8_t *packet)
 {
-    if (!(NRF24L01_ReadReg(NRF24L01_07_STATUS) & BV(NRF24L01_07_STATUS_RX_DR))) {
+    if (!(NRF24L01_ReadReg(NRF24L01_07_STATUS) & BIT(NRF24L01_07_STATUS_RX_DR))) {
         uint32_t t = micros() - packet_timer;
         if (t > rx_timeout) {
 			if (bind_phase == PHASE_RECEIVED) {
@@ -160,7 +160,7 @@ static rx_spi_received_e readrx(uint8_t *packet)
         return RX_SPI_RECEIVED_NONE;
     }
     packet_timer = micros();
-    NRF24L01_WriteReg(NRF24L01_07_STATUS, BV(NRF24L01_07_STATUS_RX_DR)); // clear the RX_DR flag
+    NRF24L01_WriteReg(NRF24L01_07_STATUS, BIT(NRF24L01_07_STATUS_RX_DR)); // clear the RX_DR flag
     NRF24L01_ReadPayload(packet, KN_PAYLOAD_SIZE);
     NRF24L01_FlushRx();
 
@@ -179,14 +179,14 @@ rx_spi_received_e knNrf24DataReceived(uint8_t *packet)
 
 static void knNrf24Setup(rx_spi_protocol_e protocol)
 {
-    NRF24L01_Initialize(BV(NRF24L01_00_CONFIG_EN_CRC) | BV(NRF24L01_00_CONFIG_CRCO)); // 2-bytes CRC
+    NRF24L01_Initialize(BIT(NRF24L01_00_CONFIG_EN_CRC) | BIT(NRF24L01_00_CONFIG_CRCO)); // 2-bytes CRC
 
     NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00);      // No Auto Acknowledgment
-    NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, BV(NRF24L01_02_EN_RXADDR_ERX_P0));  // Enable data pipe 0
+    NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, BIT(NRF24L01_02_EN_RXADDR_ERX_P0));  // Enable data pipe 0
     NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, NRF24L01_03_SETUP_AW_5BYTES);   // 5-byte RX/TX address
     NRF24L01_WriteReg(NRF24L01_04_SETUP_RETR, 0x00);
     NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, NRF24L01_06_RF_SETUP_RF_DR_1Mbps | NRF24L01_06_RF_SETUP_RF_PWR_n12dbm);
-    NRF24L01_WriteReg(NRF24L01_07_STATUS, BV(NRF24L01_07_STATUS_RX_DR) | BV(NRF24L01_07_STATUS_TX_DS) | BV(NRF24L01_07_STATUS_MAX_RT));     // Clear data ready, data sent, and retransmit
+    NRF24L01_WriteReg(NRF24L01_07_STATUS, BIT(NRF24L01_07_STATUS_RX_DR) | BIT(NRF24L01_07_STATUS_TX_DS) | BIT(NRF24L01_07_STATUS_MAX_RT));     // Clear data ready, data sent, and retransmit
     NRF24L01_WriteReg(NRF24L01_11_RX_PW_P0, KN_PAYLOAD_SIZE);  // bytes of data payload for pipe 0
     NRF24L01_WriteReg(NRF24L01_17_FIFO_STATUS, 0x00); // Just in case, no real bits to write here
 

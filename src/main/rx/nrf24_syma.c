@@ -274,7 +274,7 @@ rx_spi_received_e symaNrf24DataReceived(uint8_t *payload)
 static void symaNrf24Setup(rx_spi_protocol_e protocol)
 {
     symaProtocol = protocol;
-    NRF24L01_Initialize(BV(NRF24L01_00_CONFIG_EN_CRC) | BV( NRF24L01_00_CONFIG_CRCO)); // sets PWR_UP, EN_CRC, CRCO - 2 byte CRC
+    NRF24L01_Initialize(BIT(NRF24L01_00_CONFIG_EN_CRC) | BIT( NRF24L01_00_CONFIG_CRCO)); // sets PWR_UP, EN_CRC, CRCO - 2 byte CRC
     NRF24L01_SetupBasic();
 
     if (symaProtocol == RX_SPI_NRF24_SYMA_X) {
