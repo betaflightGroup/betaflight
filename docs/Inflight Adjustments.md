@@ -12,14 +12,14 @@ Changing settings during flight can make your aircraft unstable and crash if you
 * Make small adjustments and fly carefully to test your adjustment.
 * Give yourself enough flying space and time to adjust to how your changes affect the behaviour of the aircraft.
 * Remember to set adjustment channel switches/pots to the center position before powering on your TX and your aircraft.
-* If possible configure switch warnings on your transitter for dedicated adjustment switches. 
+* If possible configure switch warnings on your transmitter for dedicated adjustment switches. 
 * A momentary 3 position switch is the best choice of switch for this - i.e. one that re-centers itself when you let go of it.
 
 ## Overview
 
 There are two modes of operation. The first supports adjusting settings by incrementing/decrementing them through use of an aux channel, typically a three position switch, where the middle position makes no change, and the other positions either increment or decrement the selected setting.
 
-The other mode is Absolute mode where a pot (knob/slider) may be directly mapped and changes the selected setting to a value based on a center value, coresponding to mid-postion on the pot and a range of ± adjustment at the min/max positions of the pot.
+The other mode is Absolute mode where a pot (knob/slider) may be directly mapped and changes the selected setting to a value based on a center value, corresponding to mid-postion on the pot and a range of ± adjustment at the min/max positions of the pot.
 
 Both modes utilise two channels to make an adjustment.
 
@@ -217,9 +217,9 @@ explained:
 (3) is in the appropriate position.
 * note that Center/Scale values are both zero, so this range will use increment/decrement mode.
 
-When the switch is low, rate profile 0 is selcted.
-When the switch is medium, rate profile 1 is selcted.
-When the switch is high, rate profile 2 is selcted.
+When the switch is low, rate profile 0 is selected.
+When the switch is medium, rate profile 1 is selected.
+When the switch is high, rate profile 2 is selected.
 
 ### Example 5 - Use a single switch to enable absolute setting of Roll/Pitch P terms from two pots
 
@@ -254,7 +254,7 @@ This assigns pots aux 1, aux 2, and aux 3 respectively to control P, I and D set
 
 Note that the configurator does not currently support the Center/Scale values, however it may still be used to setup the ranges and then the CLI may be used to set the Center/Scale values.
 
-The following 5 images show valid configurations.  In all cales the enture usable range for the Range Channel is used.
+The following 5 images show valid configurations.  In all cases the entire usable range for the Range Channel is used.
 
 ![Configurator example 1](Screenshots/adjustments-rate-profile-selection-via-3pos.png)
 

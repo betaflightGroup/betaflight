@@ -103,7 +103,7 @@ Configure the RC switched failsafe action. It can be one of:
 
 Time throttle level must have been below 'min_throttle' to _only disarm_ instead of _full failsafe procedure_.
 
-Use standard RX usec values.  See [Rx documentation](Rx.md).
+Use standard RX μs values.  See [Rx documentation](Rx.md).
 
 ### `failsafe_procedure`
 

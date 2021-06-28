@@ -10,7 +10,7 @@ The LED strip feature supports 3 LED strip profiles, STATUS, RACE and BEACON.  T
 
 ### STATUS Profile
 
-The STATUS profile is used to display all the information mentioned below, i.e. warning indications, larsen scanner etc.
+The STATUS profile is used to display all the information mentioned below, i.e. warning indications, Larson scanner etc.
 
 Addressable LED strips can be used to show information from the flight controller system, the current implementation supports the following:
 
@@ -136,8 +136,8 @@ The led strip feature can be configured via the GUI.
 GUI:
 Enable the Led Strip feature via the GUI under setup.
 
-Configure the leds from the Led Strip tab in the cleanflight GUI.
-First setup how the led's are laid out so that you can visualize it later as you configure and so the flight controller knows how many led's there are available.
+Configure the LEDs from the Led Strip tab in the cleanflight GUI.
+First setup how the LEDs are laid out so that you can visualize it later as you configure and so the flight controller knows how many LEDs there are available.
 
 There is a step by step guide on how to use the GUI to configure the Led Strip feature using the GUI http://blog.oscarliang.net/setup-rgb-led-cleanflight/ which was published early 2015 by Oscar Liang which may or may not be up-to-date by the time you read this.
 
@@ -223,7 +223,7 @@ This mode simply uses the LEDs to flash when warnings occur.
 
 | Warning | LED Pattern | Notes |
 |---------|-------------|-------|
-| Arm-lock enabled | flash between green and off | occurs calibration or when unarmed and the aircraft is tilted too much |
+| Arm-lock enabled | flash between green and off | occurs during calibration or when unarmed and the aircraft is tilted too much |
 | Low Battery | flash red and off | battery monitoring must be enabled.  May trigger temporarily under high-throttle due to voltage drop |
 | Failsafe | flash between light blue and yellow | Failsafe must be enabled |
 
@@ -267,7 +267,7 @@ This mode binds the LED color to remaining battery capacity.
 | Red        |    20%   |
 | Deep pink  |     0%   |
     
-When Warning or Critial voltage is reached, LEDs will blink slowly or fast.
+When Warning or Critical voltage is reached, LEDs will blink slowly or fast.
 Note: this mode requires a current sensor. If you don't have the actual device you can set up a virtual current sensor (see [Battery](Battery.md)).
 
 #### Blink
@@ -360,11 +360,11 @@ This mode fades the LED current LED color to the previous/next color in the HSB 
 
 This mode is allows you to use one or multiple led rings (e.g. NeoPixel ring) for an afterburner effect. LEDs with this mode will light up with their assigned color in a repeating sequence. Assigning the color black to an LED with the ring mode will prevent the LED from lighting up.
 
-A better effect is acheived when LEDs configured for thrust ring have no other functions.
+A better effect is achieved when LEDs configured for thrust ring have no other functions.
 
 LED direction and X/Y positions are irrelevant for thrust ring LED state.  The order of the LEDs that have the state determines how the LED behaves, and the throttle value determines the animation rate. The animation is only active while armed.
 
-Each LED of the ring can be a different color. The color can be selected between the 16 colors availables.
+Each LED of the ring can be a different color. The color can be selected between the 16 colors available.
 
 For example, led 0 is set as a `R`ing thrust state led in color 13 as follow. 
 
@@ -596,7 +596,7 @@ LEDs 1-2, 4-5, 7-8 and 10-11 should be positioned so the face east/north/west/so
 LEDs 12-13 should be placed facing down, in the middle
 LEDs 14-15 should be placed facing up, in the middle
  
-### Exmple 28 LED config
+### Example 28 LED config
 
 ```
 #right rear cluster

@@ -135,7 +135,7 @@ This is in the mathematical form of y = x/m + b and with a few measurements alon
 
 To calibrate your flight controller with a current meter follow these steps.
 
-1. Make a copy of [this google sheet](https://docs.google.com/spreadsheets/d/1lkL-X_FT9x2oqrwQEctDsEUhgdY19upNGc78M6FfJXY/). It will do all of the maths for you.
+1. Make a copy of [this google sheet](https://docs.google.com/spreadsheets/d/1lkL-X_FT9x2oqrwQEctDsEUhgdY19upNGc78M6FfJXY/). It will do all the math for you.
 2. Hook your ammeter up in series with your drone and a charged battery. I suggest an XT60 extender with one lead cut. Now your ammeter will be displaying the true current draw of your system.
 3. Connect to your flight controller through the configurator and check your current calibrations. Change them in the google sheet if needed.
 4. Use the motor tab to increase the throttle and change the current draw of the drone to around 1 A on the ammeter (it does not matter if it is not exact).
