@@ -119,6 +119,7 @@ timeUs_t osdFlyTime = 0;
 #if defined(USE_ACC)
 float osdGForce = 0;
 #endif
+uint16_t osdAuxValue = 0;
 
 static bool showVisualBeeper = false;
 
@@ -382,6 +383,10 @@ void pgResetFn_osdConfig(osdConfig_t *osdConfig)
     osdConfig->stat_show_cell_value = false;
     osdConfig->task_frequency = OSD_TASK_FREQUENCY_DEFAULT;
     osdConfig->cms_background_type = DISPLAY_BACKGROUND_TRANSPARENT;
+
+    osdConfig->aux_channel = 0;
+    osdConfig->aux_scale = 200;
+    osdConfig->aux_symbol = 'A';
 }
 
 void pgResetFn_osdElementConfig(osdElementConfig_t *osdElementConfig)
@@ -940,6 +945,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
     static bool osdStatsEnabled = false;
     static bool osdStatsVisible = false;
     static timeUs_t osdStatsRefreshTimeUs;
+    static timeUs_t osdAuxRefreshTimeUs = 0;
 
     // detect arm/disarm
     if (armState != ARMING_FLAG(ARMED)) {
@@ -1026,6 +1032,12 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
     }
 #endif
 
+    if (VISIBLE(osdElementConfig()->item_pos[OSD_AUX_VALUE])) {
+        if (currentTimeUs > osdAuxRefreshTimeUs) {
+            osdAuxValue = (constrain(rcData[osdConfig()->aux_channel - 1], PWM_RANGE_MIN, PWM_RANGE_MAX) - PWM_RANGE_MIN) * osdConfig()->aux_scale / (PWM_RANGE_MAX - PWM_RANGE_MIN);
+            osdAuxRefreshTimeUs = currentTimeUs + REFRESH_1S;
+        }
+    }
 #ifdef USE_CMS
     if (!displayIsGrabbed(osdDisplayPort))
 #endif

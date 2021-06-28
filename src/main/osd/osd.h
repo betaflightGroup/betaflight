@@ -161,6 +161,7 @@ typedef enum {
     OSD_TOTAL_FLIGHTS,
     OSD_UP_DOWN_REFERENCE,
     OSD_TX_UPLINK_POWER,
+    OSD_AUX_VALUE,
     OSD_ITEM_COUNT // MUST BE LAST
 } osd_items_e;
 
@@ -303,6 +304,9 @@ typedef struct osdConfig_s {
     uint16_t task_frequency;
     uint8_t cms_background_type;              // For supporting devices, determines whether the CMS background is transparent or opaque
     uint8_t stat_show_cell_value;
+    uint8_t aux_channel;
+    uint16_t aux_scale;
+    uint8_t aux_symbol;
 } osdConfig_t;
 
 PG_DECLARE(osdConfig_t, osdConfig);
@@ -337,6 +341,7 @@ extern float osdGForce;
 #ifdef USE_ESC_SENSOR
 extern escSensorData_t *osdEscDataCombined;
 #endif
+extern uint16_t osdAuxValue;
 
 void osdInit(displayPort_t *osdDisplayPort, osdDisplayPortDevice_e displayPortDevice);
 void osdUpdate(timeUs_t currentTimeUs);
