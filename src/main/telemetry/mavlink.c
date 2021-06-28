@@ -290,8 +290,8 @@ void mavlinkSendRCChannelsAndRSSI(void)
         (rxRuntimeState.channelCount >= 7) ? rcData[6] : 0,
         // chan8_raw RC channel 8 value, in microseconds
         (rxRuntimeState.channelCount >= 8) ? rcData[7] : 0,
-        // rssi Receive signal strength indicator, 0: 0%, 255: 100%
-        constrain(scaleRange(getRssi(), 0, RSSI_MAX_VALUE, 0, 255), 0, 255));
+        // rssi Receive signal strength indicator, 0: 0%, 254: 100%
+        scaleRange(getRssi(), 0, RSSI_MAX_VALUE, 0, 254));
     msgLength = mavlink_msg_to_send_buffer(mavBuffer, &mavMsg);
     mavlinkSerialWrite(mavBuffer, msgLength);
 }
