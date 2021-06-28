@@ -123,6 +123,10 @@ bool cliMode = false;
 #include "io/vtx_control.h"
 #include "io/vtx.h"
 
+#ifdef USE_VTX_SMARTAUDIO
+#include "io/vtx_smartaudio.h"
+#endif
+
 #include "msp/msp.h"
 #include "msp/msp_box.h"
 #include "msp/msp_protocol.h"
@@ -2705,6 +2709,57 @@ static void cliVtx(const char *cmdName, char *cmdline)
 }
 
 #endif // VTX_CONTROL
+
+#ifdef USE_VTX_SMARTAUDIO
+static void cliVtxOpModel(const char *cmdName, char *cmdline)
+{
+    if (isEmpty(cmdline)) {
+        char* mode = "free";
+
+        if (saDevice.willBootIntoPitMode) {
+            mode = (saDevice.mode & SA_MODE_GET_OUT_RANGE_PITMODE) ? "por" : "race";
+        }
+        // If you change the model, the value shown here will be stale until reboot.
+        cliPrintLine(mode);
+    } else {
+        char *unsupported = "%s is unsupported by SA %s";
+
+        if (saDevice.version == 1) {
+            // V1 devices don't support pit mode.
+            if (!strncasecmp(cmdline, "free", 4)) {
+                cliPrintErrorLinef(cmdName, unsupported, cmdline, "1.0");
+            }
+            return;
+        }
+
+        int mode;
+
+        if (!strncasecmp(cmdline, "free", 4)) {
+            // VTX should power up transmitting - unset PIR and POR bits.
+            mode = 0;
+        } else if (!strncasecmp(cmdline, "race", 4)) {
+            mode = SA_MODE_SET_IN_RANGE_PITMODE;
+        } else if (!strncasecmp(cmdline, "por", 3)) {
+            // V2.1 devices only supports PIR mode.
+            if (saDevice.version >= 3) {
+                cliPrintErrorLinef(cmdName, unsupported, cmdline, "2.1");
+                return;
+            }
+
+            mode = SA_MODE_SET_OUT_RANGE_PITMODE;
+        } else {
+            cliPrintErrorLinef(cmdName, "Invalid option");
+            return;
+        }
+
+        // Set the mode that the VTX will use when it starts up.
+        saSetMode(mode);
+
+        // Send queued mode to device.
+        vtxCommonProcess(vtxCommonDevice(), 0);
+    }
+}
+#endif // USE_VTX_SMARTAUDIO
 
 #ifdef USE_VTX_TABLE
 
@@ -6601,6 +6656,9 @@ const clicmd_t cmdTable[] = {
 #ifdef USE_VTX_TABLE
     CLI_COMMAND_DEF("vtx_info", "vtx power config dump", NULL, cliVtxInfo),
     CLI_COMMAND_DEF("vtxtable", "vtx frequency table", "<band> <bandname> <bandletter> [FACTORY|CUSTOM] <freq> ... <freq>\r\n", cliVtxTable),
+#endif
+#ifdef USE_VTX_SMARTAUDIO
+    CLI_COMMAND_DEF("vtx_op_model", "show/set vtx op model", "[race|free|por]", cliVtxOpModel),
 #endif
 };
 
