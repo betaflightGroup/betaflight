@@ -278,7 +278,7 @@ static void handleCrsfLinkStatisticsTxFrame(const crsfLinkStatisticsTx_t* statsP
     lastLinkStatisticsFrameUs = currentTimeUs;
     int16_t rssiDbm = -1 * stats.uplink_RSSI;
     if (rssiSource == RSSI_SOURCE_RX_PROTOCOL_CRSF) {
-        const uint16_t rssiPercentScaled = stats.uplink_RSSI_percentage;
+        const uint16_t rssiPercentScaled = scaleRange(stats.uplink_RSSI_percentage, 0, 100, 0, RSSI_MAX_VALUE);
         setRssi(rssiPercentScaled, RSSI_SOURCE_RX_PROTOCOL_CRSF);
     }
 #ifdef USE_RX_RSSI_DBM
@@ -634,13 +634,13 @@ bool crsfRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
         CRSF_PORT_OPTIONS | (rxConfig->serialrx_inverted ? SERIAL_INVERTED : 0)
         );
 
-        if (rssiSource == RSSI_SOURCE_NONE) {
-            rssiSource = RSSI_SOURCE_RX_PROTOCOL_CRSF;
-        }
+    if (rssiSource == RSSI_SOURCE_NONE) {
+        rssiSource = RSSI_SOURCE_RX_PROTOCOL_CRSF;
+    }
 #ifdef USE_RX_LINK_QUALITY_INFO
-        if (linkQualitySource == LQ_SOURCE_NONE) {
-            linkQualitySource = LQ_SOURCE_RX_PROTOCOL_CRSF;
-        }
+    if (linkQualitySource == LQ_SOURCE_NONE) {
+        linkQualitySource = LQ_SOURCE_RX_PROTOCOL_CRSF;
+    }
 #endif
 
     return serialPort != NULL;
