@@ -95,6 +95,7 @@ typedef struct gpsConfig_s {
     uint8_t gps_set_home_point_once;
     uint8_t gps_use_3d_speed;
     uint8_t sbas_integrity;
+    uint8_t gps_ublox_refresh_rate_hz;
 } gpsConfig_t;
 
 PG_DECLARE(gpsConfig_t, gpsConfig);
@@ -122,7 +123,9 @@ typedef struct gpsSolutionData_s {
 
 typedef enum {
     GPS_MESSAGE_STATE_IDLE = 0,
-    GPS_MESSAGE_STATE_INIT,
+    GPS_MESSAGE_STATE_INIT_MODE,
+    GPS_MESSAGE_STATE_INIT_GENERIC,
+    GPS_MESSAGE_STATE_REFRESH_RATE,
     GPS_MESSAGE_STATE_SBAS,
     GPS_MESSAGE_STATE_GNSS,
     GPS_MESSAGE_STATE_INITIALIZED,

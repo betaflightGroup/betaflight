@@ -129,13 +129,32 @@ static const gpsInitData_t gpsInitData[] = {
 #define DEFAULT_BAUD_RATE_INDEX 0
 
 #ifdef USE_GPS_UBLOX
-static const uint8_t ubloxInit[] = {
+static const uint8_t ubloxInitModePedestrian[] = {
     //Preprocessor Pedestrian Dynamic Platform Model Option
     0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x03, 0x03, 0x00,           // CFG-NAV5 - Set engine settings
     0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x05, 0x00, 0xFA, 0x00,           // Collected by resetting a GPS unit to defaults. Changing mode to Pedestrian and
     0xFA, 0x00, 0x64, 0x00, 0x2C, 0x01, 0x00, 0x3C, 0x00, 0x00, 0x00,           // capturing the data from the U-Center binary console.
     0x00, 0xC8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0xC2,
+};
 
+static const uint8_t ubloxInitModeAirborne[] = {
+    //Preprocessor Airborne_1g Dynamic Platform Model Option
+    #if defined(GPS_UBLOX_MODE_AIRBORNE_1G)
+    0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x06, 0x03, 0x00,           // CFG-NAV5 - Set engine settings
+    0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x05, 0x00, 0xFA, 0x00,           // Collected by resetting a GPS unit to defaults. Changing mode to Airborne with
+    0xFA, 0x00, 0x64, 0x00, 0x2C, 0x01, 0x00, 0x3C, 0x00, 0x00, 0x00,           // <1g acceleration and capturing the data from the U-Center binary console.
+    0x00, 0xC8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1A, 0x28,
+
+    //Default Airborne_4g Dynamic Platform Model
+    #else
+    0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x08, 0x03, 0x00,           // CFG-NAV5 - Set engine settings
+    0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x05, 0x00, 0xFA, 0x00,           // Collected by resetting a GPS unit to defaults. Changing mode to Airborne with
+    0xFA, 0x00, 0x64, 0x00, 0x2C, 0x01, 0x00, 0x3C, 0x00, 0x00, 0x00,           // <4g acceleration and capturing the data from the U-Center binary console.
+    0x00, 0xC8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x6C,
+    #endif
+};
+
+static const uint8_t ubloxInitGeneric[] = {
     // DISABLE NMEA messages
     0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x05, 0x00, 0xFF, 0x19,           // VGS: Course over ground and Ground speed
     0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x03, 0x00, 0xFD, 0x15,           // GSV: GNSS Satellites in View
@@ -151,25 +170,6 @@ static const uint8_t ubloxInit[] = {
     //0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0x01, 0x30, 0x01, 0x3C, 0xA3,           // set SVINFO MSG rate (every cycle - high bandwidth)
     0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0x01, 0x30, 0x05, 0x40, 0xA7,           // set SVINFO MSG rate (evey 5 cycles - low bandwidth)
     0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0x01, 0x12, 0x01, 0x1E, 0x67,           // set VELNED MSG rate
-
-    0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A,             // set rate to 5Hz (measurement period: 200ms, navigation rate: 1 cycle)
-};
-
-static const uint8_t ubloxAirborne[] = {
-    //Preprocessor Airborne_1g Dynamic Platform Model Option
-    #if defined(GPS_UBLOX_MODE_AIRBORNE_1G)
-    0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x06, 0x03, 0x00,           // CFG-NAV5 - Set engine settings
-    0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x05, 0x00, 0xFA, 0x00,           // Collected by resetting a GPS unit to defaults. Changing mode to Airborne with
-    0xFA, 0x00, 0x64, 0x00, 0x2C, 0x01, 0x00, 0x3C, 0x00, 0x00, 0x00,           // <1g acceleration and capturing the data from the U-Center binary console.
-    0x00, 0xC8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1A, 0x28,
-
-    //Default Airborne_4g Dynamic Platform Model
-    #else
-    0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x08, 0x03, 0x00,           // CFG-NAV5 - Set engine settings
-    0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x05, 0x00, 0xFA, 0x00,           // Collected by resetting a GPS unit to defaults. Changing mode to Airborne with
-    0xFA, 0x00, 0x64, 0x00, 0x2C, 0x01, 0x00, 0x3C, 0x00, 0x00, 0x00,           // <4g acceleration and capturing the data from the U-Center binary console.
-    0x00, 0xC8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x6C,
-    #endif
 };
 
 typedef struct {
@@ -204,9 +204,16 @@ typedef struct {
     ubx_configblock configblocks[7];
 } ubx_gnss;
 
+typedef struct {
+    uint16_t measRate;
+    uint16_t navRate;
+    uint16_t timeRef;
+} ubx_cfg_rate;
+
 typedef union {
     ubx_sbas sbas;
     ubx_gnss gnss;
+    ubx_cfg_rate cfgRate;
 } ubx_payload;
 
 typedef struct {
@@ -251,6 +258,7 @@ PG_RESET_TEMPLATE(gpsConfig_t, gpsConfig,
     .autoBaud = GPS_AUTOBAUD_OFF,
     .gps_ublox_use_galileo = false,
     .gps_ublox_mode = UBLOX_AIRBORNE,
+    .gps_ublox_refresh_rate_hz = 5,
     .gps_set_home_point_once = false,
     .gps_use_3d_speed = false,
     .sbas_integrity = false
@@ -465,22 +473,63 @@ void gpsInitUblox(void)
                 gpsData.messageState++;
             }
 
-            if (gpsData.messageState == GPS_MESSAGE_STATE_INIT) {
-                if (gpsData.state_position < sizeof(ubloxInit)) {
-                    if (gpsData.state_position < sizeof(ubloxAirborne)) {
-                        if (gpsConfig()->gps_ublox_mode == UBLOX_AIRBORNE) {
-                            serialWrite(gpsPort, ubloxAirborne[gpsData.state_position]);
-                        } else {
-                            serialWrite(gpsPort, ubloxInit[gpsData.state_position]);
-                        }
-                    } else {
-                        serialWrite(gpsPort, ubloxInit[gpsData.state_position]);
-                    }
+            if (gpsData.messageState == GPS_MESSAGE_STATE_INIT_MODE) {
+                if (gpsConfig()->gps_ublox_mode == UBLOX_AIRBORNE && gpsData.state_position < sizeof(ubloxInitModeAirborne)) {
+                    serialWrite(gpsPort, ubloxInitModeAirborne[gpsData.state_position]);
+                    gpsData.state_position++;
+                } else if(gpsConfig()->gps_ublox_mode != UBLOX_AIRBORNE && gpsData.state_position < sizeof(ubloxInitModePedestrian)) {
+                    serialWrite(gpsPort, ubloxInitModePedestrian[gpsData.state_position]);
                     gpsData.state_position++;
                 } else {
                     gpsData.state_position = 0;
                     gpsData.messageState++;
                     gpsData.ackState = UBLOX_ACK_IDLE;
+                }
+            }
+
+            if (gpsData.messageState == GPS_MESSAGE_STATE_INIT_GENERIC) {
+                if (gpsData.state_position < sizeof(ubloxInitGeneric)) {
+                    serialWrite(gpsPort, ubloxInitGeneric[gpsData.state_position]);
+                    gpsData.state_position++;
+                } else {
+                    gpsData.state_position = 0;
+                    gpsData.messageState++;
+                    gpsData.ackState = UBLOX_ACK_IDLE;
+                }
+            }
+
+            if (gpsData.messageState == GPS_MESSAGE_STATE_REFRESH_RATE) {
+                switch (gpsData.ackState) {
+                    case UBLOX_ACK_IDLE:
+                        {
+                            ubx_message tx_buffer;
+                            tx_buffer.header.preamble1 = 0xB5;
+                            tx_buffer.header.preamble2 = 0x62;
+                            tx_buffer.header.msg_class = 0x06;
+                            tx_buffer.header.msg_id = 0x08;
+                            tx_buffer.header.length = 6;
+
+                            tx_buffer.payload.cfgRate.measRate = 1000 / gpsConfig()->gps_ublox_refresh_rate_hz;
+                            tx_buffer.payload.cfgRate.navRate = 1;
+                            tx_buffer.payload.cfgRate.timeRef = 1;
+
+                            ubloxSendConfigMessage((const uint8_t *) &tx_buffer, sizeof(tx_buffer.header) + sizeof(tx_buffer.payload.cfgRate));
+                        }
+                        break;
+                    case UBLOX_ACK_WAITING:
+                        if ((++gpsData.ackTimeoutCounter) == UBLOX_ACK_TIMEOUT_MAX_COUNT) {
+                            gpsData.ackState = UBLOX_ACK_GOT_TIMEOUT;
+                        }
+                        break;
+                    case UBLOX_ACK_GOT_TIMEOUT:
+                    case UBLOX_ACK_GOT_NACK:
+                    case UBLOX_ACK_GOT_ACK:
+                        gpsData.state_position = 0;
+                        gpsData.ackState = UBLOX_ACK_IDLE;
+                        gpsData.messageState++;
+                        break;
+                    default:
+                        break;
                 }
             }
 
@@ -729,9 +778,9 @@ void gpsUpdate(timeUs_t currentTimeUs)
                         gpsData.state_position = 0;
                     }
                     if (gpsData.messageState == GPS_MESSAGE_STATE_PEDESTRIAN_TO_AIRBORNE) {
-                        if (gpsData.state_position < sizeof(ubloxAirborne)) {
+                        if (gpsData.state_position < sizeof(ubloxInitModeAirborne)) {
                             if (isSerialTransmitBufferEmpty(gpsPort)) {
-                                serialWrite(gpsPort, ubloxAirborne[gpsData.state_position]);
+                                serialWrite(gpsPort, ubloxInitModeAirborne[gpsData.state_position]);
                                 gpsData.state_position++;
                             }
                         } else {
