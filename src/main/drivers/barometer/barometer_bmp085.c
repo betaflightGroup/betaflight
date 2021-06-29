@@ -177,7 +177,7 @@ bool bmp085Detect(const bmp085Config_t *config, baroDev_t *baro)
 
     extDevice_t *dev = &baro->dev;
 
-    if ((dev->bus->busType == BUSTYPE_I2C) && (dev->busType_u.i2c.address == 0)) {
+    if ((dev->bus->busType == BUS_TYPE_I2C) && (dev->busType_u.i2c.address == 0)) {
         // Default address for BMP085
         dev->busType_u.i2c.address = BMP085_I2C_ADDR;
         defaultAddressApplied = true;

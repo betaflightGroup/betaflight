@@ -32,7 +32,7 @@
 bool busRawWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
 #ifdef USE_SPI
-    if (dev->bus->busType ==  BUSTYPE_SPI) {
+    if (dev->bus->busType ==  BUS_TYPE_SPI) {
         return spiWriteRegRB(dev, reg, data);
     } else
 #endif
@@ -44,7 +44,7 @@ bool busRawWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
 bool busRawWriteRegisterStart(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
 #ifdef USE_SPI
-    if (dev->bus->busType ==  BUSTYPE_SPI) {
+    if (dev->bus->busType ==  BUS_TYPE_SPI) {
         return spiWriteRegRB(dev, reg, data);
     } else
 #endif
@@ -56,7 +56,7 @@ bool busRawWriteRegisterStart(const extDevice_t *dev, uint8_t reg, uint8_t data)
 bool busRawReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
 {
 #ifdef USE_SPI
-    if (dev->bus->busType ==  BUSTYPE_SPI) {
+    if (dev->bus->busType ==  BUS_TYPE_SPI) {
         return spiReadRegBufRB(dev, reg, data, length);
     } else
 #endif
@@ -68,7 +68,7 @@ bool busRawReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *data
 bool busRawReadRegisterBufferStart(const extDevice_t *dev, uint8_t reg, uint8_t *data, uint8_t length)
 {
 #ifdef USE_SPI
-    if (dev->bus->busType ==  BUSTYPE_SPI) {
+    if (dev->bus->busType ==  BUS_TYPE_SPI) {
         return spiReadRegBufRB(dev, reg, data, length);
     } else
 #endif
@@ -87,11 +87,11 @@ bool busWriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
 #endif
     switch (dev->bus->busType) {
 #ifdef USE_SPI
-    case BUSTYPE_SPI:
+    case BUS_TYPE_SPI:
         return spiWriteRegRB(dev, reg & 0x7f, data);
 #endif
 #ifdef USE_I2C
-    case BUSTYPE_I2C:
+    case BUS_TYPE_I2C:
         return i2cBusWriteRegister(dev, reg, data);
 #endif
     default:
@@ -107,11 +107,11 @@ bool busWriteRegisterStart(const extDevice_t *dev, uint8_t reg, uint8_t data)
 #endif
     switch (dev->bus->busType) {
 #ifdef USE_SPI
-    case BUSTYPE_SPI:
+    case BUS_TYPE_SPI:
         return spiWriteRegRB(dev, reg & 0x7f, data);
 #endif
 #ifdef USE_I2C
-    case BUSTYPE_I2C:
+    case BUS_TYPE_I2C:
         return i2cBusWriteRegisterStart(dev, reg, data);
 #endif
     default:
@@ -129,11 +129,11 @@ bool busReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *data, u
 #endif
     switch (dev->bus->busType) {
 #ifdef USE_SPI
-    case BUSTYPE_SPI:
+    case BUS_TYPE_SPI:
         return spiReadRegMskBufRB(dev, reg | 0x80, data, length);
 #endif
 #ifdef USE_I2C
-    case BUSTYPE_I2C:
+    case BUS_TYPE_I2C:
         return i2cBusReadRegisterBuffer(dev, reg, data, length);
 #endif
     default:
@@ -151,12 +151,12 @@ bool busReadRegisterBufferStart(const extDevice_t *dev, uint8_t reg, uint8_t *da
 #endif
     switch (dev->bus->busType) {
 #ifdef USE_SPI
-    case BUSTYPE_SPI:
+    case BUS_TYPE_SPI:
         // For SPI allow the transaction to complete
         return spiReadRegMskBufRB(dev, reg | 0x80, data, length);
 #endif
 #ifdef USE_I2C
-    case BUSTYPE_I2C:
+    case BUS_TYPE_I2C:
         // Initiate the read access
         return i2cBusReadRegisterBufferStart(dev, reg, data, length);
 #endif
@@ -173,13 +173,13 @@ bool busBusy(const extDevice_t *dev, bool *error)
 #endif
     switch (dev->bus->busType) {
 #ifdef USE_SPI
-    case BUSTYPE_SPI:
+    case BUS_TYPE_SPI:
         // No waiting on SPI
         return false;
 #endif
 
 #ifdef USE_I2C
-    case BUSTYPE_I2C:
+    case BUS_TYPE_I2C:
         return i2cBusBusy(dev, error);
 #endif
 
@@ -209,13 +209,13 @@ void busDeviceRegister(const extDevice_t *dev)
 
     switch (dev->bus->busType) {
 #if defined(USE_SPI)
-    case BUSTYPE_SPI:
+    case BUS_TYPE_SPI:
         spiBusDeviceRegister(dev);
 
         break;
 #endif
 #if defined(USE_I2C)
-    case BUSTYPE_I2C:
+    case BUS_TYPE_I2C:
         i2cBusDeviceRegister(dev);
 
         break;

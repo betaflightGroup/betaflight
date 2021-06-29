@@ -330,7 +330,7 @@ static void dps310StartUP(baroDev_t *baro)
 static void deviceInit(const extDevice_t *dev, resourceOwner_e owner)
 {
 #ifdef USE_BARO_SPI_DPS310
-    if (dev->bus->busType == BUSTYPE_SPI) {
+    if (dev->bus->busType == BUS_TYPE_SPI) {
         IOHi(dev->busType_u.spi.csnPin); // Disable
         IOInit(dev->busType_u.spi.csnPin, owner, 0);
         IOConfigGPIO(dev->busType_u.spi.csnPin, IOCFG_OUT_PP);
@@ -345,7 +345,7 @@ static void deviceInit(const extDevice_t *dev, resourceOwner_e owner)
 static void deviceDeInit(const extDevice_t *dev)
 {
 #ifdef USE_BARO_SPI_DPS310
-    if (dev->bus->busType == BUSTYPE_SPI) {
+    if (dev->bus->busType == BUS_TYPE_SPI) {
         spiPreinitByIO(dev->busType_u.spi.csnPin);
     }
 #else
@@ -360,7 +360,7 @@ bool baroDPS310Detect(baroDev_t *baro)
 
     deviceInit(&baro->dev, OWNER_BARO_CS);
 
-    if ((dev->bus->busType == BUSTYPE_I2C) && (dev->busType_u.i2c.address == 0)) {
+    if ((dev->bus->busType == BUS_TYPE_I2C) && (dev->busType_u.i2c.address == 0)) {
         // Default address for BMP280
         dev->busType_u.i2c.address = DPS310_I2C_ADDR;
         defaultAddressApplied = true;

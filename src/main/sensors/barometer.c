@@ -114,21 +114,21 @@ void pgResetFn_barometerConfig(barometerConfig_t *barometerConfig)
 #endif
 
 #if defined(DEFAULT_BARO_SPI_BMP388) || defined(DEFAULT_BARO_SPI_BMP280) || defined(DEFAULT_BARO_SPI_MS5611) || defined(DEFAULT_BARO_SPI_QMP6988) || defined(DEFAULT_BARO_SPI_LPS) || defined(DEFAULT_BARO_SPI_DPS310)
-    barometerConfig->baro_busType = BUSTYPE_SPI;
+    barometerConfig->baro_busType = BUS_TYPE_SPI;
     barometerConfig->baro_spi_device = SPI_DEV_TO_CFG(spiDeviceByInstance(BARO_SPI_INSTANCE));
     barometerConfig->baro_spi_csn = IO_TAG(BARO_CS_PIN);
     barometerConfig->baro_i2c_device = I2C_DEV_TO_CFG(I2CINVALID);
     barometerConfig->baro_i2c_address = 0;
 #elif defined(DEFAULT_BARO_MS5611) || defined(DEFAULT_BARO_BMP388) || defined(DEFAULT_BARO_BMP280) || defined(DEFAULT_BARO_BMP085) ||defined(DEFAULT_BARO_QMP6988) || defined(DEFAULT_BARO_DPS310)
     // All I2C devices shares a default config with address = 0 (per device default)
-    barometerConfig->baro_busType = BUSTYPE_I2C;
+    barometerConfig->baro_busType = BUS_TYPE_I2C;
     barometerConfig->baro_i2c_device = I2C_DEV_TO_CFG(BARO_I2C_INSTANCE);
     barometerConfig->baro_i2c_address = 0;
     barometerConfig->baro_spi_device = SPI_DEV_TO_CFG(SPIINVALID);
     barometerConfig->baro_spi_csn = IO_TAG_NONE;
 #else
     barometerConfig->baro_hardware = BARO_NONE;
-    barometerConfig->baro_busType = BUSTYPE_NONE;
+    barometerConfig->baro_busType = BUS_TYPE_NONE;
     barometerConfig->baro_i2c_device = I2C_DEV_TO_CFG(I2CINVALID);
     barometerConfig->baro_i2c_address = 0;
     barometerConfig->baro_spi_device = SPI_DEV_TO_CFG(SPIINVALID);
@@ -155,7 +155,7 @@ static bool baroReady = false;
 void baroPreInit(void)
 {
 #ifdef USE_SPI
-    if (barometerConfig()->baro_busType == BUSTYPE_SPI) {
+    if (barometerConfig()->baro_busType == BUS_TYPE_SPI) {
         spiPreinitRegister(barometerConfig()->baro_spi_csn, IOCFG_IPU, 1);
     }
 #endif
@@ -175,14 +175,14 @@ bool baroDetect(baroDev_t *baroDev, baroSensor_e baroHardwareToUse)
 
     switch (barometerConfig()->baro_busType) {
 #ifdef USE_I2C
-    case BUSTYPE_I2C:
+    case BUS_TYPE_I2C:
         i2cBusSetInstance(dev, barometerConfig()->baro_i2c_device);
         dev->busType_u.i2c.address = barometerConfig()->baro_i2c_address;
         break;
 #endif
 
 #ifdef USE_SPI
-    case BUSTYPE_SPI:
+    case BUS_TYPE_SPI:
         {
             if (!spiSetBusInstance(dev, barometerConfig()->baro_spi_device, OWNER_BARO_CS)) {
                 return false;

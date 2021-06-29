@@ -159,7 +159,7 @@ bool ak8975Detect(magDev_t *mag)
 
     extDevice_t *dev = &mag->dev;
 
-    if (dev->bus->busType == BUSTYPE_I2C && dev->busType_u.i2c.address == 0) {
+    if (dev->bus->busType == BUS_TYPE_I2C && dev->busType_u.i2c.address == 0) {
         dev->busType_u.i2c.address = AK8975_MAG_I2C_ADDRESS;
     }
 

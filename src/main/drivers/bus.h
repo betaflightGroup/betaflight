@@ -27,11 +27,11 @@
 #include "drivers/dma.h"
 
 typedef enum {
-    BUSTYPE_NONE = 0,
-    BUSTYPE_I2C,
-    BUSTYPE_SPI,
-    BUSTYPE_MPU_SLAVE, // Slave I2C on SPI master
-    BUSTYPE_GYRO_AUTO,  // Only used by acc/gyro bus auto detection code
+    BUS_TYPE_NONE = 0,
+    BUS_TYPE_I2C,
+    BUS_TYPE_SPI,
+    BUS_TYPE_MPU_SLAVE, // Slave I2C on SPI master
+    BUS_TYPE_GYRO_AUTO,  // Only used by acc/gyro bus auto detection code
 } busType_e;
 
 struct spiDevice_s;

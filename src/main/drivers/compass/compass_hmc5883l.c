@@ -240,13 +240,13 @@ bool hmc5883lDetect(magDev_t* mag)
     uint8_t sig = 0;
 
 #ifdef USE_MAG_SPI_HMC5883
-    if (dev->bus->busType == BUSTYPE_SPI) {
+    if (dev->bus->busType == BUS_TYPE_SPI) {
         hmc5883SpiInit(dev);
     }
 #endif
 
 #ifdef USE_MAG_HMC5883
-    if (dev->bus->busType == BUSTYPE_I2C && dev->busType_u.i2c.address == 0) {
+    if (dev->bus->busType == BUS_TYPE_I2C && dev->busType_u.i2c.address == 0) {
         dev->busType_u.i2c.address = HMC5883_MAG_I2C_ADDRESS;
     }
 #endif
