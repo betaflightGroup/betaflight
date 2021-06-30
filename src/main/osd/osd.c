@@ -1046,6 +1046,9 @@ void osdUpdate(timeUs_t currentTimeUs)
 
     if (!osdIsReady) {
         if (!displayCheckReady(osdDisplayPort, false)) {
+            if (OSD_DISPLAYPORT_DEVICE_FRSKYOSD) {
+                displayRedraw(osdDisplayPort);
+            }
             return;
         }
 
