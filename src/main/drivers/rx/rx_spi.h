@@ -32,6 +32,8 @@ struct rxSpiConfig_s;
 
 void rxSpiDevicePreInit(const struct rxSpiConfig_s *rxSpiConfig);
 bool rxSpiDeviceInit(const struct rxSpiConfig_s *rxSpiConfig);
+bool rxSpiInhibitDma();
+void rxSpiRestoreDma(bool useDMA);
 uint8_t rxSpiTransferByte(uint8_t data);
 void rxSpiWriteByte(uint8_t data);
 void rxSpiWriteCommand(uint8_t command, uint8_t data);
