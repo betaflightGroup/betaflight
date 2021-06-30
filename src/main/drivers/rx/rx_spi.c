@@ -111,6 +111,17 @@ void rxSpiExtiInit(ioConfig_t rxSpiExtiPinConfig, extiTrigger_t rxSpiExtiPinTrig
     }
 }
 
+bool rxSpiInhibitDma()
+{
+    bool useDMA = dev->bus->useDMA;
+    dev->bus->useDMA = false;
+    return useDMA;
+}
+
+void rxSpiRestoreDma(bool useDMA)
+{
+    dev->bus->useDMA = useDMA;
+}
 
 uint8_t rxSpiTransferByte(uint8_t data)
 {

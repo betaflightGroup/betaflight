@@ -449,18 +449,18 @@ bool mpuDetect(gyroDev_t *gyro, const gyroDeviceConfig_t *config)
     // MPU datasheet specifies 30ms.
     delay(35);
 
-    if (config->busType == BUSTYPE_NONE) {
+    if (config->busType == BUS_TYPE_NONE) {
         return false;
     }
 
-    if (config->busType == BUSTYPE_GYRO_AUTO) {
-        gyro->dev.bus->busType = BUSTYPE_I2C;
+    if (config->busType == BUS_TYPE_GYRO_AUTO) {
+        gyro->dev.bus->busType = BUS_TYPE_I2C;
     } else {
         gyro->dev.bus->busType = config->busType;
     }
 
 #ifdef USE_I2C_GYRO
-    if (gyro->dev.bus->busType == BUSTYPE_I2C) {
+    if (gyro->dev.bus->busType == BUS_TYPE_I2C) {
         gyro->dev.bus->busType_u.i2c.device = I2C_CFG_TO_DEV(config->i2cBus);
         gyro->dev.busType_u.i2c.address = config->i2cAddress ? config->i2cAddress : MPU_ADDRESS;
 
@@ -491,7 +491,7 @@ bool mpuDetect(gyroDev_t *gyro, const gyroDeviceConfig_t *config)
 #endif
 
 #ifdef USE_SPI_GYRO
-    gyro->dev.bus->busType = BUSTYPE_SPI;
+    gyro->dev.bus->busType = BUS_TYPE_SPI;
 
     return detectSPISensorsAndUpdateDetectionResult(gyro, config);
 #else

@@ -78,7 +78,7 @@ bool i2cBusSetInstance(extDevice_t *dev, uint32_t device)
     }
 
     dev->bus = &i2cBus[I2C_CFG_TO_DEV(device)];
-    dev->bus->busType = BUSTYPE_I2C;
+    dev->bus->busType = BUS_TYPE_I2C;
     dev->bus->busType_u.i2c.device = I2C_CFG_TO_DEV(device);
 
     return true;
