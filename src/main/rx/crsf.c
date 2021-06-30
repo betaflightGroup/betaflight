@@ -228,13 +228,21 @@ static void handleCrsfLinkStatisticsFrame(const crsfLinkStatistics_t* statsPtr, 
     lastLinkStatisticsFrameUs = currentTimeUs;
     int16_t rssiDbm = -1 * (stats.active_antenna ? stats.uplink_RSSI_2 : stats.uplink_RSSI_1);
     if (rssiSource == RSSI_SOURCE_RX_PROTOCOL_CRSF) {
-        const uint16_t rssiPercentScaled = scaleRange(rssiDbm, CRSF_RSSI_MIN, 0, 0, RSSI_MAX_VALUE);
-        setRssi(rssiPercentScaled, RSSI_SOURCE_RX_PROTOCOL_CRSF);
+        if (rxConfig()->crsf_use_rx_snr) {
+            // -10dB of SNR mapped to 0 RSSI (fail safe is likely to happen at this measure)
+            //   0dB of SNR mapped to 20 RSSI (default alarm)
+            //  41dB of SNR mapped to 99 RSSI (SNR can climb to around 60, but showing that is not very meaningful)
+            const uint16_t rsnrPercentScaled = constrain((stats.uplink_SNR + 10) * 20, 0, RSSI_MAX_VALUE);
+            setRssi(rsnrPercentScaled, RSSI_SOURCE_RX_PROTOCOL_CRSF);
+#ifdef USE_RX_RSSI_DBM
+            rssiDbm = stats.uplink_SNR;
+#endif
+        } else {
+            const uint16_t rssiPercentScaled = scaleRange(rssiDbm, CRSF_RSSI_MIN, 0, 0, RSSI_MAX_VALUE);
+            setRssi(rssiPercentScaled, RSSI_SOURCE_RX_PROTOCOL_CRSF);
+        }
     }
 #ifdef USE_RX_RSSI_DBM
-    if (rxConfig()->crsf_use_rx_snr) {
-        rssiDbm = stats.uplink_SNR;
-    }
     setRssiDbm(rssiDbm, RSSI_SOURCE_RX_PROTOCOL_CRSF);
 #endif
 
