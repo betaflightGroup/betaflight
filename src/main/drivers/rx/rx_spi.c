@@ -124,12 +124,22 @@ void rxSpiWriteByte(uint8_t data)
 
 void rxSpiWriteCommand(uint8_t command, uint8_t data)
 {
+    // Burst writes require an interbyte gap, see fig. 7, pg. 22 in https://www.ti.com/lit/ds/symlink/cc2500.pdf
+    // As such gaps can't be inserted if DMA is being used, inhibit DMA on this bus for the duration of this call
+    bool useDMA = dev->bus->useDMA;
+    dev->bus->useDMA = false;
     spiWriteReg(dev, command, data);
+    dev->bus->useDMA = useDMA;
 }
 
 void rxSpiWriteCommandMulti(uint8_t command, const uint8_t *data, uint8_t length)
 {
+    // Burst writes require an interbyte gap, see fig. 7, pg. 22 in https://www.ti.com/lit/ds/symlink/cc2500.pdf
+    // As such gaps can't be inserted if DMA is being used, inhibit DMA on this bus for the duration of this call
+    bool useDMA = dev->bus->useDMA;
+    dev->bus->useDMA = false;
     spiWriteRegBuf(dev, command, (uint8_t *)data, length);
+    dev->bus->useDMA = useDMA;
 }
 
 uint8_t rxSpiReadCommand(uint8_t command, uint8_t data)
