@@ -480,7 +480,7 @@ bool spiSetBusInstance(extDevice_t *dev, uint32_t device, resourceOwner_e owner)
 
     dev->bus = &spiBusDevice[SPI_CFG_TO_DEV(device)];
 
-    if (dev->bus->busType == BUSTYPE_SPI) {
+    if (dev->bus->busType == BUS_TYPE_SPI) {
         // This bus has already been initialised
         dev->bus->deviceCount++;
         return true;
@@ -494,7 +494,7 @@ bool spiSetBusInstance(extDevice_t *dev, uint32_t device, resourceOwner_e owner)
         return false;
     }
 
-    bus->busType = BUSTYPE_SPI;
+    bus->busType = BUS_TYPE_SPI;
     bus->useDMA = false;
     bus->useAtomicWait = false;
     bus->deviceCount = 1;
@@ -520,7 +520,7 @@ void spiInitBusDMA()
     for (device = 0; device < SPIDEV_COUNT; device++) {
         busDevice_t *bus = &spiBusDevice[device];
 
-        if (bus->busType != BUSTYPE_SPI) {
+        if (bus->busType != BUS_TYPE_SPI) {
             // This bus is not in use
             continue;
         }

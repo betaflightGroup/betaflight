@@ -522,7 +522,8 @@ static void serializeDataflashReadReply(sbuf_t *dst, uint32_t address, const uin
 #ifdef USE_HUFFMAN
         // compress in 256-byte chunks
         const uint16_t READ_BUFFER_SIZE = 256;
-        uint8_t readBuffer[READ_BUFFER_SIZE];
+        // This may be DMAable, so make it cache aligned
+        __attribute__ ((aligned(32))) uint8_t readBuffer[READ_BUFFER_SIZE];
 
         huffmanState_t state = {
             .bytesWritten = 0,

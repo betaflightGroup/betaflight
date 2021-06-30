@@ -65,7 +65,7 @@ static DMA_DATA_ZERO_INIT uint8_t sensor_data[MS5611_DATA_FRAME_SIZE];
 void ms5611BusInit(const extDevice_t *dev)
 {
 #ifdef USE_BARO_SPI_MS5611
-    if (dev->bus->busType == BUSTYPE_SPI) {
+    if (dev->bus->busType == BUS_TYPE_SPI) {
         IOHi(dev->busType_u.spi.csnPin); // Disable
         IOInit(dev->busType_u.spi.csnPin, OWNER_BARO_CS, 0);
         IOConfigGPIO(dev->busType_u.spi.csnPin, IOCFG_OUT_PP);
@@ -79,7 +79,7 @@ void ms5611BusInit(const extDevice_t *dev)
 void ms5611BusDeinit(const extDevice_t *dev)
 {
 #ifdef USE_BARO_SPI_MS5611
-    if (dev->bus->busType == BUSTYPE_SPI) {
+    if (dev->bus->busType == BUS_TYPE_SPI) {
         spiPreinitByIO(dev->busType_u.spi.csnPin);
     }
 #else
@@ -236,7 +236,7 @@ bool ms5611Detect(baroDev_t *baro)
 
     ms5611BusInit(dev);
 
-    if ((dev->bus->busType == BUSTYPE_I2C) && (dev->busType_u.i2c.address == 0)) {
+    if ((dev->bus->busType == BUS_TYPE_I2C) && (dev->busType_u.i2c.address == 0)) {
         // Default address for MS5611
         dev->busType_u.i2c.address = MS5611_I2C_ADDR;
         defaultAddressApplied = true;

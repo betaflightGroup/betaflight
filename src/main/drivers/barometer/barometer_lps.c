@@ -263,7 +263,7 @@ bool lpsDetect(baroDev_t *baro)
     //Detect
     extDevice_t *dev = &baro->dev;
 
-    if (dev->bus->busType != BUSTYPE_SPI) {
+    if (dev->bus->busType != BUS_TYPE_SPI) {
         return false;
     }
 

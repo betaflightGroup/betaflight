@@ -108,7 +108,7 @@ STATIC_UNIT_TESTED void qmp6988Calculate(int32_t *pressure, int32_t *temperature
 void qmp6988BusInit(const extDevice_t *dev)
 {
 #ifdef USE_BARO_SPI_QMP6988
-    if (dev->bus->busType == BUSTYPE_SPI) {
+    if (dev->bus->busType == BUS_TYPE_SPI) {
         IOHi(dev->busType_u.spi.csnPin);
         IOInit(dev->busType_u.spi.csnPin, OWNER_BARO_CS, 0);
         IOConfigGPIO(dev->busType_u.spi.csnPin, IOCFG_OUT_PP);
@@ -122,7 +122,7 @@ void qmp6988BusInit(const extDevice_t *dev)
 void qmp6988BusDeinit(const extDevice_t *dev)
 {
 #ifdef USE_BARO_SPI_QMP6988
-    if (dev->bus->busType == BUSTYPE_SPI) {
+    if (dev->bus->busType == BUS_TYPE_SPI) {
         IOConfigGPIO(dev->busType_u.spi.csnPin, IOCFG_IPU);
         IORelease(dev->busType_u.spi.csnPin);
         IOInit(dev->busType_u.spi.csnPin, OWNER_PREINIT, 0);
@@ -157,7 +157,7 @@ bool qmp6988Detect(baroDev_t *baro)
 
     qmp6988BusInit(dev);
 
-    if ((dev->bus->busType == BUSTYPE_I2C) && (dev->busType_u.i2c.address == 0)) {
+    if ((dev->bus->busType == BUS_TYPE_I2C) && (dev->busType_u.i2c.address == 0)) {
         dev->busType_u.i2c.address = QMP6988_I2C_ADDR;
         defaultAddressApplied = true;
     }

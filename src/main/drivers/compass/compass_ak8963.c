@@ -265,7 +265,7 @@ restart:
 static bool ak8963ReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_t *buf, uint8_t len)
 {
 #if defined(USE_MAG_AK8963) && (defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250))
-    if (dev->bus->busType == BUSTYPE_MPU_SLAVE) {
+    if (dev->bus->busType == BUS_TYPE_MPU_SLAVE) {
         return ak8963SlaveReadRegisterBuffer(dev, reg, buf, len);
     }
 #endif
@@ -275,7 +275,7 @@ static bool ak8963ReadRegisterBuffer(const extDevice_t *dev, uint8_t reg, uint8_
 static bool ak8963WriteRegister(const extDevice_t *dev, uint8_t reg, uint8_t data)
 {
 #if defined(USE_MAG_AK8963) && (defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250))
-    if (dev->bus->busType == BUSTYPE_MPU_SLAVE) {
+    if (dev->bus->busType == BUS_TYPE_MPU_SLAVE) {
         return ak8963SlaveWriteRegister(dev, reg, data);
     }
 #endif
@@ -309,14 +309,14 @@ static bool ak8963Read(magDev_t *mag, int16_t *magData)
 
     switch (dev->bus->busType) {
 #if defined(USE_MAG_SPI_AK8963) || defined(USE_MAG_AK8963)
-    case BUSTYPE_I2C:
-    case BUSTYPE_SPI:
+    case BUS_TYPE_I2C:
+    case BUS_TYPE_SPI:
         ack = ak8963DirectReadData(dev, buf);
         break;
 #endif
 
 #if defined(USE_MAG_AK8963) && (defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250))
-    case BUSTYPE_MPU_SLAVE:
+    case BUS_TYPE_MPU_SLAVE:
         ack = ak8963SlaveReadData(dev, buf);
         break;
 #endif
@@ -374,13 +374,13 @@ void ak8963BusInit(const extDevice_t *dev)
 {
     switch (dev->bus->busType) {
 #ifdef USE_MAG_AK8963
-    case BUSTYPE_I2C:
+    case BUS_TYPE_I2C:
         UNUSED(dev);
         break;
 #endif
 
 #ifdef USE_MAG_SPI_AK8963
-    case BUSTYPE_SPI:
+    case BUS_TYPE_SPI:
         IOHi(dev->busType_u.spi.csnPin);                                                  // Disable
         IOInit(dev->busType_u.spi.csnPin, OWNER_COMPASS_CS, 0);
         IOConfigGPIO(dev->busType_u.spi.csnPin, IOCFG_OUT_PP);
@@ -389,7 +389,7 @@ void ak8963BusInit(const extDevice_t *dev)
 #endif
 
 #if defined(USE_MAG_AK8963) && (defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250))
-    case BUSTYPE_MPU_SLAVE:
+    case BUS_TYPE_MPU_SLAVE:
         rescheduleTask(TASK_COMPASS, TASK_PERIOD_HZ(40));
 
         // initialze I2C master via SPI bus
@@ -407,19 +407,19 @@ void ak8963BusDeInit(const extDevice_t *dev)
 {
     switch (dev->bus->busType) {
 #ifdef USE_MAG_AK8963
-    case BUSTYPE_I2C:
+    case BUS_TYPE_I2C:
         UNUSED(dev);
         break;
 #endif
 
 #ifdef USE_MAG_SPI_AK8963
-    case BUSTYPE_SPI:
+    case BUS_TYPE_SPI:
         spiPreinitByIO(dev->busType_u.spi.csnPin);
         break;
 #endif
 
 #if defined(USE_MAG_AK8963) && (defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250))
-    case BUSTYPE_MPU_SLAVE:
+    case BUS_TYPE_MPU_SLAVE:
         ak8963SpiWriteRegisterDelay(dev->bus->busType_u.mpuSlave.master, MPU_RA_INT_PIN_CFG, MPU6500_BIT_INT_ANYRD_2CLEAR);
         break;
 #endif
@@ -434,7 +434,7 @@ bool ak8963Detect(magDev_t *mag)
 
     extDevice_t *dev = &mag->dev;
 
-    if ((dev->bus->busType == BUSTYPE_I2C || dev->bus->busType == BUSTYPE_MPU_SLAVE) && dev->busType_u.mpuSlave.address == 0) {
+    if ((dev->bus->busType == BUS_TYPE_I2C || dev->bus->busType == BUS_TYPE_MPU_SLAVE) && dev->busType_u.mpuSlave.address == 0) {
         dev->busType_u.mpuSlave.address = AK8963_MAG_I2C_ADDRESS;
     }
 
