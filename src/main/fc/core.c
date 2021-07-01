@@ -1178,6 +1178,8 @@ void subTaskTelemetryPollSensors(timeUs_t currentTimeUs)
         // Read out gyro temperature if used for telemmetry
         gyroReadTemperature();
         lastGyroTempTimeUs = currentTimeUs;
+
+        DEBUG_SET(DEBUG_GYRO_TMP, 0, gyroGetTemperature());
     }
 }
 #endif

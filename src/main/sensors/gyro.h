@@ -219,6 +219,7 @@ bool gyroGetAccumulationAverage(float *accumulation);
 void gyroStartCalibration(bool isFirstArmingCalibration);
 bool isFirstArmingGyroCalibrationRunning(void);
 bool gyroIsCalibrationComplete(void);
+bool gyroHasTemperatureSensor(void);
 void gyroReadTemperature(void);
 int16_t gyroGetTemperature(void);
 bool gyroOverflowDetected(void);

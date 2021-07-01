@@ -1007,7 +1007,7 @@ TEST(ArmingPreventionTest, Paralyze)
     // expect
     EXPECT_TRUE(IS_RC_MODE_ACTIVE(BOXVTXPITMODE));
     EXPECT_TRUE(IS_RC_MODE_ACTIVE(BOXBEEPERON));
-    
+
     // given
     // try exiting paralyze mode and ensure arming and pit mode are still disabled
     rcData[AUX2] = 1000;
@@ -1067,6 +1067,7 @@ extern "C" {
     void telemetryCheckState(void) {}
     void mspSerialAllocatePorts(void) {}
     void gyroReadTemperature(void) {}
+    int16_t gyroGetTemperature(void) { return 0; }
     void updateRcCommands(void) {}
     void applyAltHold(void) {}
     void resetYawAxis(void) {}

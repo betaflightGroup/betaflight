@@ -160,6 +160,7 @@ extern "C" {
     void telemetryCheckState(void) {}
     void mspSerialAllocatePorts(void) {}
     void gyroReadTemperature(void) {}
+    int16_t gyroGetTemperature(void) { return 0; }
     void updateRcCommands(void) {}
     void applyAltHold(void) {}
     void resetYawAxis(void) {}

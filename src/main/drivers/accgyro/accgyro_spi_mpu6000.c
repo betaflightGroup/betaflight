@@ -225,6 +225,24 @@ bool mpu6000SpiAccDetect(accDev_t *acc)
     return true;
 }
 
+#define MPU60x0_TEMP_OUT        0x41
+
+bool mpu6000ReadTemperature(gyroDev_t *gyro, int16_t *tempData)
+{
+    uint8_t buf[2];
+    if (!spiBusReadRegisterBuffer(&gyro->bus, MPU60x0_TEMP_OUT, buf, 2)) {
+        return false;
+    }
+
+    // tempData = 36.53 + TEMP_OUT / 340
+    // tempData = 36 + (TEMP_OUT + 180) / 340
+    int16_t t = (int16_t)((uint16_t)buf[0] << 8 | buf[1]) + 180;
+    t += t >= 0 ? 170 : - 170; // round to the nearest integer even for the negative values
+    *tempData = 36 + t / 340;
+
+    return true;
+}
+
 bool mpu6000SpiGyroDetect(gyroDev_t *gyro)
 {
     if (gyro->mpuDetectionResult.sensor != MPU_60x0_SPI) {
@@ -233,6 +251,7 @@ bool mpu6000SpiGyroDetect(gyroDev_t *gyro)
 
     gyro->initFn = mpu6000SpiGyroInit;
     gyro->readFn = mpuGyroReadSPI;
+    gyro->temperatureFn = mpu6000ReadTemperature;
     gyro->scale = GYRO_SCALE_2000DPS;
 
     return true;

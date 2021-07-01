@@ -594,6 +594,23 @@ void gyroReadTemperature(void)
     }
 }
 
+bool gyroHasTemperatureSensor(void)
+{
+    switch (gyro.gyroToUse) {
+    case GYRO_CONFIG_USE_GYRO_1:
+        return gyro.gyroSensor1.gyroDev.temperatureFn != NULL;
+
+#ifdef USE_MULTI_GYRO
+    case GYRO_CONFIG_USE_GYRO_2:
+        return gyro.gyroSensor2.gyroDev.temperatureFn != NULL;
+
+    case GYRO_CONFIG_USE_GYRO_BOTH:
+        return gyro.gyroSensor1.gyroDev.temperatureFn != NULL || gyro.gyroSensor2.gyroDev.temperatureFn != NULL;
+#endif // USE_MULTI_GYRO
+    }
+    return false;
+}
+
 int16_t gyroGetTemperature(void)
 {
     return gyroSensorTemperature;

@@ -136,6 +136,7 @@ enum
 #endif
     FSSP_DATAID_T1         = 0x0400 ,
     FSSP_DATAID_T11        = 0x0401 ,
+    FSSP_DATAID_T1GYRO     = 0x0402 ,
     FSSP_DATAID_T2         = 0x0410 ,
     FSSP_DATAID_HOME_DIST  = 0x0420 ,
     FSSP_DATAID_GPS_ALT    = 0x0820 ,
@@ -336,6 +337,12 @@ static void initSmartPortSensors(void)
 #if defined(USE_ADC_INTERNAL)
     if (telemetryIsSensorEnabled(SENSOR_TEMPERATURE)) {
         ADD_SENSOR(FSSP_DATAID_T11);
+    }
+#endif
+
+#if defined(USE_GYRO)
+    if (gyroHasTemperatureSensor() && telemetryIsSensorEnabled(SENSOR_TEMPERATURE)) {
+        ADD_SENSOR(FSSP_DATAID_T1GYRO);
     }
 #endif
 
@@ -838,6 +845,12 @@ void processSmartPortTelemetry(smartPortPayload_t *payload, volatile bool *clear
 #if defined(USE_ADC_INTERNAL)
             case FSSP_DATAID_T11        :
                 smartPortSendPackage(id, getCoreTemperatureCelsius());
+                *clearToSend = false;
+                break;
+#endif
+#if defined(USE_GYRO)
+            case FSSP_DATAID_T1GYRO        :
+                smartPortSendPackage(id, gyroGetTemperature());
                 *clearToSend = false;
                 break;
 #endif
