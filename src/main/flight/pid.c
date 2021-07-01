@@ -382,7 +382,7 @@ STATIC_UNIT_TESTED float calcHorizonLevelStrength(void)
         }
     } else { // horizon_tilt_expert_mode = 0 (leveling always active when sticks centered)
         float sensitFact;
-        if (pidRuntime.horizonFactorRatio < 1.01f) { // if horizonTiltEffect > 0
+        if (pidRuntime.horizonFactorRatio < 1.0f) { // if horizonTiltEffect > 0
             // horizonFactorRatio: 1.0 to 0.0 (larger means more leveling)
             // inclinationLevelRatio (0.0 to 1.0) is smaller (less leveling)
             //  for larger inclinations, goes to 1.0 at inclination==level:
