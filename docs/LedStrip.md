@@ -89,6 +89,8 @@ It could be possible to be able to specify the timings required via CLI if users
   * Fits well under motors on mini 250 quads.
 * [Adafruit NeoPixel Stick](https://www.adafruit.com/products/1426) (works well)
   * Measured current consumption in all white mode ~ 350 mA.
+* [Aliexpress SK6812 RBGWW strip](https://www.aliexpress.com/wholesale?SearchText=rgbw+sk6812) (works well)
+  * Alternative [Adafruit NeoPixel Stick RGBW](https://www.adafruit.com/product/2869)
 
 
 ### WS2811 vs WS2812
@@ -96,6 +98,8 @@ It could be possible to be able to specify the timings required via CLI if users
 The [WS2811](https://cdn-shop.adafruit.com/datasheets/WS2811.pdf) is a LED driver IC which is connected to an RGB LED. It accepts data in the form of 8 bits each of Red-Green-Blue.
 
 The [WS2812](https://cdn-shop.adafruit.com/datasheets/WS2812.pdf) is integrated into the package of a 50:50 LED rather than as a separate device. It accepts data in the form of 8 bits each of Green-Red-Blue.
+
+With the [SK6812](https://cdn-shop.adafruit.com/product-files/1138/SK6812+LED+datasheet+.pdf) also GRBW variants are supported, which have a fourth (white) channel and such provide a much cleaner white color.
 
 It is thus possible, depending on the LED board/strip being used that either Red-Green-Blue or Green-Red-Blue encoding may be required. This may be controlled by setting the following.
 
@@ -107,8 +111,14 @@ or
 ```
 set ledstrip_grb_rgb = GRB
 ```
+or
+
+```
+set ledstrip_grb_rgb = GRBW
+```
 
 Then confirm the required setting by simply setting an LED to be green. If it lights up red, you have the wrong setting.
+Afterwards check if the second LED also lights up red - if not, you might have 4-color SK6812 LEDs and would have to select GRBW.
 
 ## Connections
 
