@@ -388,6 +388,7 @@ typedef struct pidRuntime_s {
     feedforwardAveraging_t feedforwardAveraging;
     float ffSmoothFactor;
     float ffJitterFactor;
+    float ffTransition;
 #endif
 } pidRuntime_t;
 
@@ -443,4 +444,5 @@ float pidGetPidFrequency();
 float pidGetFfBoostFactor();
 float pidGetFfSmoothFactor();
 float pidGetFfJitterFactor();
+float pidGetFfTransition();
 float dynLpfCutoffFreq(float throttle, uint16_t dynLpfMin, uint16_t dynLpfMax, uint8_t expo);

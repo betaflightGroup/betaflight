@@ -76,6 +76,7 @@ FAST_CODE_NOINLINE float feedforwardApply(int axis, bool newRcFrame, feedforward
         float setpointAcceleration = 0.0f;
         const float ffSmoothFactor = pidGetFfSmoothFactor();
         const float ffJitterFactor = pidGetFfJitterFactor();
+        const float ffTransitionFactor = pidGetFfTransition();
 
         // calculate an attenuator from average of two most recent rcCommand deltas vs jitter threshold
         float ffAttenuator = 1.0f;
@@ -153,6 +154,10 @@ FAST_CODE_NOINLINE float feedforwardApply(int axis, bool newRcFrame, feedforward
         } else {
             setpointDelta[axis] = setpointDeltaImpl[axis];
         }
+
+        // apply feedforward transition
+        setpointDelta[axis] *= ffTransitionFactor > 0 ? MIN(1.f, getRcDeflectionAbs(axis) * ffTransitionFactor) : 1;
+
     }
     return setpointDelta[axis];
 }
