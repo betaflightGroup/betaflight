@@ -491,7 +491,7 @@ void handleJetiExBusTelemetry(void)
         }
 
         if ((jetiExBusRequestFrame[EXBUS_HEADER_DATA_ID] == EXBUS_EX_REQUEST) && (jetiExBusCalcCRC16(jetiExBusRequestFrame, jetiExBusRequestFrame[EXBUS_HEADER_MSG_LEN]) == 0)) {
-            if (serialRxBytesWaiting(jetiExBusPort) == 0) {
+            if (serialRxBytesWaiting(rxRuntimeState.rxSerialPort) == 0) {
                 jetiExBusTransceiveState = EXBUS_TRANS_TX;
                 item = sendJetiExBusTelemetry(jetiExBusRequestFrame[EXBUS_HEADER_PACKET_ID], item);
                 jetiExBusRequestState = EXBUS_STATE_PROCESSED;
@@ -505,7 +505,7 @@ void handleJetiExBusTelemetry(void)
 
     // check the state if transmit is ready
     if (jetiExBusTransceiveState == EXBUS_TRANS_IS_TX_COMPLETED) {
-        if (isSerialTransmitBufferEmpty(jetiExBusPort)) {
+        if (isSerialTransmitBufferEmpty(rxRuntimeState.rxSerialPort)) {
             jetiExBusTransceiveState = EXBUS_TRANS_RX;
             jetiExBusRequestState = EXBUS_STATE_ZERO;
         }
@@ -551,7 +551,7 @@ uint8_t sendJetiExBusTelemetry(uint8_t packetID, uint8_t item)
         }
     }
 
-    serialWriteBuf(jetiExBusPort, jetiExBusTelemetryFrame, jetiExBusTelemetryFrame[EXBUS_HEADER_MSG_LEN]);
+    serialWriteBuf(rxRuntimeState.rxSerialPort, jetiExBusTelemetryFrame, jetiExBusTelemetryFrame[EXBUS_HEADER_MSG_LEN]);
     jetiExBusTransceiveState = EXBUS_TRANS_IS_TX_COMPLETED;
 
     return item;

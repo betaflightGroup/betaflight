@@ -772,11 +772,11 @@ void initSrxlTelemetry(void)
 {
     // check if there is a serial port open for SRXL telemetry (ie opened by the SRXL RX)
     // and feature is enabled, if so, set SRXL telemetry enabled
-    if (srxlRxIsActive()) {
+    if (rxSerialPortIsActive(SERIALRX_SRXL)) {
         srxlTelemetryEnabled = true;
         srxl2 = false;
 #if defined(USE_SERIALRX_SRXL2)
-    } else if (srxl2RxIsActive()) {
+    } else if (rxSerialPortIsActive(SERIALRX_SRXL2)) {
         srxlTelemetryEnabled = true;
         srxl2 = true;
 #endif

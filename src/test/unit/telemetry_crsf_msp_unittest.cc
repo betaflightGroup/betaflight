@@ -92,6 +92,10 @@ extern "C" {
 
     uint32_t dummyTimeUs;
 
+    timeUs_t rxFrameTimeUs(void) { return 0; }
+    rxRuntimeState_t rxRuntimeState;
+    bool rxSerialPortIsActive(SerialRXType) { return true; }
+
 }
 
 #include "unittest_macros.h"

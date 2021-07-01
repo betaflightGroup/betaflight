@@ -228,7 +228,7 @@ extern "C" {
     void crsfRxInit(const rxConfig_t *, rxRuntimeState_t *) {}
     void ibusInit(const rxConfig_t *, rxRuntimeState_t *) {}
     void jetiExBusInit(const rxConfig_t *, rxRuntimeState_t *) {}
-    void sbusInit(const rxConfig_t *, rxRuntimeState_t *) {}
+    bool sbusInit(const rxConfig_t *, rxRuntimeState_t *) { return true; }
     void spektrumInit(const rxConfig_t *, rxRuntimeState_t *) {}
     void sumdInit(const rxConfig_t *, rxRuntimeState_t *) {}
     void sumhInit(const rxConfig_t *, rxRuntimeState_t *) {}

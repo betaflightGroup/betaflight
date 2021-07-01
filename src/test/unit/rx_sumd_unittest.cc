@@ -43,6 +43,8 @@ extern "C" {
     int16_t telemTemperature1 = 0;
     baro_t baro = { .baroTemperature = 50 };
     telemetryConfig_t telemetryConfig_System;
+
+    timeUs_t rxFrameTimeUs(void) { return 0; }
 }
 
 
@@ -341,40 +343,61 @@ protected:
 
 TEST_F(SumdRxProtocollUnitTest, Test_OnePacketReceived)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     sendValidPacket();
 }
 
 TEST_F(SumdRxProtocollUnitTest, Test_MultiplePacketsReceived)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     sendValidPacket();
     sendValidPacket();
 }
 
 TEST_F(SumdRxProtocollUnitTest, Test_Resync)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     sendIncompletePacket();
     sendValidPacket();
 }
 
 TEST_F(SumdRxProtocollUnitTest, Test_IgnoreInvalidCRC)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     sendValidPacket();
     sendInvalidPacket();
 }
 
 TEST_F(SumdRxProtocollUnitTest, Test_ShortPacketsReceived)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     sendValidShortPacket();
     sendValidShortPacket();
 }
 
 TEST_F(SumdRxProtocollUnitTest, TestShortPacketsReceivedWithFailsafe)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+
     sendValidFsPacket();
 }
 
 TEST_F(SumdRxProtocollUnitTest, Test_LongPacketsReceived)
 {
+    static uint16_t channelXData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxRuntimeState.channelXData = channelXData;
+    
     sendValidLongPacket();
     sendValidLongPacket();
 }

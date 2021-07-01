@@ -77,6 +77,10 @@ extern "C" {
     PG_REGISTER(systemConfig_t, systemConfig, PG_SYSTEM_CONFIG, 0);
     PG_REGISTER(rxConfig_t, rxConfig, PG_RX_CONFIG, 0);
     PG_REGISTER(accelerometerConfig_t, accelerometerConfig, PG_ACCELEROMETER_CONFIG, 0);
+
+    timeUs_t rxFrameTimeUs(void) { return 0; }
+    rxRuntimeState_t rxRuntimeState;
+    bool rxSerialPortIsActive(SerialRXType) { return true; }
 }
 
 #include "unittest_macros.h"

@@ -26,6 +26,10 @@
 #include "pg/rx.h"
 
 #include "drivers/io_types.h"
+#include "drivers/serial.h"
+
+#include "rx/ghst_protocol.h"
+#include "rx/sbus.h"
 
 #define STICK_CHANNEL_COUNT 4
 
@@ -138,17 +142,25 @@ typedef enum {
     RX_PROVIDER_SPI,
 } rxProvider_t;
 
+typedef union rxFrameBuffer_u {
+    ghstFrame_t ghst;
+    sbusFrameData_t sbus;
+} rxFrameBuffer_t;
+
 typedef struct rxRuntimeState_s {
-    rxProvider_t        rxProvider;
-    SerialRXType        serialrxProvider;
-    uint8_t             channelCount; // number of RC channels as reported by current input driver
-    uint16_t            rxRefreshRate;
-    rcReadRawDataFnPtr  rcReadRawFn;
-    rcFrameStatusFnPtr  rcFrameStatusFn;
-    rcProcessFrameFnPtr rcProcessFrameFn;
-    rcGetFrameTimeUsFn *rcFrameTimeUsFn;
-    uint16_t            *channelData;
-    void                *frameData;
+    rxProvider_t         rxProvider;
+    SerialRXType         serialrxProvider;
+    serialPort_t        *rxSerialPort;
+    uint8_t              channelCount; // number of RC channels as reported by current input driver
+    uint16_t             rxRefreshRate;
+    rcReadRawDataFnPtr   rcReadRawFn;
+    rcFrameStatusFnPtr   rcFrameStatusFn;
+    rcProcessFrameFnPtr  rcProcessFrameFn;
+    rcGetFrameTimeUsFn  *rcFrameTimeUsFn;
+    timeUs_t             lastRcFrameTimeUs;
+    uint16_t            *channelXData;
+    rxFrameBuffer_t     *incomingFrame;
+    rxFrameBuffer_t     *validatedFrame;
 } rxRuntimeState_t;
 
 typedef enum {
@@ -174,6 +186,8 @@ extern linkQualitySource_e linkQualitySource;
 extern rxRuntimeState_t rxRuntimeState; //!!TODO remove this extern, only needed once for channelCount
 
 void rxInit(void);
+bool rxSerialPortIsActive(SerialRXType serialrxProvider);
+timeUs_t rxFrameTimeUs(void);
 bool rxUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs);
 bool rxIsReceivingSignal(void);
 bool rxAreFlightChannelsValid(void);
@@ -217,3 +231,5 @@ void resumeRxPwmPpmSignal(void);
 uint16_t rxGetRefreshRate(void);
 
 timeDelta_t rxGetFrameDelta(timeDelta_t *frameAgeUs);
+
+void rxSwapFrameBuffers(rxRuntimeState_t *rxRuntimeState);
