@@ -63,7 +63,7 @@ uint8_t mscStart(void)
 
     USBD_Init(&USBD_Device, &VCP_Desc, 0);
 
-    /** Regsiter class */
+    /** Register class */
     USBD_RegisterClass(&USBD_Device, USBD_MSC_CLASS);
 
     /** Register interface callbacks */

@@ -76,7 +76,7 @@ PCD_HandleTypeDef hpcd;
                        PCD BSP Routines
  *******************************************************************************/
 
-#if defined(USE_USB_FS) && !(defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H723xx) || defined(STM32H725xx))
+#if defined(USE_USB_FS) && !(defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx))
 void OTG_FS_IRQHandler(void)
 #else
 void OTG_HS_IRQHandler(void)
@@ -254,6 +254,33 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef * hpcd)
 
     /* Enable USB FS Interrupt */
     HAL_NVIC_EnableIRQ(OTG_HS_IRQn);
+#elif defined(STM32H730xx)
+    UNUSED(hpcd);
+
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    /**USB GPIO Configuration
+    PA11     ------> USB_DM
+    PA12     ------> USB_DP
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate  = GPIO_AF10_OTG1_HS;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    /* Enable USB HS Clocks */
+    __HAL_RCC_USB1_OTG_HS_CLK_ENABLE();
+
+    HAL_NVIC_SetPriority(OTG_HS_EP1_OUT_IRQn, 6, 0);
+    HAL_NVIC_EnableIRQ(OTG_HS_EP1_OUT_IRQn);
+
+    HAL_NVIC_SetPriority(OTG_HS_EP1_IN_IRQn, 6, 0);
+    HAL_NVIC_EnableIRQ(OTG_HS_EP1_IN_IRQn);
+
+    HAL_NVIC_SetPriority(OTG_HS_IRQn, 7, 0);
+    HAL_NVIC_EnableIRQ(OTG_HS_IRQn);
 
 #else
 #error Unknown MCU type
@@ -290,7 +317,7 @@ void HAL_PCD_MspDeInit(PCD_HandleTypeDef * hpcd)
         __HAL_RCC_USB1_OTG_HS_CLK_DISABLE();
         __HAL_RCC_USB1_OTG_HS_ULPI_CLK_DISABLE();
     }
-#elif defined(STM32H723xx) || defined(STM32H725xx)
+#elif defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx)
     if(hpcd->Instance==USB1_OTG_HS)
     {
         /* Peripheral clock disable */
@@ -463,7 +490,7 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef * pdev)
 {
 #ifdef USE_USB_FS
     /* Set LL Driver parameters */
-#if defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H723xx) || defined(STM32H725xx)
+#if defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx)
     hpcd.Instance = USB1_OTG_HS;
 #elif defined(STM32H743xx) || defined(STM32H750xx)
     hpcd.Instance = USB2_OTG_FS;

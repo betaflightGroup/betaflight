@@ -305,6 +305,33 @@ pllConfig_t pll1Config72x = {
 
 #define MCU_RCC_CRS_SYNC_SOURCE RCC_CRS_SYNC_SOURCE_USB1
 
+#elif defined(STM32H730xx)
+
+// Nominal max 550MHz, but >520Mhz requires ECC to be disabled, CPUFREQ_BOOST set in option bytes and prevents OCTOSPI clock from running at the correct clock speed.
+// 4.9.24 FLASH option status register 2 (FLASH_OPTSR2_CUR)
+// "Bit 2CPUFREQ_BOOST: CPU frequency boost status bitThis bit indicates whether the CPU frequency can be boosted or not. When it is set, the ECC on ITCM and DTCM are no more used"
+// ...
+// So use 520Mhz so that OCTOSPI clk can be 200Mhz with OCTOPSI prescaler 2 via PLL2R or 130Mhz with OCTOPSI prescaler 1 via PLL1Q
+
+pllConfig_t pll1Config73x = {
+    .clockMhz = 520,
+    .m = 2,
+    .n = 130,
+    .p = 1,
+    .q = 4,
+    .r = 2,
+    .vos = PWR_REGULATOR_VOLTAGE_SCALE0,
+    .vciRange = RCC_PLL1VCIRANGE_1,
+};
+
+#define MCU_HCLK_DIVIDER RCC_HCLK_DIV2
+
+// RM0468 (Rev.2) Table 16.
+// 520MHz (AXI Interface clock) at VOS0 is 3WS
+#define MCU_FLASH_LATENCY FLASH_LATENCY_3
+
+#define MCU_RCC_CRS_SYNC_SOURCE RCC_CRS_SYNC_SOURCE_USB1
+
 #else
 #error Unknown MCU type
 #endif
@@ -338,6 +365,8 @@ static void SystemClockHSE_Config(void)
     pll1Config = &pll1Config7A3;
 #elif defined(STM32H723xx) || defined(STM32H725xx)
     pll1Config = &pll1Config72x;
+#elif defined(STM32H730xx)
+    pll1Config = &pll1Config73x;
 #else
 #error Unknown MCU type
 #endif
@@ -450,8 +479,8 @@ void SystemClock_Config(void)
 {
     // Configure power supply
 
-#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx)
-    // Legacy H7 devices (H743, H750) and newer but SMPS-less devices(H7A3, H723)
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx) || defined(STM32H730xx)
+    // Legacy H7 devices (H743, H750) and newer but SMPS-less devices(H7A3, H723, H730)
 
     HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
 
@@ -595,18 +624,48 @@ void SystemClock_Config(void)
     HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
 
 #ifdef USE_SDCARD_SDIO
+    __HAL_RCC_SDMMC1_CLK_ENABLE(); // FIXME enable SDMMC1 or SDMMC2 depending on target.
+
     RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_SDMMC;
+
+#if (HSE_VALUE != 8000000)
+#error Unsupported external oscillator speed.  The calculations below are based on 8Mhz resonators
+// if you are seeing this, then calculate the PLL2 settings for your resonator and add support as required.
+#else
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H725xx)
     RCC_PeriphClkInit.PLL2.PLL2M = 5;
-    RCC_PeriphClkInit.PLL2.PLL2N = 500;
-    RCC_PeriphClkInit.PLL2.PLL2P = 2; // 500Mhz
-    RCC_PeriphClkInit.PLL2.PLL2Q = 3; // 266Mhz - 133Mhz can be derived from this for for QSPI if flash chip supports the speed.
-    RCC_PeriphClkInit.PLL2.PLL2R = 4; // 200Mhz HAL LIBS REQUIRE 200MHZ SDMMC CLOCK, see HAL_SD_ConfigWideBusOperation, SDMMC_HSpeed_CLK_DIV, SDMMC_NSpeed_CLK_DIV
-    RCC_PeriphClkInit.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0;
-    RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+    RCC_PeriphClkInit.PLL2.PLL2N = 500; // 8Mhz (Oscillator Frequency) / 5 (PLL2M) = 1.6 * 500 (PLL2N) = 800Mhz.
+    RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE; // Wide VCO range:192 to 836 MHz
+    RCC_PeriphClkInit.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0; // PLL2 input between 1 and 2Mhz (1.6)
     RCC_PeriphClkInit.PLL2.PLL2FRACN = 0;
+
+    RCC_PeriphClkInit.PLL2.PLL2P = 2; // 800Mhz / 2 = 400Mhz
+    RCC_PeriphClkInit.PLL2.PLL2Q = 3; // 800Mhz / 3 = 266Mhz // 133Mhz can be derived from this for for QSPI if flash chip supports the speed.
+    RCC_PeriphClkInit.PLL2.PLL2R = 4; // 800Mhz / 4 = 200Mhz // HAL LIBS REQUIRE 200MHZ SDMMC CLOCK, see HAL_SD_ConfigWideBusOperation, SDMMC_HSpeed_CLK_DIV, SDMMC_NSpeed_CLK_DIV
+#elif defined(STM32H730xx)
+    RCC_PeriphClkInit.PLL2.PLL2M = 8;
+    RCC_PeriphClkInit.PLL2.PLL2N = 400; // 8Mhz (Oscillator Frequency) / 8 (PLL2M) = 1.0 * 400 (PLL2N) = 400Mhz.
+    RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOMEDIUM; // Medium VCO range:150 to 420 MHz
+    RCC_PeriphClkInit.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0; // PLL2 input between 1 and 2Mhz (1.0)
+    RCC_PeriphClkInit.PLL2.PLL2FRACN = 0;
+
+    RCC_PeriphClkInit.PLL2.PLL2P = 3; // 400Mhz / 3 = 133Mhz // ADC does't like much higher when using PLL2P
+    RCC_PeriphClkInit.PLL2.PLL2Q = 3; // 400Mhz / 3 = 133Mhz // SPI6 does't like much higher when using PLL2Q
+    RCC_PeriphClkInit.PLL2.PLL2R = 2; // 400Mhz / 2 = 200Mhz // HAL LIBS REQUIRE 200MHZ SDMMC CLOCK, see HAL_SD_ConfigWideBusOperation, SDMMC_HSpeed_CLK_DIV, SDMMC_NSpeed_CLK_DIV
+#else
+#error MCU not defined
+#endif
     RCC_PeriphClkInit.SdmmcClockSelection = RCC_SDMMCCLKSOURCE_PLL2;
     HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
+#endif // 8Mhz HSE_VALUE
+
 #endif
+
+    RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+    RCC_PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_CLKP;
+    HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
+
+    // TODO H730 OCTOSPI clock for 100Mhz flash chips should use PLL2R at 200Mhz
 
     // Configure MCO clocks for clock test/verification
 
@@ -704,7 +763,7 @@ void SystemInit (void)
     RCC->CR |= RCC_CR_HSEON;
     RCC->CR |= RCC_CR_HSI48ON;
 
-#if defined(STM32H743xx) || defined(STM32H750xx)
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx)
     /* Reset D1CFGR register */
     RCC->D1CFGR = 0x00000000;
 
@@ -761,15 +820,28 @@ void SystemInit (void)
 
     /* Configure the Vector Table location add offset address ------------------*/
 #if defined(VECT_TAB_SRAM)
-#if defined(STM32H743xx) || defined(STM32H750xx)
+  #if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx)
     SCB->VTOR = D1_AXISRAM_BASE  | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal ITCMSRAM */
-#elif defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
+  #elif defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
     SCB->VTOR = CD_AXISRAM_BASE  | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal ITCMSRAM */
-#else
-#error Unknown MCU type
-#endif
+  #else
+  #error Unknown MCU type
+  #endif
 #elif defined(USE_EXST)
     // Don't touch the vector table, the bootloader will have already set it.
+  #if defined(STM32H730xx)
+    /* Configure the Vector Table location add offset address ------------------*/
+
+    extern uint8_t isr_vector_table_flash_base;
+    extern uint8_t isr_vector_table_base;
+    extern uint8_t isr_vector_table_end;
+
+    extern uint8_t ram_isr_vector_table_base;
+
+    memcpy(&ram_isr_vector_table_base, &isr_vector_table_flash_base, (size_t) (&isr_vector_table_end - &isr_vector_table_base));
+
+    SCB->VTOR = (uint32_t)&ram_isr_vector_table_base;
+  #endif
 #else
     SCB->VTOR = FLASH_BANK1_BASE | VECT_TAB_OFFSET;       /* Vector Table Relocation in Internal FLASH */
 #endif

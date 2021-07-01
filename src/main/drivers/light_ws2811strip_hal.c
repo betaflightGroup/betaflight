@@ -42,7 +42,7 @@ static IO_t ws2811IO = IO_NONE;
 static TIM_HandleTypeDef TimHandle;
 static uint16_t timerChannel = 0;
 
-void WS2811_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
+FAST_CODE void WS2811_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
 {
     HAL_DMA_IRQHandler(TimHandle.hdma[descriptor->userParam]);
     TIM_DMACmd(&TimHandle, timerChannel, DISABLE);

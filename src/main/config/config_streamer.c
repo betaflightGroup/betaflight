@@ -36,8 +36,8 @@ uint8_t eepromData[EEPROM_SIZE];
 #endif
 
 
-#if defined(STM32H750xx) && !(defined(CONFIG_IN_EXTERNAL_FLASH) || defined(CONFIG_IN_RAM) || defined(CONFIG_IN_SDCARD))
-#error "STM32750xx only has one flash page which contains the bootloader, no spare flash pages available, use external storage for persistent config or ram for target testing"
+#if (defined(STM32H750xx) || defined(STM32H730xx)) && !(defined(CONFIG_IN_EXTERNAL_FLASH) || defined(CONFIG_IN_RAM) || defined(CONFIG_IN_SDCARD))
+#error "The configured MCU only has one flash page which contains the bootloader, no spare flash pages available, use external storage for persistent config or ram for target testing"
 #endif
 // @todo this is not strictly correct for F4/F7, where sector sizes are variable
 #if !defined(FLASH_PAGE_SIZE)
@@ -70,7 +70,7 @@ uint8_t eepromData[EEPROM_SIZE];
 # elif defined(UNIT_TEST)
 #  define FLASH_PAGE_SIZE                 (0x400)
 // H7
-# elif defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx)
+# elif defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx) || defined(STM32H730xx)
 #  define FLASH_PAGE_SIZE                 ((uint32_t)0x20000) // 128K sectors
 # elif defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
 #  define FLASH_PAGE_SIZE                 ((uint32_t)0x2000) // 8K sectors
