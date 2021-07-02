@@ -176,13 +176,16 @@ static const displayPortVTable_t mspDisplayPortVTable = {
 
 displayPort_t *displayPortMspInit(void)
 {
-    displayInit(&mspDisplayPort, &mspDisplayPortVTable, DISPLAYPORT_DEVICE_TYPE_MSP);
+    if (displayPortProfileMsp()->displayPortSerial != SERIAL_PORT_NONE) {
+        displayInit(&mspDisplayPort, &mspDisplayPortVTable, DISPLAYPORT_DEVICE_TYPE_MSP);
 
-    if (displayPortProfileMsp()->useDeviceBlink) {
-        mspDisplayPort.useDeviceBlink = true;
+        if (displayPortProfileMsp()->useDeviceBlink) {
+            mspDisplayPort.useDeviceBlink = true;
+        }
+
+        redraw(&mspDisplayPort);
+        return &mspDisplayPort;
     }
-
-    redraw(&mspDisplayPort);
-    return &mspDisplayPort;
+    return NULL;
 }
 #endif // USE_MSP_DISPLAYPORT

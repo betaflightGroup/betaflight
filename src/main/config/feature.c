@@ -84,6 +84,13 @@ void featureDisableImmediate(const uint32_t mask)
     featureClear(mask, &runtimeFeatureMask);
 }
 
+// Updates *ONLY* the runtime state of a feature and not the configuration
+// Used *ONLY* by the config check process that runs at startup.
+void featureDisableRuntime(const uint32_t mask)
+{
+    featureClear(mask, &runtimeFeatureMask);
+}
+
 // Sets the configuration state of the feature and *DOES NOT* change the runtime state.
 // For example, used by the CLI "feature" command. Use this function if you want to
 // enable a feature that will be active after save/reboot.

@@ -970,7 +970,7 @@ void init(void)
 #if defined(USE_CMS) && defined(USE_MSP_DISPLAYPORT) && defined(USE_OSD_OVER_MSP_DISPLAYPORT)
         case OSD_DISPLAYPORT_DEVICE_MSP:
             osdDisplayPort = displayPortMspInit();
-            if (osdDisplayPort || device == OSD_DISPLAYPORT_DEVICE_MSP) {
+            if (osdDisplayPort) {
                 osdDisplayPortDevice = OSD_DISPLAYPORT_DEVICE_MSP;
                 break;
             }
@@ -988,7 +988,7 @@ void init(void)
         osdInit(osdDisplayPort, osdDisplayPortDevice);
 
         if (osdDisplayPortDevice == OSD_DISPLAYPORT_DEVICE_NONE) {
-            featureDisableImmediate(FEATURE_OSD);
+            featureDisableRuntime(FEATURE_OSD);
         }
     }
 #endif // USE_OSD

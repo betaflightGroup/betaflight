@@ -67,6 +67,7 @@ bool featureIsEnabled(const uint32_t mask);
 bool featureIsConfigured(const uint32_t mask);
 void featureEnableImmediate(const uint32_t mask);
 void featureDisableImmediate(const uint32_t mask);
+void featureDisableRuntime(const uint32_t mask);
 void featureConfigSet(const uint32_t mask);
 void featureConfigClear(const uint32_t mask);
 void featureConfigReplace(const uint32_t mask);
