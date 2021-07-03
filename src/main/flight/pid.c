@@ -204,7 +204,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .dyn_idle_max_increase = 150,
         .feedforward_averaging = FEEDFORWARD_AVERAGING_OFF,
         .feedforward_max_rate_limit = 100,
-        .feedforward_smooth_factor = 37,
+        .feedforward_smooth_factor = 25,
         .feedforward_jitter_factor = 7,
         .feedforward_boost = 15,
         .dyn_lpf_curve_expo = 5,
@@ -256,20 +256,20 @@ void pidStabilisationState(pidStabilisationState_e pidControllerState)
 
 const angle_index_t rcAliasToAngleIndexMap[] = { AI_ROLL, AI_PITCH };
 
-float pidGetFfBoostFactor()
+float pidGetFeedforwardBoostFactor()
 {
-    return pidRuntime.ffBoostFactor;
+    return pidRuntime.feedforwardBoostFactor;
 }
 
 #ifdef USE_FEEDFORWARD
-float pidGetFfSmoothFactor()
+float pidGetFeedforwardSmoothFactor()
 {
-    return pidRuntime.ffSmoothFactor;
+    return pidRuntime.feedforwardSmoothFactor;
 }
 
-float pidGetFfJitterFactor()
+float pidGetFeedforwardJitterFactor()
 {
-    return pidRuntime.ffJitterFactor;
+    return pidRuntime.feedforwardJitterFactor;
 }
 #endif
 
