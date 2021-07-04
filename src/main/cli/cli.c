@@ -1560,7 +1560,7 @@ static void cliSerialPassthrough(const char *cmdName, char *cmdline)
         cliPrintLine("Port1 baud rate change over USB enabled.");
         // Register the right side baud rate setting routine with the left side which allows setting of the UART
         // baud rate over USB without setting it using the serialpassthrough command
-        serialSetBaudRateCb(ports[0].port, serialSetBaudRate, ports[1].port);
+        serialSetBaudRateCb(ports[1].port, serialSetBaudRate, ports[0].port);
     }
 
     char *resetMessage = "";
