@@ -62,6 +62,9 @@ static float oldRcCommand[XYZ_AXIS_COUNT];
 static bool isDuplicate[XYZ_AXIS_COUNT];
 float rcCommandDelta[XYZ_AXIS_COUNT];
 #endif
+#ifdef USE_RC_SMOOTHING_FILTER
+float rcCommandFiltered[XYZ_AXIS_COUNT];
+#endif
 static float rawSetpoint[XYZ_AXIS_COUNT];
 static float setpointRate[3], rcDeflection[3], rcDeflectionAbs[3];
 static float throttlePIDAttenuation;
@@ -512,7 +515,7 @@ static FAST_CODE void processRcSmoothingFilter(void)
         }
         // Get new values to be smoothed
         for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
-            rxDataToSmooth[i] = i == THROTTLE ? rcCommand[i] : rawSetpoint[i];
+            rxDataToSmooth[i] = i == THROTTLE ? rcCommand[i] : rcCommandFiltered[i];
             if (i < THROTTLE) {
                 DEBUG_SET(DEBUG_RC_INTERPOLATION, i, lrintf(rxDataToSmooth[i]));
             } else {
@@ -529,7 +532,7 @@ static FAST_CODE void processRcSmoothingFilter(void)
 
     // each pid loop, apply the last received channel value to the filter, if initialised - thanks @klutvott
     for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
-        float *dst = i == THROTTLE ? &rcCommand[i] : &setpointRate[i];
+        float *dst = i == THROTTLE ? &rcCommand[i] : &rcCommandFiltered[i];
         if (rcSmoothingData.filterInitialized) {
             *dst = pt3FilterApply(&rcSmoothingData.filter[i], rxDataToSmooth[i]);
         } else {
@@ -550,54 +553,57 @@ FAST_CODE void processRcCommand(void)
         checkForThrottleErrorResetState(currentRxRefreshRate);
     }
 
-    if (isRxDataNew) {
-        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-
-            isDuplicate[axis] = (oldRcCommand[axis] == rcCommand[axis]);
-            rcCommandDelta[axis] = fabsf(rcCommand[axis] - oldRcCommand[axis]);
-            oldRcCommand[axis] = rcCommand[axis];
-
-            float angleRate;
-            
-#ifdef USE_GPS_RESCUE
-            if ((axis == FD_YAW) && FLIGHT_MODE(GPS_RESCUE_MODE)) {
-                // If GPS Rescue is active then override the setpointRate used in the
-                // pid controller with the value calculated from the desired heading logic.
-                angleRate = gpsRescueGetYawRate();
-                // Treat the stick input as centered to avoid any stick deflection base modifications (like acceleration limit)
-                rcDeflection[axis] = 0;
-                rcDeflectionAbs[axis] = 0;
-            } else
-#endif
-            {
-                // scale rcCommandf to range [-1.0, 1.0]
-                float rcCommandf;
-                if (axis == FD_YAW) {
-                    rcCommandf = rcCommand[axis] / rcCommandYawDivider;
-                } else {
-                    rcCommandf = rcCommand[axis] / rcCommandDivider;
-                }
-
-                rcDeflection[axis] = rcCommandf;
-                const float rcCommandfAbs = fabsf(rcCommandf);
-                rcDeflectionAbs[axis] = rcCommandfAbs;
-
-                angleRate = applyRates(axis, rcCommandf, rcCommandfAbs);
-
-            }
-            rawSetpoint[axis] = constrainf(angleRate, -1.0f * currentControlRateProfile->rate_limit[axis], 1.0f * currentControlRateProfile->rate_limit[axis]);
-            DEBUG_SET(DEBUG_ANGLERATE, axis, angleRate);
-        } 
-
-        // adjust un-filtered setpoint steps to camera angle (mixing Roll and Yaw)
-        if (rxConfig()->fpvCamAngleDegrees && IS_RC_MODE_ACTIVE(BOXFPVANGLEMIX) && !FLIGHT_MODE(HEADFREE_MODE)) {
-            scaleSetpointToFpvCamAngle();
-        }
-    }
-
 #ifdef USE_RC_SMOOTHING_FILTER
     processRcSmoothingFilter();
 #endif
+
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        if (isRxDataNew) {
+            isDuplicate[axis] = (oldRcCommand[axis] == rcCommand[axis]);
+            rcCommandDelta[axis] = fabsf(rcCommand[axis] - oldRcCommand[axis]);
+            oldRcCommand[axis] = rcCommand[axis];
+        }
+
+        float angleRate, angleRateRaw;
+
+#ifdef USE_GPS_RESCUE
+        if ((axis == FD_YAW) && FLIGHT_MODE(GPS_RESCUE_MODE)) {
+            // If GPS Rescue is active then override the setpointRate used in the
+            // pid controller with the value calculated from the desired heading logic.
+            angleRate = gpsRescueGetYawRate();
+            // Treat the stick input as centered to avoid any stick deflection base modifications (like acceleration limit)
+            rcDeflection[axis] = 0;
+            rcDeflectionAbs[axis] = 0;
+        } else
+#endif
+        {
+            // scale rcCommandf to range [-1.0, 1.0]
+            float rcCommandf, rcCommandRaw;
+            if (axis == FD_YAW) {
+                rcCommandf = rcCommandFiltered[axis] / rcCommandYawDivider;
+                rcCommandRaw = rcCommand[axis] / rcCommandYawDivider;
+            } else {
+                rcCommandf = rcCommandFiltered[axis] / rcCommandDivider;
+                rcCommandRaw = rcCommand[axis] / rcCommandDivider;
+            }
+
+            rcDeflection[axis] = rcCommandf;
+            const float rcCommandfAbs = fabsf(rcCommandf);
+            rcDeflectionAbs[axis] = rcCommandfAbs;
+
+            angleRate = applyRates(axis, rcCommandf, rcCommandfAbs);
+            angleRateRaw = applyRates(axis, rcCommandRaw, fabsf(rcCommandRaw));
+        }
+        setpointRate[axis] = constrainf(angleRate, -(float)currentControlRateProfile->rate_limit[axis], (float)currentControlRateProfile->rate_limit[axis]);
+        rawSetpoint[axis] = constrainf(angleRateRaw, -(float)currentControlRateProfile->rate_limit[axis], (float)currentControlRateProfile->rate_limit[axis]);
+
+        DEBUG_SET(DEBUG_ANGLERATE, axis, angleRate);
+    }
+
+    // adjust un-filtered setpoint steps to camera angle (mixing Roll and Yaw)
+    if (rxConfig()->fpvCamAngleDegrees && IS_RC_MODE_ACTIVE(BOXFPVANGLEMIX) && !FLIGHT_MODE(HEADFREE_MODE)) {
+        scaleSetpointToFpvCamAngle();
+    }
 
     isRxDataNew = false;
 }
