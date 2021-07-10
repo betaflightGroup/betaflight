@@ -45,8 +45,8 @@
 #include "config/config.h"
 #include "fc/runtime_config.h"
 
-#ifdef USE_GYRO_DATA_ANALYSE
-#include "flight/gyroanalyse.h"
+#ifdef USE_DYN_NOTCH_FILTER
+#include "flight/dyn_notch_filter.h"
 #endif
 #include "flight/rpm_filter.h"
 
@@ -128,22 +128,11 @@ void pgResetFn_gyroConfig(gyroConfig_t *gyroConfig)
     gyroConfig->yaw_spin_threshold = 1950;
     gyroConfig->dyn_lpf_gyro_min_hz = DYN_LPF_GYRO_MIN_HZ_DEFAULT;
     gyroConfig->dyn_lpf_gyro_max_hz = DYN_LPF_GYRO_MAX_HZ_DEFAULT;
-    gyroConfig->dyn_notch_max_hz = 600;
-    gyroConfig->dyn_notch_count = 3;
-    gyroConfig->dyn_notch_q = 300;
-    gyroConfig->dyn_notch_min_hz = 150;
     gyroConfig->gyro_filter_debug_axis = FD_ROLL;
     gyroConfig->dyn_lpf_curve_expo = 5;
     gyroConfig->simplified_gyro_filter = false;
     gyroConfig->simplified_gyro_filter_multiplier = SIMPLIFIED_TUNING_DEFAULT;
 }
-
-#ifdef USE_GYRO_DATA_ANALYSE
-bool isDynamicFilterActive(void)
-{
-    return featureIsEnabled(FEATURE_DYNAMIC_FILTER);
-}
-#endif
 
 FAST_CODE bool isGyroSensorCalibrationComplete(const gyroSensor_t *gyroSensor)
 {
@@ -482,9 +471,9 @@ FAST_CODE void gyroFiltering(timeUs_t currentTimeUs)
         filterGyroDebug();
     }
 
-#ifdef USE_GYRO_DATA_ANALYSE
+#ifdef USE_DYN_NOTCH_FILTER
     if (isDynamicFilterActive()) {
-        gyroDataAnalyse(&gyro.gyroAnalyseState);
+        dynNotchUpdate();
     }
 #endif
 

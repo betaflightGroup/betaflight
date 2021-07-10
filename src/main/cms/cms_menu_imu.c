@@ -752,11 +752,11 @@ static CMS_Menu cmsx_menuFilterGlobal = {
     .entries = cmsx_menuFilterGlobalEntries,
 };
 
-#if (defined(USE_GYRO_DATA_ANALYSE) || defined(USE_DYN_LPF)) && defined(USE_EXTENDED_CMS_MENUS)
+#if (defined(USE_DYN_NOTCH_FILTER) || defined(USE_DYN_LPF)) && defined(USE_EXTENDED_CMS_MENUS)
 
-#ifdef USE_GYRO_DATA_ANALYSE
+#ifdef USE_DYN_NOTCH_FILTER
 static uint16_t dynFiltNotchMaxHz;
-static uint8_t  dynFiltCount;
+static uint8_t  dynFiltNotchCount;
 static uint16_t dynFiltNotchQ;
 static uint16_t dynFiltNotchMinHz;
 #endif
@@ -773,11 +773,11 @@ static const void *cmsx_menuDynFilt_onEnter(displayPort_t *pDisp)
 {
     UNUSED(pDisp);
 
-#ifdef USE_GYRO_DATA_ANALYSE
-    dynFiltNotchMaxHz   = gyroConfig()->dyn_notch_max_hz;
-    dynFiltCount        = gyroConfig()->dyn_notch_count;
-    dynFiltNotchQ       = gyroConfig()->dyn_notch_q;
-    dynFiltNotchMinHz   = gyroConfig()->dyn_notch_min_hz;
+#ifdef USE_DYN_NOTCH_FILTER
+    dynFiltNotchMaxHz   = dynNotchConfig()->dyn_notch_max_hz;
+    dynFiltNotchCount   = dynNotchConfig()->dyn_notch_count;
+    dynFiltNotchQ       = dynNotchConfig()->dyn_notch_q;
+    dynFiltNotchMinHz   = dynNotchConfig()->dyn_notch_min_hz;
 #endif
 #ifdef USE_DYN_LPF
     const pidProfile_t *pidProfile = pidProfiles(pidProfileIndex);
@@ -797,11 +797,11 @@ static const void *cmsx_menuDynFilt_onExit(displayPort_t *pDisp, const OSD_Entry
     UNUSED(pDisp);
     UNUSED(self);
 
-#ifdef USE_GYRO_DATA_ANALYSE
-    gyroConfigMutable()->dyn_notch_max_hz        = dynFiltNotchMaxHz;
-    gyroConfigMutable()->dyn_notch_count         = dynFiltCount;
-    gyroConfigMutable()->dyn_notch_q             = dynFiltNotchQ;
-    gyroConfigMutable()->dyn_notch_min_hz        = dynFiltNotchMinHz;
+#ifdef USE_DYN_NOTCH_FILTER
+    dynNotchConfigMutable()->dyn_notch_max_hz        = dynFiltNotchMaxHz;
+    dynNotchConfigMutable()->dyn_notch_count         = dynFiltNotchCount;
+    dynNotchConfigMutable()->dyn_notch_q             = dynFiltNotchQ;
+    dynNotchConfigMutable()->dyn_notch_min_hz        = dynFiltNotchMinHz;
 #endif
 #ifdef USE_DYN_LPF
     pidProfile_t *pidProfile = currentPidProfile;
@@ -820,8 +820,8 @@ static const OSD_Entry cmsx_menuDynFiltEntries[] =
 {
     { "-- DYN FILT --", OME_Label, NULL, NULL, 0 },
 
-#ifdef USE_GYRO_DATA_ANALYSE
-    { "NOTCH COUNT",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &dynFiltCount,        1, DYN_NOTCH_COUNT_MAX, 1 }, 0 },
+#ifdef USE_DYN_NOTCH_FILTER
+    { "NOTCH COUNT",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &dynFiltNotchCount,   1, DYN_NOTCH_COUNT_MAX, 1 }, 0 },
     { "NOTCH Q",        OME_UINT16, NULL, &(OSD_UINT16_t) { &dynFiltNotchQ,       1, 1000, 1 }, 0 },
     { "NOTCH MIN HZ",   OME_UINT16, NULL, &(OSD_UINT16_t) { &dynFiltNotchMinHz,   0, 1000, 1 }, 0 },
     { "NOTCH MAX HZ",   OME_UINT16, NULL, &(OSD_UINT16_t) { &dynFiltNotchMaxHz,   0, 1000, 1 }, 0 },
@@ -1006,7 +1006,7 @@ static const OSD_Entry cmsx_menuImuEntries[] =
     {"RATE",      OME_Submenu, cmsMenuChange,                 &cmsx_menuRateProfile,                                         0},
 
     {"FILT GLB",  OME_Submenu, cmsMenuChange,                 &cmsx_menuFilterGlobal,                                        0},
-#if  (defined(USE_GYRO_DATA_ANALYSE) || defined(USE_DYN_LPF)) && defined(USE_EXTENDED_CMS_MENUS)
+#if  (defined(USE_DYN_NOTCH_FILTER) || defined(USE_DYN_LPF)) && defined(USE_EXTENDED_CMS_MENUS)
     {"DYN FILT",  OME_Submenu, cmsMenuChange,                 &cmsx_menuDynFilt,                                             0},
 #endif
 

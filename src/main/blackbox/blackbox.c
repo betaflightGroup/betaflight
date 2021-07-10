@@ -1419,11 +1419,11 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE("gyro_notch_cutoff", "%d,%d",            gyroConfig()->gyro_soft_notch_cutoff_1,
                                                                             gyroConfig()->gyro_soft_notch_cutoff_2);
         BLACKBOX_PRINT_HEADER_LINE("gyro_to_use", "%d",                     gyroConfig()->gyro_to_use);
-#ifdef USE_GYRO_DATA_ANALYSE
-        BLACKBOX_PRINT_HEADER_LINE("dyn_notch_max_hz", "%d",                gyroConfig()->dyn_notch_max_hz);
-        BLACKBOX_PRINT_HEADER_LINE("dyn_notch_count", "%d",                 gyroConfig()->dyn_notch_count);
-        BLACKBOX_PRINT_HEADER_LINE("dyn_notch_q", "%d",                     gyroConfig()->dyn_notch_q);
-        BLACKBOX_PRINT_HEADER_LINE("dyn_notch_min_hz", "%d",                gyroConfig()->dyn_notch_min_hz);
+#ifdef USE_DYN_NOTCH_FILTER
+        BLACKBOX_PRINT_HEADER_LINE("dyn_notch_max_hz", "%d",                dynNotchConfig()->dyn_notch_max_hz);
+        BLACKBOX_PRINT_HEADER_LINE("dyn_notch_count", "%d",                 dynNotchConfig()->dyn_notch_count);
+        BLACKBOX_PRINT_HEADER_LINE("dyn_notch_q", "%d",                     dynNotchConfig()->dyn_notch_q);
+        BLACKBOX_PRINT_HEADER_LINE("dyn_notch_min_hz", "%d",                dynNotchConfig()->dyn_notch_min_hz);
 #endif
 #ifdef USE_DSHOT_TELEMETRY
         BLACKBOX_PRINT_HEADER_LINE("dshot_bidir", "%d",                     motorConfig()->dev.useDshotTelemetry);
