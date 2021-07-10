@@ -251,6 +251,8 @@ CFLAGS     += $(ARCH_FLAGS) \
               -fdata-sections \
               -fno-common \
               -pedantic \
+              -Wno-stringop-overflow \
+              -Wno-enum-conversion \
               $(TEMPORARY_FLAGS) \
               $(DEVICE_FLAGS) \
               -D_GNU_SOURCE \

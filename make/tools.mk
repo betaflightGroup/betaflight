@@ -14,9 +14,9 @@
 ##############################
 
 # Set up ARM (STM32) SDK
-ARM_SDK_DIR ?= $(TOOLS_DIR)/gcc-arm-none-eabi-9-2020-q2-update
+ARM_SDK_DIR ?= $(TOOLS_DIR)/gcc-arm-none-eabi-10-2020-q4-major
 # Checked below, Should match the output of $(shell arm-none-eabi-gcc -dumpversion)
-GCC_REQUIRED_VERSION ?= 9.3.1
+GCC_REQUIRED_VERSION ?= 10.2.0
 
 .PHONY: arm_sdk_version
 
@@ -26,7 +26,7 @@ arm_sdk_version:
 ## arm_sdk_install   : Install Arm SDK
 .PHONY: arm_sdk_install
 
-ARM_SDK_URL_BASE  := https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2020q2/gcc-arm-none-eabi-9-2020-q2-update
+ARM_SDK_URL_BASE  := https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major
 
 # source: https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
 ifeq ($(OSFAMILY), linux)
