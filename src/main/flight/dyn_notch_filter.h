@@ -23,31 +23,25 @@
 #include <stdint.h>
 
 #include "common/axis.h"
+#include "pg/pg.h"
 
 #define DYN_NOTCH_COUNT_MAX 5
 
-typedef struct gyroAnalyseState_s {
+typedef struct dynNotchConfig_s
+{
+    uint16_t dyn_notch_min_hz;
+    uint16_t dyn_notch_max_hz;
+    uint16_t dyn_notch_q;
+    uint8_t  dyn_notch_count;
 
-    // accumulator for oversampled data => no aliasing and less noise
-    uint8_t sampleCount;
-    uint8_t maxSampleCount;
-    float maxSampleCountRcp;
-    float oversampledGyroAccumulator[XYZ_AXIS_COUNT];
+} dynNotchConfig_t;
 
-    // downsampled gyro data for frequency analysis
-    float downsampledGyroData[XYZ_AXIS_COUNT];
+PG_DECLARE(dynNotchConfig_t, dynNotchConfig);
 
-    // update state machine step information
-    uint8_t updateTicks;
-    uint8_t updateStep;
-    uint8_t updateAxis;
-
-    float centerFreq[XYZ_AXIS_COUNT][DYN_NOTCH_COUNT_MAX];
-
-} gyroAnalyseState_t;
-
-void gyroDataAnalyseInit(gyroAnalyseState_t *state, const uint32_t targetLooptimeUs);
-void gyroDataAnalysePush(gyroAnalyseState_t *state, const int axis, const float sample);
-void gyroDataAnalyse(gyroAnalyseState_t *state);
+void dynNotchInit(const dynNotchConfig_t *config, const uint32_t targetLooptimeUs);
+void dynNotchPush(const int axis, const float sample);
+void dynNotchUpdate(void);
+float dynNotchFilter(const int axis, float value);
+bool isDynamicFilterActive(void);
 uint16_t getMaxFFT(void);
 void resetMaxFFT(void);

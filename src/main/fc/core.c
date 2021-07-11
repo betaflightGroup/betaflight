@@ -61,8 +61,8 @@
 #include "flight/failsafe.h"
 #include "flight/gps_rescue.h"
 
-#if defined(USE_GYRO_DATA_ANALYSE)
-#include "flight/gyroanalyse.h"
+#if defined(USE_DYN_NOTCH_FILTER)
+#include "flight/dyn_notch_filter.h"
 #endif
 
 #include "flight/imu.h"
@@ -550,7 +550,7 @@ void tryArm(void)
         }
         imuQuaternionHeadfreeOffsetSet();
 
-#if defined(USE_GYRO_DATA_ANALYSE)
+#if defined(USE_DYN_NOTCH_FILTER)
         resetMaxFFT();
 #endif
 

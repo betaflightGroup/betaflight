@@ -660,11 +660,11 @@ const clivalue_t valueTable[] = {
 #ifdef USE_MULTI_GYRO
     { "gyro_to_use",                VAR_UINT8  | HARDWARE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_GYRO }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_to_use) },
 #endif
-#if defined(USE_GYRO_DATA_ANALYSE)
-    { "dyn_notch_count",            VAR_UINT8   | MASTER_VALUE, .config.minmaxUnsigned = { 1, DYN_NOTCH_COUNT_MAX }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, dyn_notch_count) },
-    { "dyn_notch_q",                VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 1, 1000 }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, dyn_notch_q) },
-    { "dyn_notch_min_hz",           VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 60, 250 }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, dyn_notch_min_hz) },
-    { "dyn_notch_max_hz",           VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 200, 1000 }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, dyn_notch_max_hz) },
+#if defined(USE_DYN_NOTCH_FILTER)
+    { "dyn_notch_count",            VAR_UINT8   | MASTER_VALUE, .config.minmaxUnsigned = { 1, DYN_NOTCH_COUNT_MAX }, PG_DYN_NOTCH_CONFIG, offsetof(dynNotchConfig_t, dyn_notch_count) },
+    { "dyn_notch_q",                VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 1, 1000 }, PG_DYN_NOTCH_CONFIG, offsetof(dynNotchConfig_t, dyn_notch_q) },
+    { "dyn_notch_min_hz",           VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 60, 250 }, PG_DYN_NOTCH_CONFIG, offsetof(dynNotchConfig_t, dyn_notch_min_hz) },
+    { "dyn_notch_max_hz",           VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 200, 1000 }, PG_DYN_NOTCH_CONFIG, offsetof(dynNotchConfig_t, dyn_notch_max_hz) },
 #endif
 #ifdef USE_DYN_LPF
     { "dyn_lpf_gyro_min_hz",        VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = { 0, DYN_LPF_FILTER_FREQUENCY_MAX }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, dyn_lpf_gyro_min_hz) },
@@ -1435,7 +1435,7 @@ const clivalue_t valueTable[] = {
     { "osd_stat_max_esc_rpm",       VAR_UINT32  | MASTER_VALUE | MODE_BITSET, .config.bitpos = OSD_STAT_MAX_ESC_RPM,     PG_OSD_CONFIG, offsetof(osdConfig_t, enabled_stats)},
     { "osd_stat_min_link_quality",  VAR_UINT32  | MASTER_VALUE | MODE_BITSET, .config.bitpos = OSD_STAT_MIN_LINK_QUALITY,PG_OSD_CONFIG, offsetof(osdConfig_t, enabled_stats)},
     { "osd_stat_flight_dist",       VAR_UINT32  | MASTER_VALUE | MODE_BITSET, .config.bitpos = OSD_STAT_FLIGHT_DISTANCE, PG_OSD_CONFIG, offsetof(osdConfig_t, enabled_stats)},
-#ifdef USE_GYRO_DATA_ANALYSE
+#ifdef USE_DYN_NOTCH_FILTER
     { "osd_stat_max_fft",           VAR_UINT32  | MASTER_VALUE | MODE_BITSET, .config.bitpos = OSD_STAT_MAX_FFT, PG_OSD_CONFIG, offsetof(osdConfig_t, enabled_stats)},
 #endif
 #ifdef USE_PERSISTENT_STATS

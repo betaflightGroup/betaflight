@@ -466,7 +466,7 @@ static void validateAndFixConfig(void)
     featureDisableImmediate(FEATURE_ESC_SENSOR);
 #endif
 
-#ifndef USE_GYRO_DATA_ANALYSE
+#ifndef USE_DYN_NOTCH_FILTER
     featureDisableImmediate(FEATURE_DYNAMIC_FILTER);
 #endif
 
@@ -670,7 +670,7 @@ void validateAndFixGyroConfig(void)
         }
     }
 
-#ifdef USE_GYRO_DATA_ANALYSE
+#ifdef USE_DYN_NOTCH_FILTER
     // Disable dynamic filter if gyro loop is less than 2KHz
     const uint32_t configuredLooptime = (gyro.sampleRateHz > 0) ? (pidConfig()->pid_process_denom * 1e6 / gyro.sampleRateHz) : 0;
     if (configuredLooptime > DYNAMIC_FILTER_MAX_SUPPORTED_LOOP_TIME) {

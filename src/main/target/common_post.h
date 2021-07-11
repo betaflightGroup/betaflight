@@ -302,7 +302,7 @@
 
 #if defined(SIMULATOR_BUILD) || defined(UNIT_TEST)
 // This feature uses 'arm_math.h', which does not exist for x86.
-#undef USE_GYRO_DATA_ANALYSE
+#undef USE_DYN_NOTCH_FILTER
 #endif
 
 #ifndef USE_CMS

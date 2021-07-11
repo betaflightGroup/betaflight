@@ -28,8 +28,8 @@
 #include "drivers/bus.h"
 #include "drivers/sensor.h"
 
-#ifdef USE_GYRO_DATA_ANALYSE
-#include "flight/gyroanalyse.h"
+#ifdef USE_DYN_NOTCH_FILTER
+#include "flight/dyn_notch_filter.h"
 #endif
 
 #include "flight/pid.h"
@@ -108,14 +108,6 @@ typedef struct gyro_s {
 
     filterApplyFnPtr notchFilter2ApplyFn;
     biquadFilter_t notchFilter2[XYZ_AXIS_COUNT];
-
-#ifdef USE_GYRO_DATA_ANALYSE
-    filterApplyFnPtr notchFilterDynApplyFn;
-    biquadFilter_t notchFilterDyn[XYZ_AXIS_COUNT][DYN_NOTCH_COUNT_MAX];
-    uint8_t notchFilterDynCount;
-
-    gyroAnalyseState_t gyroAnalyseState;
-#endif
 
     uint16_t accSampleRateHz;
     uint8_t gyroToUse;
@@ -198,11 +190,6 @@ typedef struct gyroConfig_s {
     uint16_t dyn_lpf_gyro_min_hz;
     uint16_t dyn_lpf_gyro_max_hz;
 
-    uint16_t dyn_notch_max_hz;
-    uint8_t dyn_notch_count;
-    uint16_t dyn_notch_q;
-    uint16_t dyn_notch_min_hz;
-
     uint8_t gyro_filter_debug_axis;
 
     uint8_t gyrosDetected; // What gyros should detection be attempted for on startup. Automatically set on first startup.
@@ -230,7 +217,4 @@ void dynLpfGyroUpdate(float throttle);
 #endif
 #ifdef USE_YAW_SPIN_RECOVERY
 void initYawSpinRecovery(int maxYawRate);
-#endif
-#ifdef USE_GYRO_DATA_ANALYSE
-bool isDynamicFilterActive(void);
 #endif
