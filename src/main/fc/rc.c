@@ -69,6 +69,7 @@ static bool reverseMotors = false;
 static applyRatesFn *applyRates;
 static uint16_t currentRxRefreshRate;
 static bool isRxDataNew = false;
+static bool isRxRateValid = false;
 static float rcCommandDivider = 500.0f;
 static float rcCommandYawDivider = 500.0f;
 
@@ -82,14 +83,15 @@ enum {
 };
 
 #ifdef USE_RC_SMOOTHING_FILTER
+#define RC_SMOOTHING_CUTOFF_MIN_HZ              15    // Minimum rc smoothing cutoff frequency
 #define RC_SMOOTHING_FILTER_STARTUP_DELAY_MS    5000  // Time to wait after power to let the PID loop stabilize before starting average frame rate calculation
 #define RC_SMOOTHING_FILTER_TRAINING_SAMPLES    50    // Number of rx frame rate samples to average during initial training
 #define RC_SMOOTHING_FILTER_RETRAINING_SAMPLES  20    // Number of rx frame rate samples to average during frame rate changes
 #define RC_SMOOTHING_FILTER_TRAINING_DELAY_MS   1000  // Additional time to wait after receiving first valid rx frame before initial training starts
 #define RC_SMOOTHING_FILTER_RETRAINING_DELAY_MS 2000  // Guard time to wait after retraining to prevent retraining again too quickly
 #define RC_SMOOTHING_RX_RATE_CHANGE_PERCENT     20    // Look for samples varying this much from the current detected frame rate to initiate retraining
-#define RC_SMOOTHING_RX_RATE_MIN_US             1000  // 1ms
-#define RC_SMOOTHING_RX_RATE_MAX_US             50000 // 50ms or 20hz
+#define RC_SMOOTHING_RX_RATE_MIN_US             950   // 0.950ms to fit 1kHz without an issue
+#define RC_SMOOTHING_RX_RATE_MAX_US             65500 // 65.5ms or 15.26hz
 #define RC_SMOOTHING_FEEDFORWARD_INITIAL_HZ     100 // The value to use for "auto" when interpolated feedforward is enabled
 
 static FAST_DATA_ZERO_INIT rcSmoothingFilter_t rcSmoothingData;
@@ -135,6 +137,11 @@ float getRawSetpoint(int axis)
 float getRcCommandDelta(int axis)
 {
     return rcCommandDelta[axis];
+}
+
+bool getRxRateValid(void)
+{
+    return isRxRateValid;
 }
 #endif
 
@@ -293,7 +300,8 @@ void updateRcRefreshRate(timeUs_t currentTimeUs)
         refreshRateUs = cmpTimeUs(currentTimeUs, lastRxTimeUs); // calculate a delta here if not supplied by the protocol
     }
     lastRxTimeUs = currentTimeUs;
-    currentRxRefreshRate = constrain(refreshRateUs, 1000, 30000);
+    isRxRateValid = (refreshRateUs >= RC_SMOOTHING_RX_RATE_MIN_US && refreshRateUs <= RC_SMOOTHING_RX_RATE_MAX_US);
+    currentRxRefreshRate = constrain(refreshRateUs, RC_SMOOTHING_RX_RATE_MIN_US, RC_SMOOTHING_RX_RATE_MAX_US);
 }
 
 uint16_t getCurrentRxRefreshRate(void)
@@ -315,13 +323,6 @@ FAST_CODE_NOINLINE int calcAutoSmoothingCutoff(int avgRxFrameTimeUs, uint8_t aut
     }
 }
 
-// Preforms a reasonableness check on the rx frame time to avoid bad data
-// skewing the average.
-static FAST_CODE bool rcSmoothingRxRateValid(int currentRxRefreshRate)
-{
-    return (currentRxRefreshRate >= RC_SMOOTHING_RX_RATE_MIN_US && currentRxRefreshRate <= RC_SMOOTHING_RX_RATE_MAX_US);
-}
-
 // Initialize or update the filters base on either the manually selected cutoff, or
 // the auto-calculated cutoff frequency based on detected rx frame rate.
 FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *smoothingData)
@@ -330,10 +331,10 @@ FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *smoothi
     uint16_t oldCutoff = smoothingData->setpointCutoffFrequency;
 
     if (smoothingData->setpointCutoffSetting == 0) {
-        smoothingData->setpointCutoffFrequency = calcAutoSmoothingCutoff(smoothingData->averageFrameTimeUs, smoothingData->autoSmoothnessFactorSetpoint);
+        smoothingData->setpointCutoffFrequency = MAX(RC_SMOOTHING_CUTOFF_MIN_HZ, calcAutoSmoothingCutoff(smoothingData->averageFrameTimeUs, smoothingData->autoSmoothnessFactorSetpoint));
     }
     if (smoothingData->throttleCutoffSetting == 0) {
-        smoothingData->throttleCutoffFrequency = calcAutoSmoothingCutoff(smoothingData->averageFrameTimeUs, smoothingData->autoSmoothnessFactorThrottle);
+        smoothingData->throttleCutoffFrequency = MAX(RC_SMOOTHING_CUTOFF_MIN_HZ, calcAutoSmoothingCutoff(smoothingData->averageFrameTimeUs, smoothingData->autoSmoothnessFactorThrottle));
     }
 
 
@@ -359,7 +360,7 @@ FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *smoothi
     // update or initialize the FF filter
     oldCutoff = smoothingData->feedforwardCutoffFrequency;
     if (rcSmoothingData.ffCutoffSetting == 0) {
-        smoothingData->feedforwardCutoffFrequency = calcAutoSmoothingCutoff(smoothingData->averageFrameTimeUs, smoothingData->autoSmoothnessFactorSetpoint);
+        smoothingData->feedforwardCutoffFrequency = MAX(RC_SMOOTHING_CUTOFF_MIN_HZ, calcAutoSmoothingCutoff(smoothingData->averageFrameTimeUs, smoothingData->autoSmoothnessFactorSetpoint));
     }
     if (!smoothingData->filterInitialized) {
         pidInitFeedforwardLpf(smoothingData->feedforwardCutoffFrequency, smoothingData->debugAxis);
@@ -457,7 +458,7 @@ static FAST_CODE void processRcSmoothingFilter(void)
             // If the filter cutoffs in auto mode, and we have good rx data, then determine the average rx frame rate
             // and use that to calculate the filter cutoff frequencies
             if ((currentTimeMs > RC_SMOOTHING_FILTER_STARTUP_DELAY_MS) && (targetPidLooptime > 0)) { // skip during FC initialization
-                if (rxIsReceivingSignal()  && rcSmoothingRxRateValid(currentRxRefreshRate)) {
+                if (rxIsReceivingSignal() && isRxRateValid) {
 
                     // set the guard time expiration if it's not set
                     if (validRxFrameTimeMs == 0) {

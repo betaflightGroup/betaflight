@@ -88,12 +88,22 @@ FAST_CODE_NOINLINE float feedforwardApply(int axis, bool newRcFrame, feedforward
 
         // interpolate setpoint if necessary
         if (rcCommandDelta == 0.0f) {
-            if (prevDuplicatePacket[axis] == false && fabsf(setpoint) < 0.98f * ffMaxRate[axis]) {
-                // first duplicate after movement
-                // interpolate rawSetpoint by adding (speed + acceleration) * attenuator to previous setpoint
-                setpoint = prevSetpoint[axis] + (prevSetpointSpeed[axis] + prevAcceleration[axis]) * ffAttenuator * rxInterval;
-                // recalculate setpointSpeed and (later) acceleration from this new setpoint value
-                setpointSpeed = (setpoint - prevSetpoint[axis]) * rxRate;
+            if (getRxRateValid() && prevDuplicatePacket[axis] == false) {
+                // first duplicate after movement, interpolate setpoint and use previous acceleration
+                // don't interpolate if sticks close to centre or max, interpolate jitter signals less than larger ones
+                if (fabsf(setpoint) > 0.02f * ffMaxRate[axis] && fabsf(setpoint) < 0.95f * ffMaxRate[axis]) {
+                    // setpoint interpolation includes previous acceleration and attenuation
+                    setpoint = prevSetpoint[axis] + (prevSetpointSpeed[axis] + prevAcceleration[axis]) * ffAttenuator * rxInterval;
+                    // don't interpolate past max
+                    setpoint = fmin(setpoint, ffMaxRate[axis]);
+                    // recalculate speed and acceleration
+                    setpointSpeed = (setpoint - prevSetpoint[axis]) * rxRate;
+                    setpointAcceleration = (setpointSpeed - prevSetpointSpeed[axis]);
+                }
+            } else {
+                // force to zero
+                setpointSpeed = 0.0f;
+                setpointAcceleration = 0.0f;
             }
             prevDuplicatePacket[axis] = true;
         } else {
