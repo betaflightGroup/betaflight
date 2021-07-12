@@ -161,6 +161,7 @@ typedef enum {
     OSD_TOTAL_FLIGHTS,
     OSD_UP_DOWN_REFERENCE,
     OSD_TX_UPLINK_POWER,
+    OSD_TOTAL_PACKS,
     OSD_ITEM_COUNT // MUST BE LAST
 } osd_items_e;
 
@@ -200,6 +201,7 @@ typedef enum {
     OSD_STAT_TOTAL_TIME,
     OSD_STAT_TOTAL_DIST,
     OSD_STAT_MIN_RSSI_DBM,
+    OSD_STAT_TOTAL_PACKS,
     OSD_STAT_COUNT // MUST BE LAST
 } osd_stats_e;
 
