@@ -36,6 +36,7 @@
 #include "pg/stats.h"
 
 uint32_t stats_total_flights;
+uint32_t stats_total_packs;
 uint32_t stats_total_time_s;
 uint32_t stats_total_dist_m;
 int8_t stats_min_armed_time_s;
@@ -45,6 +46,7 @@ static const void *cmsx_PersistentStats_onEnter(displayPort_t *pDisp)
     UNUSED(pDisp);
 
     stats_total_flights = statsConfig()->stats_total_flights;
+    stats_total_packs = statsConfig()->stats_total_packs;
     stats_total_time_s = statsConfig()->stats_total_time_s;
     stats_total_dist_m = statsConfig()->stats_total_dist_m;
     stats_min_armed_time_s = statsConfig()->stats_min_armed_time_s;
@@ -58,6 +60,7 @@ static const void *cmsx_PersistentStats_onExit(displayPort_t *pDisp, const OSD_E
     UNUSED(self);
 
     statsConfigMutable()->stats_total_flights = stats_total_flights;
+    statsConfigMutable()->stats_total_packs = stats_total_packs;
     statsConfigMutable()->stats_total_time_s = stats_total_time_s;
     statsConfigMutable()->stats_total_dist_m = stats_total_dist_m;
     statsConfigMutable()->stats_min_armed_time_s = stats_min_armed_time_s;
@@ -70,6 +73,7 @@ static const void *cmsx_ResetStats(displayPort_t *pDisplay, const void *ptr)
     UNUSED(ptr);
 
     stats_total_flights = 0;
+    stats_total_packs = 0;
     stats_total_time_s = 0;
     stats_total_dist_m = 0;
 
@@ -83,6 +87,7 @@ static const OSD_Entry cmsx_menuPersistentStatsEntries[] =
 {
     {"-- PERSISTENT STATS --", OME_Label, NULL, NULL, 0},
     {"FLIGHTS", OME_UINT32, NULL, &(OSD_UINT32_t){ &stats_total_flights, 0, UINT32_MAX, 1}, 0},
+    {"PACKS", OME_UINT32, NULL, &(OSD_UINT32_t){ &stats_total_packs, 0, UINT32_MAX, 1}, 0},
     {"TIME(sec)", OME_UINT32, NULL, &(OSD_UINT32_t){ &stats_total_time_s, 0, UINT32_MAX, 1}, 0},
     {"DIST(m)", OME_UINT32, NULL, &(OSD_UINT32_t){ &stats_total_dist_m, 0, UINT32_MAX, 1}, 0},
     {"RESET STATS", OME_Funcall, cmsx_ResetStats, NULL, 0},

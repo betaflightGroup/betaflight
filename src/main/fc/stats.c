@@ -40,6 +40,8 @@
 static timeMs_t arm_millis;
 static uint32_t arm_distance_cm;
 
+static bool statsNotSavedYet = true;
+
 static bool saveRequired = false;
 
 #ifdef USE_GPS
@@ -91,6 +93,10 @@ void statsOnDisarm(void)
             statsConfigMutable()->stats_total_flights += 1;    // arm / flight counter
             statsConfigMutable()->stats_total_time_s += dtS;
             statsConfigMutable()->stats_total_dist_m += (DISTANCE_FLOWN_CM - arm_distance_cm) / 100;
+                if (statsNotSavedYet) {
+                  statsConfigMutable()->stats_total_packs += 1;    // packs counter
+                  statsNotSavedYet = false;
+                }
 
             saveRequired = true;
         }

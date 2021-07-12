@@ -145,7 +145,7 @@ escSensorData_t *osdEscDataCombined;
 
 STATIC_ASSERT(OSD_POS_MAX == OSD_POS(31,31), OSD_POS_MAX_incorrect);
 
-PG_REGISTER_WITH_RESET_FN(osdConfig_t, osdConfig, PG_OSD_CONFIG, 9);
+PG_REGISTER_WITH_RESET_FN(osdConfig_t, osdConfig, PG_OSD_CONFIG, 10);
 
 PG_REGISTER_WITH_RESET_FN(osdElementConfig_t, osdElementConfig, PG_OSD_ELEMENT_CONFIG, 0);
 
@@ -182,6 +182,7 @@ const osd_stats_e osdStatsDisplayOrder[OSD_STAT_COUNT] = {
     OSD_STAT_MAX_FFT,
     OSD_STAT_MIN_RSSI_DBM,
     OSD_STAT_TOTAL_FLIGHTS,
+    OSD_STAT_TOTAL_PACKS,
     OSD_STAT_TOTAL_TIME,
     OSD_STAT_TOTAL_DIST,
 };
@@ -739,7 +740,7 @@ static bool osdDisplayStat(int statistic, uint8_t displayRow)
         osdDisplayStatisticLabel(displayRow, osdConfig()->stat_show_cell_value ? "END AVG CELL" : "END BATTERY", buff);
         return true;
 
-    case OSD_STAT_BATTERY: 
+    case OSD_STAT_BATTERY:
         {
             const uint16_t statsVoltage = getStatsVoltage();
             osdPrintFloat(buff, SYM_NONE, statsVoltage / 100.0f, "", 2, true, SYM_VOLT);
@@ -849,6 +850,11 @@ static bool osdDisplayStat(int statistic, uint8_t displayRow)
     case OSD_STAT_TOTAL_FLIGHTS:
         itoa(statsConfig()->stats_total_flights, buff, 10);
         osdDisplayStatisticLabel(displayRow, "TOTAL FLIGHTS", buff);
+        return true;
+
+    case OSD_STAT_TOTAL_PACKS:
+        itoa(statsConfig()->stats_total_packs, buff, 10);
+        osdDisplayStatisticLabel(displayRow, "TOTAL PACKS", buff);
         return true;
 
     case OSD_STAT_TOTAL_TIME: {
