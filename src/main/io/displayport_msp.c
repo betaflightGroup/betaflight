@@ -79,8 +79,10 @@ static int release(displayPort_t *displayPort)
     return output(displayPort, MSP_DISPLAYPORT, subcmd, sizeof(subcmd));
 }
 
-static int clearScreen(displayPort_t *displayPort)
+static int clearScreen(displayPort_t *displayPort, displayClearOption_e options)
 {
+    UNUSED(options);
+
     uint8_t subcmd[] = { 2 };
 
     return output(displayPort, MSP_DISPLAYPORT, subcmd, sizeof(subcmd));

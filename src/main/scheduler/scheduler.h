@@ -42,6 +42,7 @@ typedef enum {
     TASK_PRIORITY_MEDIUM = 3,
     TASK_PRIORITY_MEDIUM_HIGH = 4,
     TASK_PRIORITY_HIGH = 5,
+    TASK_PRIORITY_VERY_HIGH = 6,
     TASK_PRIORITY_MAX = 255
 } taskPriority_e;
 
@@ -121,6 +122,9 @@ typedef enum {
 #endif
 #ifdef USE_OSD
     TASK_OSD,
+#endif
+#ifdef USE_PIXEL_OSD
+    TASK_PIXEL_OSD_VIDEO,
 #endif
 #ifdef USE_BST
     TASK_BST_MASTER_PROCESS,

@@ -71,11 +71,13 @@
 #include "drivers/sdcard.h"
 #include "drivers/sdio.h"
 #include "drivers/sound_beeper.h"
+#include "drivers/spracingpixelosd/spracing_pixel_osd.h"
 #include "drivers/system.h"
 #include "drivers/time.h"
 #include "drivers/timer.h"
 #include "drivers/transponder_ir.h"
 #include "drivers/usb_io.h"
+
 #ifdef USE_USB_MSC
 #include "drivers/usb_msc.h"
 #endif
@@ -103,6 +105,7 @@
 #include "io/dashboard.h"
 #include "io/displayport_frsky_osd.h"
 #include "io/displayport_max7456.h"
+#include "io/displayport_spracing_pixel_osd.h"
 #include "io/displayport_msp.h"
 #include "io/flashfs.h"
 #include "io/gimbal.h"
@@ -705,6 +708,11 @@ void init(void)
     cameraControlInit();
 #endif
 
+#ifdef USE_SPRACING_PIXEL_OSD
+    // IO pins for OSD must be reserved and initialized, even if the OSD driver is not used/enabled.
+    spracingPixelOSDIOInit();
+#endif
+
 #ifdef USE_ADC
     adcInit(adcConfig());
 #endif
@@ -962,6 +970,16 @@ void init(void)
             // If there is a max7456 chip for the OSD configured and detectd then use it.
             if (max7456DisplayPortInit(vcdProfile(), &osdDisplayPort) || device == OSD_DISPLAYPORT_DEVICE_MAX7456) {
                 osdDisplayPortDevice = OSD_DISPLAYPORT_DEVICE_MAX7456;
+                break;
+            }
+            FALLTHROUGH;
+#endif
+
+#if defined(USE_SPRACING_PIXEL_OSD)
+        case OSD_DISPLAYPORT_DEVICE_SPRACING_PIXEL_OSD:
+            osdDisplayPort = spracingPixelOSDDisplayPortInit(vcdProfile());
+            if (osdDisplayPort || device == OSD_DISPLAYPORT_DEVICE_SPRACING_PIXEL_OSD) {
+                osdDisplayPortDevice = OSD_DISPLAYPORT_DEVICE_SPRACING_PIXEL_OSD;
                 break;
             }
             FALLTHROUGH;

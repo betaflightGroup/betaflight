@@ -60,9 +60,10 @@ static int release(displayPort_t *displayPort)
     return 0;
 }
 
-static int clearScreen(displayPort_t *displayPort)
+static int clearScreen(displayPort_t *displayPort, displayClearOption_e options)
 {
     UNUSED(displayPort);
+    UNUSED(options);
 
     max7456Invert(displayPortProfileMax7456()->invert);
     max7456Brightness(displayPortProfileMax7456()->blackBrightness, displayPortProfileMax7456()->whiteBrightness);
@@ -86,12 +87,12 @@ static int screenSize(const displayPort_t *displayPort)
     return maxScreenSize;
 }
 
-static int writeString(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t attr, const char *s)
+static int writeString(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t attr, const char *text)
 {
     UNUSED(displayPort);
     UNUSED(attr);
 
-    max7456Write(x, y, s);
+    max7456Write(x, y, text);
 
     return 0;
 }

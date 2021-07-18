@@ -356,7 +356,7 @@ static const void *cmsx_max7456Update(displayPort_t *pDisp, const void *self)
     displayPortProfileMax7456Mutable()->blackBrightness = displayPortProfileMax7456_blackBrightness;
     displayPortProfileMax7456Mutable()->whiteBrightness = displayPortProfileMax7456_whiteBrightness;
 
-    displayClearScreen(pDisp);
+    displayClearScreen(pDisp, DISPLAY_CLEAR_WAIT);
 
     return NULL;
 }

@@ -41,6 +41,7 @@
 
 #include "build/build_config.h"
 #include "build/version.h"
+#include "build/debug.h"
 
 #include "cms/cms.h"
 
@@ -52,6 +53,8 @@
 #include "common/unit.h"
 
 #include "config/feature.h"
+
+#include "drivers/spracingpixelosd/framebuffer.h"
 
 #include "drivers/display.h"
 #include "drivers/dshot.h"
@@ -139,9 +142,16 @@ static uint8_t osdStatsRowCount = 0;
 
 static bool backgroundLayerSupported = false;
 
+#ifdef USE_CANVAS
+static displayCanvas_t osdCanvas;
+static bool canvasSupported = false;
+#endif
+
 #ifdef USE_ESC_SENSOR
 escSensorData_t *osdEscDataCombined;
 #endif
+
+#define DEBUG_FRAMEBUFFER_ERASE_WAIT
 
 STATIC_ASSERT(OSD_POS_MAX == OSD_POS(31,31), OSD_POS_MAX_incorrect);
 
@@ -277,8 +287,10 @@ void changeOsdProfileIndex(uint8_t profileIndex)
 {
     if (profileIndex <= OSD_PROFILE_COUNT) {
         osdConfigMutable()->osdProfileIndex = profileIndex;
+        displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
         setOsdProfile(profileIndex);
         osdAnalyzeActiveElements();
+        displayCommitTransaction(osdDisplayPort);
     }
 }
 #endif
@@ -287,27 +299,6 @@ void osdAnalyzeActiveElements(void)
 {
     osdAddActiveElements();
     osdDrawActiveElementsBackground(osdDisplayPort);
-}
-
-static void osdDrawElements(void)
-{
-    // Hide OSD when OSDSW mode is active
-    if (IS_RC_MODE_ACTIVE(BOXOSD)) {
-        displayClearScreen(osdDisplayPort);
-        return;
-    }
-
-    if (backgroundLayerSupported) {
-        // Background layer is supported, overlay it onto the foreground
-        // so that we only need to draw the active parts of the elements.
-        displayLayerCopy(osdDisplayPort, DISPLAYPORT_LAYER_FOREGROUND, DISPLAYPORT_LAYER_BACKGROUND);
-    } else {
-        // Background layer not supported, just clear the foreground in preparation
-        // for drawing the elements including their backgrounds.
-        displayClearScreen(osdDisplayPort);
-    }
-
-    osdDrawActiveElements(osdDisplayPort);
 }
 
 const uint16_t osdTimerDefault[OSD_TIMER_COUNT] = {
@@ -428,7 +419,7 @@ static void osdCompleteInitialization(void)
     displayLayerSelect(osdDisplayPort, DISPLAYPORT_LAYER_FOREGROUND);
 
     displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
-    displayClearScreen(osdDisplayPort);
+    displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_WAIT);
 
     osdDrawLogo(3, 1);
 
@@ -453,7 +444,15 @@ static void osdCompleteInitialization(void)
     setOsdProfile(osdConfig()->osdProfileIndex);
 #endif
 
+#ifdef USE_CANVAS
+    canvasSupported = displayGetCanvas(&osdCanvas, osdDisplayPort);
+    if (canvasSupported) {
+        osdCanvasInit(&osdCanvas);
+    }
+#endif
+
     osdElementsInit(backgroundLayerSupported);
+
     osdAnalyzeActiveElements();
     displayCommitTransaction(osdDisplayPort);
 
@@ -903,25 +902,11 @@ static uint8_t osdShowStats(int statsRowCount)
     return top;
 }
 
-static void osdRefreshStats(void)
-{
-    displayClearScreen(osdDisplayPort);
-    if (osdStatsRowCount == 0) {
-        // No stats row count has been set yet.
-        // Go through the logic one time to determine how many stats are actually displayed.
-        osdStatsRowCount = osdShowStats(0);
-        // Then clear the screen and commence with normal stats display which will
-        // determine if the heading should be displayed and also center the content vertically.
-        displayClearScreen(osdDisplayPort);
-    }
-    osdShowStats(osdStatsRowCount);
-}
-
 static timeDelta_t osdShowArmed(void)
 {
     timeDelta_t ret;
 
-    displayClearScreen(osdDisplayPort);
+    displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_WAIT);
 
     if ((osdConfig()->logo_on_arming == OSD_LOGO_ARMING_ON) || ((osdConfig()->logo_on_arming == OSD_LOGO_ARMING_FIRST) && !ARMING_FLAG(WAS_EVER_ARMED))) {
         osdDrawLogo(3, 1);
@@ -934,107 +919,288 @@ static timeDelta_t osdShowArmed(void)
     return ret;
 }
 
+enum state {
+    INIT,
+    PREPARE_CYCLE,
+    IDLE,
+    PREPARE_SCREEN_FOR_ELEMENTS,
+    RENDERING_ELEMENTS,
+    PREPARE_SCREEN_FOR_INITIAL_STATS,
+    RENDER_INITIAL_STATS,
+    PREPARE_SCREEN_FOR_STATS_REFRESH,
+    PREPARE_SCREEN_FOR_STATS,
+    RENDER_STATS,
+    END
+};
+
+static bool osdUpdateRequested = false;
+static uint8_t osdState = INIT;
+bool osdStatsVisible = false;
+bool osdRefreshNow = false;
+
+static timeUs_t osdStatsRefreshTimeUs;
+
 STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
 {
     static timeUs_t lastTimeUs = 0;
     static bool osdStatsEnabled = false;
-    static bool osdStatsVisible = false;
-    static timeUs_t osdStatsRefreshTimeUs;
 
-    // detect arm/disarm
-    if (armState != ARMING_FLAG(ARMED)) {
-        if (ARMING_FLAG(ARMED)) {
-            osdStatsEnabled = false;
-            osdStatsVisible = false;
-            osdResetStats();
-            resumeRefreshAt = osdShowArmed() + currentTimeUs;
-        } else if (isSomeStatEnabled()
-                   && !suppressStatsDisplay
-                   && (!(getArmingDisableFlags() & (ARMING_DISABLED_RUNAWAY_TAKEOFF | ARMING_DISABLED_CRASH_DETECTED))
-                       || !VISIBLE(osdElementConfig()->item_pos[OSD_WARNINGS]))) { // suppress stats if runaway takeoff triggered disarm and WARNINGS element is visible
-            osdStatsEnabled = true;
-            resumeRefreshAt = currentTimeUs + (60 * REFRESH_1S);
-            stats.end_voltage = getStatsVoltage();
-            osdStatsRowCount = 0; // reset to 0 so it will be recalculated on the next stats refresh
+    static bool clearScreen = false;
+    uint8_t nextState = osdState;
+
+    osdUpdateRequested = false;
+
+    switch(osdState) {
+    case INIT:
+    case PREPARE_CYCLE: {
+            osdRefreshNow = false;
+            clearScreen = false;
+            nextState = IDLE;
         }
+        break;
+    case IDLE: {
 
-        armState = ARMING_FLAG(ARMED);
-    }
+            // detect arm/disarm
+            if (armState != ARMING_FLAG(ARMED)) {
+                if (ARMING_FLAG(ARMED)) {
+                    osdStatsEnabled = false;
+                    osdStatsVisible = false;
+                    osdResetStats();
+                    resumeRefreshAt = osdShowArmed() + currentTimeUs;
+                } else if (isSomeStatEnabled()
+                           && !suppressStatsDisplay
+                           && (!(getArmingDisableFlags() & (ARMING_DISABLED_RUNAWAY_TAKEOFF | ARMING_DISABLED_CRASH_DETECTED))
+                               || !VISIBLE(osdElementConfig()->item_pos[OSD_WARNINGS]))) { // suppress stats if runaway takeoff triggered disarm and WARNINGS element is visible
+                    osdStatsEnabled = true;
+                    resumeRefreshAt = currentTimeUs + (60 * REFRESH_1S);
+                    stats.end_voltage = getStatsVoltage();
+                }
+
+                armState = ARMING_FLAG(ARMED);
+            }
 
 
-    if (ARMING_FLAG(ARMED)) {
-        osdUpdateStats();
-        timeUs_t deltaT = currentTimeUs - lastTimeUs;
-        osdFlyTime += deltaT;
-        stats.armed_time += deltaT;
-    } else if (osdStatsEnabled) {  // handle showing/hiding stats based on OSD disable switch position
-        if (displayIsGrabbed(osdDisplayPort)) {
-            osdStatsEnabled = false;
-            resumeRefreshAt = 0;
-            stats.armed_time = 0;
-        } else {
-            if (IS_RC_MODE_ACTIVE(BOXOSD) && osdStatsVisible) {
-                osdStatsVisible = false;
-                displayClearScreen(osdDisplayPort);
-            } else if (!IS_RC_MODE_ACTIVE(BOXOSD)) {
-                if (!osdStatsVisible) {
-                    osdStatsVisible = true;
+            if (ARMING_FLAG(ARMED)) {
+                osdUpdateStats();
+                timeUs_t deltaT = currentTimeUs - lastTimeUs;
+                osdFlyTime += deltaT;
+                stats.armed_time += deltaT;
+            } else if (osdStatsEnabled) {  // handle showing/hiding stats based on OSD disable switch position
+                if (displayIsGrabbed(osdDisplayPort)) {
+                    osdStatsEnabled = false;
+                    resumeRefreshAt = 0;
+                    stats.armed_time = 0;
+                } else {
+                    if (IS_RC_MODE_ACTIVE(BOXOSD) && osdStatsVisible) {
+                        osdStatsVisible = false;
+                        clearScreen = true;
+                    } else if (!IS_RC_MODE_ACTIVE(BOXOSD)) {
+
+                        bool wasVisible = osdStatsVisible;
+                        if (!osdStatsVisible) {
+                            osdStatsVisible = true;
+                            osdStatsRefreshTimeUs = 0;
+
+                            nextState = PREPARE_SCREEN_FOR_INITIAL_STATS;
+                        }
+                        osdRefreshNow = currentTimeUs >= osdStatsRefreshTimeUs;
+                        if (osdRefreshNow && wasVisible) {
+                            nextState = PREPARE_SCREEN_FOR_STATS_REFRESH;
+                        }
+                    }
+                }
+            }
+            lastTimeUs = currentTimeUs;
+
+            if (resumeRefreshAt) {
+                if (cmp32(currentTimeUs, resumeRefreshAt) < 0) {
+                    // in timeout period, check sticks for activity to resume display.
+                    if (IS_HI(THROTTLE) || IS_HI(PITCH)) {
+                        resumeRefreshAt = currentTimeUs;
+                    }
+                    displayHeartbeat(osdDisplayPort);
+                    break;
+                } else {
+                    clearScreen = true;
+                    resumeRefreshAt = 0;
+                    osdStatsEnabled = false;
                     osdStatsRefreshTimeUs = 0;
-                }
-                if (currentTimeUs >= osdStatsRefreshTimeUs) {
-                    osdStatsRefreshTimeUs = currentTimeUs + REFRESH_1S;
-                    osdRefreshStats();
+                    stats.armed_time = 0;
                 }
             }
+
+            nextState = PREPARE_SCREEN_FOR_ELEMENTS;
         }
-    }
-    lastTimeUs = currentTimeUs;
+        break;
 
-    displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
+    case PREPARE_SCREEN_FOR_ELEMENTS: {
 
-    if (resumeRefreshAt) {
-        if (cmp32(currentTimeUs, resumeRefreshAt) < 0) {
-            // in timeout period, check sticks for activity to resume display.
-            if (IS_HI(THROTTLE) || IS_HI(PITCH)) {
-                resumeRefreshAt = currentTimeUs;
-            }
-            displayHeartbeat(osdDisplayPort);
-            return;
-        } else {
-            displayClearScreen(osdDisplayPort);
-            resumeRefreshAt = 0;
-            osdStatsEnabled = false;
-            stats.armed_time = 0;
-        }
-    }
-
+            displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
 #ifdef USE_ESC_SENSOR
-    if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
-        osdEscDataCombined = getEscSensorData(ESC_SENSOR_COMBINED);
-    }
+            if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
+                osdEscDataCombined = getEscSensorData(ESC_SENSOR_COMBINED);
+            }
 #endif
 
 #if defined(USE_ACC)
-    if (sensors(SENSOR_ACC)
-       && (VISIBLE(osdElementConfig()->item_pos[OSD_G_FORCE]) || osdStatGetState(OSD_STAT_MAX_G_FORCE))) {
-            // only calculate the G force if the element is visible or the stat is enabled
-        for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-            const float a = accAverage[axis];
-            osdGForce += a * a;
-        }
-        osdGForce = sqrtf(osdGForce) * acc.dev.acc_1G_rec;
-    }
+            if (sensors(SENSOR_ACC)
+               && (VISIBLE(osdElementConfig()->item_pos[OSD_G_FORCE]) || osdStatGetState(OSD_STAT_MAX_G_FORCE))) {
+                    // only calculate the G force if the element is visible or the stat is enabled
+                for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
+                    const float a = accAverage[axis];
+                    osdGForce += a * a;
+                }
+                osdGForce = sqrtf(osdGForce) * acc.dev.acc_1G_rec;
+            }
 #endif
 
 #ifdef USE_CMS
-    if (!displayIsGrabbed(osdDisplayPort))
+            if (!displayIsGrabbed(osdDisplayPort))
 #endif
-    {
-        osdUpdateAlarms();
-        osdDrawElements();
-        displayHeartbeat(osdDisplayPort);
+            {
+                osdUpdateAlarms();
+
+                if (IS_RC_MODE_ACTIVE(BOXOSD)) {
+                    clearScreen = true;
+                    nextState = END;
+                } else {
+                    if (backgroundLayerSupported) {
+                        // Background layer is supported, overlay it onto the foreground
+                        // so that we only need to draw the active parts of the elements.
+                        displayLayerCopy(osdDisplayPort, DISPLAYPORT_LAYER_FOREGROUND, DISPLAYPORT_LAYER_BACKGROUND);
+                    } else {
+                        // Background layer not supported, just clear the foreground in preparation
+                        // for drawing the elements including their backgrounds.
+                        clearScreen = true;
+                    }
+                    nextState = RENDERING_ELEMENTS;
+                }
+#ifdef USE_CMS
+            } else {
+                nextState = END;
+#endif
+            }
+            if (clearScreen) {
+                displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_NONE);
+            }
+
+        }
+        break;
+    case RENDERING_ELEMENTS: {
+            bool allElementsDrawn = osdDrawActiveElements(osdDisplayPort);
+            if (allElementsDrawn) {
+                displayHeartbeat(osdDisplayPort);
+                nextState = END;
+            } else {
+                osdUpdateRequested = true;
+            }
+        }
+        break;
+    case PREPARE_SCREEN_FOR_INITIAL_STATS: {
+
+            displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
+
+            displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_NONE);
+            if (!osdStatsVisible) {
+                nextState = END;
+            }
+
+            nextState = RENDER_INITIAL_STATS;
+        }
+        break;
+    case RENDER_INITIAL_STATS: {
+
+            // Go through the logic one time to determine how many stats rows are actually displayed.
+            osdStatsRowCount = osdShowStats(0);
+
+            osdShowStats(osdStatsRowCount);
+
+            nextState = PREPARE_SCREEN_FOR_STATS;
+        }
+        break;
+
+    case PREPARE_SCREEN_FOR_STATS_REFRESH: {
+            displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
+
+            nextState = PREPARE_SCREEN_FOR_STATS;
+        }
+        break;
+
+    case PREPARE_SCREEN_FOR_STATS: {
+
+            displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_NONE);
+
+            nextState = RENDER_STATS;
+        }
+        break;
+    case RENDER_STATS: {
+            if (osdRefreshNow) {
+                osdStatsRefreshTimeUs = currentTimeUs + REFRESH_1S;
+
+                osdShowStats(osdStatsRowCount);
+            }
+            nextState = END;
+        }
+        break;
+
+    case END: {
+            displayCommitTransaction(osdDisplayPort);
+            displayDrawScreen(osdDisplayPort);
+            nextState = PREPARE_CYCLE;
+        }
+        break;
     }
-    displayCommitTransaction(osdDisplayPort);
+
+    bool stateChange = nextState != osdState;
+    if (stateChange) {
+        osdState = nextState;
+        osdUpdateRequested = true;
+    }
+}
+
+bool osdUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
+{
+    UNUSED(currentDeltaTimeUs);
+
+    bool osdUpdateRequired = false;
+
+
+#if defined(USE_SPRACING_PIXEL_OSD)
+    if (frameBuffer_eraseInProgress()) {
+#ifdef DEBUG_FRAMEBUFFER_ERASE_WAIT
+        debug[1]++;
+#endif
+        return false;
+    }
+
+    // don't touch buffers while we're waiting for the framebuffer to be committed
+    if (displayIsTransferInProgress(osdDisplayPort)) {
+        return false;
+    }
+#endif
+
+
+#ifdef MAX7456_DMA_CHANNEL_TX
+    // don't touch buffers if DMA transaction is in progress
+    if (displayIsTransferInProgress(osdDisplayPort)) {
+        return false;
+    }
+#endif // MAX7456_DMA_CHANNEL_TX
+
+#ifdef USE_SLOW_MSP_DISPLAYPORT_RATE_WHEN_UNARMED
+    static uint32_t idlecounter = 0;
+    if (!ARMING_FLAG(ARMED)) {
+        if (idlecounter++ % 4 != 0) {
+            return false;
+        }
+    }
+#endif
+
+    if (osdUpdateRequested || cmpTimeUs(currentTimeUs, resumeRefreshAt) > 0 || cmpTimeUs(currentTimeUs, osdStatsRefreshTimeUs) >= 0) {
+        osdUpdateRequired = true;
+    }
+
+    return osdUpdateRequired;
 }
 
 /*
@@ -1042,8 +1208,6 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
  */
 void osdUpdate(timeUs_t currentTimeUs)
 {
-    static uint32_t counter = 0;
-
     if (!osdIsReady) {
         if (!displayCheckReady(osdDisplayPort, false)) {
             return;
@@ -1056,23 +1220,11 @@ void osdUpdate(timeUs_t currentTimeUs)
         showVisualBeeper = true;
     }
 
-#ifdef MAX7456_DMA_CHANNEL_TX
-    // don't touch buffers if DMA transaction is in progress
-    if (displayIsTransferInProgress(osdDisplayPort)) {
-        return;
-    }
-#endif // MAX7456_DMA_CHANNEL_TX
-
-#ifdef USE_SLOW_MSP_DISPLAYPORT_RATE_WHEN_UNARMED
-    static uint32_t idlecounter = 0;
-    if (!ARMING_FLAG(ARMED)) {
-        if (idlecounter++ % 4 != 0) {
-            return;
-        }
-    }
-#endif
+    // FIXME OSD subsystems should likely expose the draw/refresh denomination they require to this code.
 
     // redraw values in buffer
+#if (OSD_DRAW_FREQ_DENOM > 0)
+    static uint32_t counter = 0;
     if (counter % OSD_DRAW_FREQ_DENOM == 0) {
         osdRefresh(currentTimeUs);
         showVisualBeeper = false;
@@ -1091,6 +1243,10 @@ void osdUpdate(timeUs_t currentTimeUs)
         }
     }
     ++counter;
+#else
+    osdRefresh(currentTimeUs);
+    showVisualBeeper = false;
+#endif
 }
 
 void osdSuppressStats(bool flag)

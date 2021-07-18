@@ -31,9 +31,9 @@
 
 #include "display.h"
 
-void displayClearScreen(displayPort_t *instance)
+void displayClearScreen(displayPort_t *instance, displayClearOption_e options)
 {
-    instance->vTable->clearScreen(instance);
+    instance->vTable->clearScreen(instance, options);
     instance->cleared = true;
     instance->cursorRow = -1;
 }
@@ -51,7 +51,7 @@ int displayScreenSize(const displayPort_t *instance)
 void displayGrab(displayPort_t *instance)
 {
     instance->vTable->grab(instance);
-    instance->vTable->clearScreen(instance);
+    instance->vTable->clearScreen(instance, DISPLAY_CLEAR_WAIT);
     ++instance->grabCount;
 }
 
@@ -79,11 +79,11 @@ void displaySetXY(displayPort_t *instance, uint8_t x, uint8_t y)
     instance->posY = y;
 }
 
-int displayWrite(displayPort_t *instance, uint8_t x, uint8_t y, uint8_t attr, const char *s)
+int displayWrite(displayPort_t *instance, uint8_t x, uint8_t y, uint8_t attr, const char *text)
 {
-    instance->posX = x + strlen(s);
+    instance->posX = x + strlen(text);
     instance->posY = y;
-    return instance->vTable->writeString(instance, x, y, attr, s);
+    return instance->vTable->writeString(instance, x, y, attr, text);
 }
 
 int displayWriteChar(displayPort_t *instance, uint8_t x, uint8_t y, uint8_t attr, uint8_t c)
@@ -205,6 +205,7 @@ bool displaySupportsOsdSymbols(displayPort_t *instance)
     // Assume device types that support OSD display will support the OSD symbols (since the OSD logic will use them)
     if ((instance->deviceType == DISPLAYPORT_DEVICE_TYPE_MAX7456)
         || (instance->deviceType == DISPLAYPORT_DEVICE_TYPE_MSP)
+        || (instance->deviceType == DISPLAYPORT_DEVICE_TYPE_SPRACINGPIXELOSD)
         || (instance->deviceType == DISPLAYPORT_DEVICE_TYPE_FRSKYOSD)) {
         return true;
     } else {
@@ -215,10 +216,15 @@ bool displaySupportsOsdSymbols(displayPort_t *instance)
 void displayInit(displayPort_t *instance, const displayPortVTable_t *vTable, displayPortDeviceType_e deviceType)
 {
     instance->vTable = vTable;
-    instance->vTable->clearScreen(instance);
+
     instance->useFullscreen = false;
-    instance->cleared = true;
+    instance->cleared = false;
     instance->grabCount = 0;
     instance->cursorRow = -1;
     instance->deviceType = deviceType;
+
+    displayBeginTransaction(instance, DISPLAY_TRANSACTION_OPT_NONE);
+    displayClearScreen(instance, DISPLAY_CLEAR_WAIT);
+    displayCommitTransaction(instance);
+
 }

@@ -169,7 +169,7 @@ static const void *cmsx_EraseFlash(displayPort_t *pDisplay, const void *ptr)
         return NULL;
     }
 
-    displayClearScreen(pDisplay);
+    displayClearScreen(pDisplay, DISPLAY_CLEAR_WAIT);
     displayWrite(pDisplay, 5, 3, DISPLAYPORT_ATTR_INFO, "ERASING FLASH...");
     displayRedraw(pDisplay);
 
@@ -180,7 +180,7 @@ static const void *cmsx_EraseFlash(displayPort_t *pDisplay, const void *ptr)
     }
 
     beeper(BEEPER_BLACKBOX_ERASE);
-    displayClearScreen(pDisplay);
+    displayClearScreen(pDisplay, DISPLAY_CLEAR_WAIT);
     displayRedraw(pDisplay);
 
     // Update storage device status to show new used space amount
