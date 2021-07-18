@@ -135,7 +135,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         },
         .pidSumLimit = PIDSUM_LIMIT,
         .pidSumLimitYaw = PIDSUM_LIMIT_YAW,
-        .yaw_lowpass_hz = 0,
+        .yaw_lowpass_hz = 100,
         .dterm_notch_hz = 0,
         .dterm_notch_cutoff = 0,
         .itermWindupPointPercent = 100,
