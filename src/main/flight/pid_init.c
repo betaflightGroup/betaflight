@@ -239,7 +239,7 @@ void pidInitFilters(const pidProfile_t *pidProfile)
     pt1FilterInit(&pidRuntime.antiGravityThrottleLpf, pt1FilterGain(ANTI_GRAVITY_THROTTLE_FILTER_CUTOFF, pidRuntime.dT));
     pt1FilterInit(&pidRuntime.antiGravitySmoothLpf, pt1FilterGain(ANTI_GRAVITY_SMOOTH_FILTER_CUTOFF, pidRuntime.dT));
 
-    pidRuntime.ffBoostFactor = (float)pidProfile->feedforward_boost / 10.0f;
+    pidRuntime.feedforwardBoostFactor = (float)pidProfile->feedforward_boost / 10.0f;
 }
 
 void pidInit(const pidProfile_t *pidProfile)
@@ -423,13 +423,11 @@ void pidInitConfig(const pidProfile_t *pidProfile)
 
 #ifdef USE_FEEDFORWARD
     pidRuntime.feedforwardAveraging = pidProfile->feedforward_averaging;
+    pidRuntime.feedforwardSmoothFactor = 1.0f;
     if (pidProfile->feedforward_smooth_factor) {
-        pidRuntime.ffSmoothFactor = 1.0f - ((float)pidProfile->feedforward_smooth_factor) / 100.0f;
-    } else {
-        // set automatically according to boost amount, limit to 0.5 for auto
-        pidRuntime.ffSmoothFactor = MAX(0.5f, 1.0f - ((float)pidProfile->feedforward_boost) * 2.0f / 100.0f);
+        pidRuntime.feedforwardSmoothFactor = 1.0f - ((float)pidProfile->feedforward_smooth_factor) / 100.0f;
     }
-    pidRuntime.ffJitterFactor = pidProfile->feedforward_jitter_factor;
+    pidRuntime.feedforwardJitterFactor = pidProfile->feedforward_jitter_factor;
     feedforwardInit(pidProfile);
 #endif
 
