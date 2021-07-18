@@ -49,7 +49,7 @@ extern const char * const osdTimerSourceNames[OSD_NUM_TIMER_TYPES];
 #define OSD_CAMERA_FRAME_MIN_HEIGHT 2
 #define OSD_CAMERA_FRAME_MAX_HEIGHT 16    // Rows supported by MAX7456 (PAL)
 
-#define OSD_TASK_FREQUENCY_MIN 6
+#define OSD_TASK_FREQUENCY_MIN 1
 #define OSD_TASK_FREQUENCY_MAX 60
 #define OSD_TASK_FREQUENCY_DEFAULT 12
 
