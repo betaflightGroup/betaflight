@@ -167,13 +167,17 @@ static int8_t STORAGE_Init (uint8_t lun)
     LED0_OFF;
 
 #ifdef USE_DMA_SPEC
-        const dmaChannelSpec_t *dmaChannelSpec = dmaGetChannelSpecByPeripheral(DMA_PERIPH_SDIO, 0, sdioConfig()->dmaopt);
+#if defined(STM32H7) // H7 uses IDMA
+    SD_Initialize_LL(0);
+#else
+    const dmaChannelSpec_t *dmaChannelSpec = dmaGetChannelSpecByPeripheral(DMA_PERIPH_SDIO, 0, sdioConfig()->dmaopt);
 
     if (!dmaChannelSpec) {
         return 1;
     }
 
     SD_Initialize_LL((DMA_ARCH_TYPE *)dmaChannelSpec->ref);
+#endif
 #else
     SD_Initialize_LL(SDCARD_SDIO_DMA_OPT);
 #endif
@@ -181,7 +185,7 @@ static int8_t STORAGE_Init (uint8_t lun)
     if (!sdcard_isInserted()) {
         return 1;
     }
-    if (SD_Init() != 0) {
+    if (SD_Init() != SD_OK) {
         return 1;
     }
 

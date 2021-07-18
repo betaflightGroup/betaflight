@@ -446,13 +446,13 @@ HAL_StatusTypeDef SDMMC_ConfigData(SDMMC_TypeDef *SDMMCx, SDMMC_DataInitTypeDef*
 
   // DC - See errata 2.11.4 - 8 SDMMC clock cycles must elapse before DTEN can be set.
   // 32U below is used as a VERY rough guess that the SDMMC clock is 1/4 of the sytem clock, 8 * 4 = 32 and that the
-  // assembly below only takes 1 CPU cycle to run. All of which will be wrong, but right enough most of the time, especially
-  // when considering other processing overheads.
+  // loop code below only takes 2 CPU cycles to run. All of which will likely be wrong, but right enough most of the time.
+  // It's important that the code isn't optimized-out by the compiler or linker too, see
+  // https://stackoverflow.com/questions/7083482/how-to-prevent-gcc-from-optimizing-out-a-busy-wait-loop
   register uint32_t count = 32U;
-  do
-  {
-    count--;
-  } while(count > 0);
+  for (unsigned i = 0; i < count; i++) {
+    __asm__ volatile("" : "+g" (i) : :);
+  }
   // DC - See errata 2.11.4
 
   /* Write to SDMMC DCTRL */
