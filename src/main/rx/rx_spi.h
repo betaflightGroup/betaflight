@@ -48,6 +48,7 @@ typedef enum {
     RX_SPI_REDPINE,
     RX_SPI_FRSKY_X_V2,
     RX_SPI_FRSKY_X_LBT_V2,
+    RX_SPI_EXPRESSLRS,
     RX_SPI_PROTOCOL_COUNT
 } rx_spi_protocol_e;
 

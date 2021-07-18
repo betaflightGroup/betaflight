@@ -323,6 +323,18 @@
 #define RX_CC2500_SPI_ANT_SEL_PIN NONE
 #endif
 #endif
+
+#if defined(USE_RX_EXPRESSLRS)
+#if !defined(RX_EXPRESSLRS_SPI_RESET_PIN)
+#define RX_EXPRESSLRS_SPI_RESET_PIN NONE
+#endif
+
+#if !defined(RX_EXPRESSLRS_SPI_BUSY_PIN)
+#define RX_EXPRESSLRS_SPI_BUSY_PIN NONE
+#endif
+
+#endif
+
 #endif
 
 // gyro hardware

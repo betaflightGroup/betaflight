@@ -99,4 +99,5 @@ const char * const debugModeNames[DEBUG_COUNT] = {
     "D_LPF",
     "VTX_TRAMP",
     "GHST",
+    "RX_EXPRESSLRS_SPI",
 };

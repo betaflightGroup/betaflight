@@ -141,6 +141,9 @@ typedef enum {
 #ifdef USE_OSD
     TABLE_CMS_BACKGROUND,
 #endif
+#ifdef USE_RX_EXPRESSLRS
+    TABLE_FREQ_DOMAIN,
+#endif
     LOOKUP_TABLE_COUNT
 } lookupTableIndex_e;
 

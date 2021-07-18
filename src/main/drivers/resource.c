@@ -109,4 +109,6 @@ const char * const ownerNames[OWNER_TOTAL_COUNT] = {
     "PULLDOWN",
     "DSHOT_BITBANG",
     "SWD",
+    "RX_SPI_EXPRESSLRS_RESET",
+    "RX_SPI_EXPRESSLRS_BUSY",
 };

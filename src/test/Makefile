@@ -415,8 +415,19 @@ rx_spi_spektrum_unittest_SRC := \
 		$(USER_DIR)/rx/cyrf6936_spektrum.c
 
 rx_spi_spektrum_unittest_DEFINES := \
-		USE_RX_SPI \
-		USE_RX_SPEKTRUM
+		USE_RX_SPI= \
+		USE_RX_SPEKTRUM=
+
+rx_spi_expresslrs_unittest_SRC := \
+        $(USER_DIR)/pg/rx_spi_expresslrs.c \
+		$(USER_DIR)/rx/expresslrs_common.c \
+		$(USER_DIR)/rx/expresslrs.c \
+
+rx_spi_expresslrs_unittest_DEFINES := \
+		USE_RX_SPI= \
+		USE_RX_EXPRESSLRS= \
+		USE_RX_SX1280= \
+		USE_RX_SX127X= \
 
 # Please tweak the following variable definitions as needed by your
 # project, except GTEST_HEADERS, which you can use in your own targets

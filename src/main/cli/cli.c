@@ -146,6 +146,7 @@ bool cliMode = false;
 #include "pg/rx.h"
 #include "pg/rx_pwm.h"
 #include "pg/rx_spi_cc2500.h"
+#include "pg/rx_spi_expresslrs.h"
 #include "pg/serial_uart.h"
 #include "pg/sdio.h"
 #include "pg/timerio.h"
@@ -5161,6 +5162,10 @@ const cliResourceValue_t resourceTable[] = {
 #if defined(USE_RX_CC2500_SPI_DIVERSITY)
     DEFS( OWNER_RX_SPI_CC2500_ANT_SEL, PG_RX_CC2500_SPI_CONFIG, rxCc2500SpiConfig_t, antSelIoTag ),
 #endif
+#endif
+#if defined(USE_RX_EXPRESSLRS)
+    DEFS( OWNER_RX_SPI_EXPRESSLRS_RESET, PG_RX_EXPRESSLRS_SPI_CONFIG, rxExpressLrsSpiConfig_t, resetIoTag ),
+    DEFS( OWNER_RX_SPI_EXPRESSLRS_BUSY, PG_RX_EXPRESSLRS_SPI_CONFIG, rxExpressLrsSpiConfig_t, busyIoTag ),
 #endif
 #endif
 #ifdef USE_GYRO_EXTI

@@ -76,7 +76,10 @@ static bool doRxBind(bool doBind)
 #ifdef USE_RX_SPEKTRUM
         case RX_SPI_CYRF6936_DSM:
 #endif
-#if defined(USE_RX_FRSKY_SPI) || defined(USE_RX_SFHSS_SPI) || defined(USE_RX_FLYSKY) || defined(USE_RX_SPEKTRUM)
+#ifdef USE_RX_EXPRESSLRS
+        case RX_SPI_EXPRESSLRS:
+#endif
+#if defined(USE_RX_FRSKY_SPI) || defined(USE_RX_SFHSS_SPI) || defined(USE_RX_FLYSKY) || defined(USE_RX_SPEKTRUM) || defined(USE_RX_EXPRESSLRS)
             if (doBind) {
                 rxSpiBind();
             }

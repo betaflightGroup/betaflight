@@ -51,7 +51,7 @@
 #include "rx/a7105_flysky.h"
 #include "rx/cc2500_sfhss.h"
 #include "rx/cyrf6936_spektrum.h"
-
+#include "rx/expresslrs.h"
 
 uint16_t rxSpiRcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
 STATIC_UNIT_TESTED uint8_t rxSpiPayload[RX_SPI_MAX_PAYLOAD_SIZE];
@@ -173,6 +173,13 @@ STATIC_UNIT_TESTED bool rxSpiSetProtocol(rx_spi_protocol_e protocol)
         protocolInit = spektrumSpiInit;
         protocolDataReceived = spektrumSpiDataReceived;
         protocolSetRcDataFromPayload = spektrumSpiSetRcDataFromPayload;
+        break;
+#endif
+#ifdef USE_RX_EXPRESSLRS
+    case RX_SPI_EXPRESSLRS:
+        protocolInit = expressLrsSpiInit;
+        protocolDataReceived = expressLrsDataReceived;
+        protocolSetRcDataFromPayload = expressLrsSetRcDataFromPayload;
         break;
 #endif
     default:
