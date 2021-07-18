@@ -350,6 +350,14 @@ static void applyMixToMotors(float motorMix[MAX_SUPPORTED_MOTORS], motorMixer_t 
 {
     // Now add in the desired throttle, but keep in a range that doesn't clip adjusted
     // roll/pitch/yaw. This could move throttle down, but also up for those low throttle flips.
+    for (int i=0; i < mixerRuntime.motorCount; i++) {
+        if(motorOutputMixSign * motorMix[i] + throttle * activeMixer[i].throttle > 1) {
+            throttle = (1 - motorOutputMixSign * motorMix[i]) / activeMixer[i].throttle;
+        } else if(motorOutputMixSign * motorMix[i] + throttle * activeMixer[i].throttle < 0) {
+            throttle = - motorOutputMixSign * motorMix[i] / activeMixer[i].throttle;
+        }
+    }
+
     for (int i = 0; i < mixerRuntime.motorCount; i++) {
         float motorOutput = motorOutputMixSign * motorMix[i] + throttle * activeMixer[i].throttle;
 #ifdef USE_THRUST_LINEARIZATION
