@@ -47,3 +47,7 @@ float applyCurve(int axis, float deflection);
 bool getShouldUpdateFeedforward();
 void updateRcRefreshRate(timeUs_t currentTimeUs);
 uint16_t getCurrentRxRefreshRate(void);
+
+#ifdef USE_FEEDFORWARD
+bool getRxRateValid(void);
+#endif
